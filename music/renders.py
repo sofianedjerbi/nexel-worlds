@@ -31,6 +31,7 @@ RENDERS = [  # script, its list, the entries the game plays (master.py reads the
     ("adventure.py", "PIECES", ["trail"], "piece_{}"),
     ("bright.py", "PALETTES", ["dream"], "bright_{}"),
     ("slowtide.py", "VARIANTS", ["high", "full"], "menu_tide_{}"),
+    ("rush.py", "VARIANTS", ["nyxwing"], "rush_{}"),
 ]
 AFTER = [("master.py", AUDIO, "final_bright_dream"), ("refit.py", SURGE, "fixed_old_mossback")]   # (and a file each writes)
 

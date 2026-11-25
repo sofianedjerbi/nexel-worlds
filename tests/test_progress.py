@@ -78,7 +78,7 @@ def test_every_thing_that_can_be_made_has_a_line_about_it():
     text = (Path(__file__).parent.parent / "src/nexel_worlds/web/js/blurbs.js").read_text()
     blurbs = dict(re.findall(r'^  (\w+): "((?:[^"\\]|\\.)*)",$', text, re.M))
     found = {"wood", "stone", "fiber", "coal", "copper_ore", "iron_ore", "gold_ore", "titanium_ore", "dirt", "stone_block", "seed", "berries", "fruit", "mushroom", "egg", "milk", "meat", "wheat", "pumpkin", "cauliflower", "lettuce",
-             "eggplant", "carrot", "flower", "shell_plate"}          # what is not made has its line too (the inventory shows it)
+             "eggplant", "carrot", "flower", "shell_plate", "eclipse_core"}          # what is not made has its line too (the inventory shows it)
     assert set(blurbs) == set(RECIPES) | found, (set(RECIPES) | found - set(blurbs), set(blurbs) - set(RECIPES) - found)
     assert len(set(blurbs.values())) == len(blurbs)
     assert all(8 <= len(b) <= 50 and b[-1] in ".?!" for b in blurbs.values()), [b for b in blurbs.values() if not 8 <= len(b) <= 50]
@@ -99,9 +99,10 @@ def test_a_creature_does_not_leave_the_same_thing_every_time(world):
     assert sum(1 for d in got if not d) > n / 4                              # often nothing at all
     for kind, c in CREATURES.items():
         assert all(0 < ch <= 1 and 1 <= lo <= hi for _, ch, lo, hi in c["drops"]), kind
-        if kind not in ("wisp", "chick", "calf", "mossback"):
+        if kind not in ("wisp", "chick", "calf", "mossback", "nyxwing"):     # (a boss's drops are sure)
             assert min(ch for _, ch, _, _ in c["drops"]) <= .1, kind         # each has its rare one
     assert roll_drops("mossback", rng) == {"shell_plate": 5, "meat": 6, "fruit": 4, "mushroom": 3}
+    assert roll_drops("nyxwing", rng) == {"eclipse_core": 1}
     sim.luck = 1000                                                          # (the tests' switch: every line)
     hen = Creature(sim.next_creature, "chicken", a.x + 3, a.y, 10); sim.next_creature += 1
     sim.creatures[hen.id] = hen

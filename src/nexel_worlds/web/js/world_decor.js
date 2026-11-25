@@ -28,6 +28,9 @@ const WILD = {
   hob: {cw: 32, ch: 42, idle: [0, 8, [260, 220, 220, 260, 300, 260, 140, 260]], walk: [8, 8, 110], act: [16, 7, [260, 320, 80, 140, 180, 220, 260]]},     // (an ally: sim/hob.py)
   gustling: {cw: 32, ch: 40, idle: [0, 8, 110], walk: [8, 8, 70], act: [16, 11, [170, 130, 100, 100, 100, 80, 160, 160, 130, 130, 160]]},
   mossback: {cw: 80, ch: 64, hp: 60, sleep: [0, 8, 320], idle: [8, 8, 240], walk: [16, 8, 120], stomp: [24, 7, [160, 300, 220, 80, 180, 220, 200]], snap: [31, 7, [180, 200, 200, 70, 260, 140, 180]], shake: [38, 11, [180, 150, 150, 90, 90, 90, 90, 100, 110, 180, 200]], once: ["stomp", "snap", "shake"]},
+  nyxwing: {cw: 128, ch: 114, hp: 120, idle: [0, 8, 96], walk: [8, 8, 48], breath: [16, 8, [192, 192, 193, 96, 96, 96, 96, 96]],    // (drawn by nyxwing.js: its moves are timed to its song)
+    storm: [24, 21, [192, 192, 193, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 96, 96]], dive: [45, 9, [192, 192, 193, 96, 96, 96, 96, 96, 96]],
+    sweep: [54, 8, [192, 192, 193, 64, 64, 64, 96, 96]], rush: [62, 6, [96, 96, 193, 192, 192, 192]]},
   sporeling: {cw: 24, ch: 24, idle: [0, 8, 240], walk: [8, 8, 75], land: [16, 6, [80, 80, 160, 120, 90, 140]], puff: [22, 6, [150, 150, 90, 130, 150, 140]], once: ["land", "puff"]},
 };
 // Each creature's own sounds (music/sfx.py, "Creatures", picked by ear): its warning, its blow when it lands, its cry
@@ -41,6 +44,7 @@ const CRY = {
   grumblestump: {warn: "grumblestump_warn", slams: true, hurt: "grumblestump_hurt"},
   snapbloom: {warn: "snapbloom_warn", blow: "snapbloom_bite", hurt: "snapbloom_hurt"},
   hob: {warn: "hob_warn"}, wisp: {warn: "gloom"}, mossback: {warn: "boss_groan"},
+  nyxwing: {slams: true, hurt: "drake_hurt"},          // (its warnings and blows sound in nyxwing.js: a scream when its jaws open)
 };
 // A blow lands (an "attack" event, `attacker` "a tusker" when it is a wild one): the creature's own sound in place of a
 // punch and a thump; a creature that is hit cries its own cry in place of the thump.
@@ -52,6 +56,7 @@ function wildBlow(e, tgt, tx, ty) {
 // The moves of the wild ones and the hob, as the server tells them (sim/wild.py, gust.py, stump.py, hob.py): dust,
 // sparks, a sound, and a flash on whom they touched.
 function wildEvent(e) {
+  if (e.type === "windup" && e.kind === "nyxwing") Nyx.windup(e);          // (nyxwing.js)
   if (e.type === "slam") { burst(e.x, e.y, "dust", 22, {up: 1.2, spread: 5, g: 3}); sfx("grumblestump_slam", e.x, e.y); }        // a grumblestump's arms come down: a ring of dust
   if (e.type === "flare") {                                                            // a hob's firebox bursts: a blaze of sparks, it and what it burnt lit up
     burst(e.x, e.y, "spark", 34, {up: 4, spread: 6, g: 4, life: .7}); burst(e.x, e.y, "rage", 10, {up: 2.5, spread: 3, g: 6});
@@ -100,6 +105,7 @@ function tuskerFx(p, e, now) {
 }
 const ANGER = [".r...r.", "rr...rr", ".......", "rr...rr", ".r...r."];      // the mark over one that is angry (a tusker that was hit: sim/wild.py)
 function drawWild(p, x, y, now) {
+  if (p.e.kind === "nyxwing") return Nyx.draw(p, x, y, now);              // (nyxwing.js)
   const e = p.e, A = WILD[e.kind], z = zoom;
   const moving = now - p.moved < 350 || Math.abs(p.x - p.tx) + Math.abs(p.y - p.ty) > .05;
   if (A.once ? e.act !== p.act && A.once.includes(e.act) : e.act === "windup" && p.act !== "windup") {      // the warning starts:

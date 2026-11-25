@@ -40,7 +40,7 @@ WILD_SPAWNS = {"tusker": dict(every=sec(120), cap=1, day=True, tries=1), "pincer
                "snapbloom": dict(every=sec(480), cap=1, day=True, tries=1),
                "grumblestump": dict(every=sec(300), cap=1, night=True, tries=2)}     # (night: only at night)
 ROAMING = ("tusker", "pincer", "gustling", "snapbloom", "grumblestump")   # these come and go; the rest stay where they are
-RARE = ("strawman", "wisp", "wyrm", "mossback", "sporeling", "hob")   # never counted, never gone (a hob is somebody's)
+RARE = ("strawman", "wisp", "wyrm", "mossback", "sporeling", "nyxwing", "hob")   # never counted, never gone (a hob is somebody's)
 LIMITS = ((PASSIVE, 6), (ROAMING, 2))   # the most of these there may be around one player (CAP_R)
 CULL_EVERY, CULL_MAX = sec(1), 20       # how often the ones over a limit go, and how many at most at a time
 EDGE = 2                         # a creature this close to a screen's watched rectangle is taken to be seen

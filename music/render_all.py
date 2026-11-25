@@ -10,7 +10,7 @@ from pathlib import Path
 HERE = Path(__file__).parent
 t0 = time.time()
 jobs = {name: subprocess.Popen([sys.executable, str(HERE / name)], cwd=HERE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-        for name in ("compose.py", "night.py", "boss.py", "day.py")}
+        for name in ("compose.py", "night.py", "boss.py", "day.py", "rush.py")}
 failed = False
 for name, p in jobs.items():
     out, _ = p.communicate()

@@ -194,8 +194,8 @@ setInterval(moments, 1000);
 function tune(tc) {
   const m = sounds.manifest;
   if (!audio || !m || !m.tracks || !SOUND.music) return;
-  const boss = !muted && fight && !!m.tracks[m.play.boss];
-  bossTrack.key = m.play.boss;
+  const boss = !muted && fight && !!m.tracks[m.play[fight]];               // (fight: which loop, "boss" or "nyxwing": boss.js)
+  if (!bossTrack.on) bossTrack.key = m.play[fight] || bossTrack.key;       // (a loop on plays to its fight's end)
   if (boss && !bossTrack.on) { bossTrack.left = Infinity; stream(bossTrack); swell(bossTrack, SOUND.music * SOUND.bossMusic, SOUND.arrive.boss); }
   else if (!boss && bossTrack.on) {                        // the fight is over (or sound is off): it recedes
     const out = muted ? 3 * tc : SOUND.ending;

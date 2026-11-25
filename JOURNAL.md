@@ -4193,3 +4193,19 @@ Change (each merged with its own e2e test that failed before):
 - Phone/demo: half-float lines fixed (highp), land kept up while sprinting, lost GL context recovered, full-screen loader first, title ~25% sooner, memory churn 393 → 128 KB/frame standing.
 Measured: unit 665 pass; quick e2e set green; live server restarted twice (jump, held item) on backed-up saves.
 Next: shade inside the open-sky cut, shaft passage band, build-mode placing reach + side faces, way-out key at sprint start, loader bar jump.
+
+## Iteration: Nyxwing, the boss of "Sugar rush" (2026-11-25, issue #22)
+Hypothesis: a second boss is worth most if everything about it is one thing, timed to one song: its moves on the
+song's beats, its entrance on the song's drop, all its sounds of one palette in the song's key.
+Change: the owner picked Eclipse out of three Nyxwing prototypes (a mockup page in ~/nexel/local/design/drake/). In the
+game: sim/nyxwing.py (three tiles wide, flies; entrance 32 beats, untouchable; circles; breath, three rings of stars
+with gaps, tail sweep, dive with a hunting shadow; a roar below half; leaves when alone; drops its Eclipse Core);
+web/js/nyxwing.js (frames on the beat, the entrance out of an eclipse with the speck made smaller by whole px, its death
+into stars); music/rush.py ("Sugar rush", 72 bars, every added sound measured on the beat before rendering); 17 drake_*
+sounds in music/sfx.py, one palette. Summoned only: nothing calls it down yet.
+Measured: its sheet pixel for pixel the one picked; game sheets written indexed (the same pixels, 586 KB -> 256 KB for
+the twelve); unit tests 11 new; sounds' centroids 130-680 Hz, under 2 % above 4 kHz; the song -20 LUFS, out of the kept
+pieces' range: nothing. Not heard by me: by ear is the owner's.
+Weak: its entrance is timed from when this client first sees it (a player who walks in late sees the rest of it with the
+song from its start); a classic (non-HD) picture has no entrance, but there is no classic picture any more.
+Next: what calls it down (the owner's call), then its place in the world.

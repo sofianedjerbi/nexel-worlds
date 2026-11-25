@@ -43,6 +43,6 @@ function structAt(x, y) {                 // the anchor of the structure a Z/z t
 }
 const wet = (g) => g in DEPTH_OF;                          // water: DEPTH_OF, how many layers down its bottom lies
 const LABEL = {name_tag: "name tag", wood_wall: "wooden wall", wet_tilled: "watered soil", watering_can: "watering can", fruit_tree: "fruit tree", berry_bush: "berry bush", stone_wall: "stone wall", ripe_crop: "ripe wheat", crop: "young wheat",
-  cooked_meat: "cooked meat", deep_water: "deep water", mid_water: "deeper water", abyss: "the deep", picnic_blanket: "picnic blanket", hay_bale: "hay bale"};
+  cooked_meat: "cooked meat", deep_water: "deep water", mid_water: "deeper water", abyss: "the deep", picnic_blanket: "picnic blanket", hay_bale: "hay bale", eclipse_core: "Eclipse Core"};
 LABEL.stone_block = "stone block";
 const label = (n) => LABEL[n] || String(n).replace("_", " ");

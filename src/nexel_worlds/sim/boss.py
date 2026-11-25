@@ -28,7 +28,10 @@ class Boss:
     """Simulation mixin: Old Mossback and its sporelings (dispatched from Wild.step_wild)."""
 
     def shell(self, c, dmg: int) -> int:
-        """What a blow of `dmg` does to creature c: Old Mossback's shell turns most of it, unless its neck is out."""
+        """What a blow of `dmg` does to creature c: Old Mossback's shell turns most of it, unless its neck is out; none
+        reaches Nyxwing coming down or up in the sky (nyxwing.py)."""
+        if self.untouchable(c):
+            return 0
         if c.kind != "mossback" or self.tick < c.left:
             return dmg
         return max(1, dmg // SHELL)
