@@ -147,11 +147,11 @@ def test_down_a_passage_a_level_floor_has_no_band_a_step_up_its_riser_a_step_dow
     g.wait("HdLook.win.a === 1 && !HdLook.busy && HdLook.cam.pitch > HdLook.steep - .1", timeout=8000)
     quiet(g)
     col = lambda dx, z: [g.js(PX, [x + dx + .5, y - 1 + .5 - i * .05, z]) for i in range(70)]
-    # (a band is a row of the floor darker ACROSS the passage: each row's median of seven px across the tile, not one px up its
-    #  middle: that met the floor's own dark specks, at rows that depend on how the renderer rounds the paint's px: 34 of 142 at
-    #  one row on SwiftShader, 67 at another on lavapipe, none on a desktop's GPU. As doben1 saw it, a line across the way)
-    across = [[g.js(PX, [x - 4 + k, y - 1 + .5 - i * .05, 0]) for k in (.2, .3, .4, .5, .6, .7, .8)] for i in range(70)]
-    level = [sorted(lum(c) for c in row)[3] for row in across]
+    # (a band is a row of the floor darker ACROSS the passage: each row's median of three px across the floor's middle, .35 to .65
+    #  of the tile. Not out to its sides: seen aslant, the passage's walls stand over the floor's edges there, more in some rows
+    #  than others, and a median out to .2 and .8 went from the floor's grey to the walls' at one row: a "band" that was the walls)
+    across = [[g.js(PX, [x - 4 + k, y - 1 + .5 - i * .05, 0]) for k in (.35, .5, .65)] for i in range(70)]
+    level = [sorted(lum(c) for c in row)[1] for row in across]
     med = sorted(level)[len(level) // 2]
     assert min(level) > med * .8, (med, [(i, round(v, 1)) for i, v in enumerate(level) if v <= med * .8])   # level: no band across it (the dark rows: i * .05 of a tile north of y - .5)
     up = col(0, 0)[30:54]                                                     # (the step's edge is at y - 3.5 .. y - 4: its riser over the lower floor)
