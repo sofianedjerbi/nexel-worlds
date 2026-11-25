@@ -150,7 +150,8 @@ def test_on_a_phone_the_bar_goes_on_by_small_steps_and_no_task_holds_the_page(br
     web_bundle.py). The script's bytes are counted as they come (it was a tag: nothing of it counted till it had run, the bar
     leapt 22% to 58%); the bar never goes back and never leaps more than 15%; no task holds the page over 120 ms till the
     island is shown (the character's tools were one task of 0.7 s, the island's first picture one of 0.3 s: tool_art.js
-    soon, hd.js warm)."""
+    soon, hd.js warm). On GitHub's slower runners the pack was all in before the bar's first look and a third of the way
+    was 1% to 20% at once: a step is 12% at most."""
     ctx = browser.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=3, is_mobile=True, has_touch=True)
     ctx.add_init_script(WATCH)
     page, errors = ctx.new_page(), []

@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 AUDIO = Path(__file__).parents[2] / "src" / "nexel_worlds" / "web" / "audio" / "sfx.json"
-pytestmark = pytest.mark.skipif(not AUDIO.exists(), reason="no sounds built: uv run python tools/build_audio.py")
+pytestmark = pytest.mark.skipif(not AUDIO.exists(), reason="no sounds built: uv run --extra audio python tools/build_audio.py (CI builds them: ci.yml)")
 
 ALL_LOADED = """sounds.manifest && Object.values(sounds.manifest.sounds).flatMap((s) => s.files)
                 .every((f) => sounds.buffers.get(f) instanceof AudioBuffer)"""
