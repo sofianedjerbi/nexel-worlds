@@ -15,14 +15,18 @@ def test_a_fall_takes_the_time_of_a_fall_and_lands_in_dust(game):
     game.stamp(-1, -1, ["..."] * 3, levels=["888"] * 3); game.rest()       # a tower eight layers high under you
     game.rpc("dev_needs", hp=20, hunger=17)                    # (whole, and not healing by itself: 18 and more)
     game.js("""(() => { window.__f = []; const o = Leap.frame;
-      Leap.frame = (p, dt, now) => { o(p, dt, now); const L = Leap.state; __f.push([now, L ? 1 : 0, L ? L.z : null, parts.length, wind ? 1 : 0, HdLook.level[2]]); }; return 1; })()""")
+      Leap.frame = (p, dt, now) => { o(p, dt, now); const L = Leap.state; __f.push([now, L ? 1 : 0, L ? L.z : null, parts.length, wind ? 1 : 0, HdLook.level[2]]); };
+      window.__hurt = []; const h = fallHurts; fallHurts = (p, now, mine) => { if (BodyPlace.state(p).hurt) __hurt.push(now); h(p, now, mine); }; return 1; })()""")
     g = game.js("JUMP.g")
     T = (2 * 8 / g) ** .5 * 1000                                                                 # ms in the air from eight layers, by the jump's weight
     game.hold(["d"], 450)
     game.wait("fallQuake !== null && flashes.has('agent' + myId)", timeout=3000)                # it hurt: the ground shakes, you flash
     assert any(f["text"] == "-2.5" for f in game.js("floats"))                                  # (8 layers: 5 over what is safe, half a heart each)
-    game.sleep(700)
+    game.sleep(1200)                                                                             # (the world's own `fall` event in by then)
     rec = game.js("__f")
+    down = next(r[0] for r in rec if r[1] == 0 and any(q[1] == 1 for q in rec if q[0] < r[0]))     # the frame you are down
+    hurt = game.js("__hurt")
+    assert len(hurt) == 1 and hurt[0] - down < 40, (hurt, down)                                  # what it cost shown as you land, once: it came most of a second after (the world's word, then 0.7 s more)
     air = [r for r in rec if r[1] == 1 and r[2] < 8 - 1e-6]                                     # (off the edge: under the tower's top)
     assert .78 * T < air[-1][0] - air[0][0] + 17 < 1.22 * T, (air[-1][0] - air[0][0], T)        # by the fall's own time, not a step's 0.2
     heights = [r[2] for r in air]

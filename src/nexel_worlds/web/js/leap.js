@@ -169,7 +169,9 @@ const Leap = (() => {
     const bump = !past && h && autoJump() && solidAt(nx, ny, z + 1) && landAt(z, nx, ny, p.tx, p.ty) === z + 1 && leapable(p.tx, p.ty, z, nx, ny);
     st.leapAt = past || bump ? null : {x: p.tx, y: p.ty, z};
     if (myAt) myAt.z = z;
-    if (z0 - z >= FALL.from) { landed(p, z0 - z, now, true, st); st.bounce = null; }   // (down from high: a fall's landing, jump.js: its dust, its thud; what it cost when the world says, state.js. Not its bounce: the body 12 px up the screen in a frame and back)
+    if (z0 - z >= FALL.from) {                // (what it costs shown as you land, by the world's own rule: sim/movement.py fell. Waiting for its `fall` event showed it most of a second after)
+      const n = (z0 - z - RULES.fall_safe) * RULES.fall_hp; if (n > 0) { st.hurt = n; st.told = now; }   // (a server without fall_hp in its rules: NaN, its event says it)
+      landed(p, z0 - z, now, true, st); st.bounce = null; }   // (down from high: a fall's landing, jump.js: its dust, its thud; what it cost when the world says, state.js. Not its bounce: the body 12 px up the screen in a frame and back)
     else { jumpDust(p, 4, z < z0 ? 1.3 : 1); sfx(z < z0 ? "thud" : "step", p.tx, p.ty); }
     if (path.length) {
       const [x, y, n] = mark(p.tx, p.ty);
