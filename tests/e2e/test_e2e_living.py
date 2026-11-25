@@ -35,12 +35,15 @@ def test_eating_your_hands_are_full(game):
     game.face(1, 0)
     game.hold_item("bread")
     game.js("(() => { window.__asked = []; const o = rpc; rpc = function (op, d) { if (op === 'act') __asked.push(d.tool); return o(op, d); }; return 1; })()")
+    game.js("(() => { window.__keys = []; addEventListener('keydown', (e) => __keys.push([e.key, eating()]), true); return 1; })()")
     game.press("e", 0)
     game.wait("myAside && myAside.tool === 'eat'")
     game.js("selectItem(null)")
-    game.press("x", 150)
-    game.press("f", 150)
-    assert game.js("eating()") and game.js("__asked") == ["eat"]                     # nothing asked for but the meal
+    game.page.keyboard.press("x")                             # (straight on, in the meal's 0.9 s: two presses that each waited
+    game.page.keyboard.press("f")                             # for two frames of a slow machine came after it)
+    game.frames(1)
+    assert game.js("__keys.filter(([k]) => k === 'x' || k === 'f')") == [["x", True], ["f", True]]   # both pressed while eating
+    assert game.js("__asked") == ["eat"]                                              # nothing asked for but the meal
     assert game.js("!ents.get('agent' + myId).swing && !myAction")                   # no punch shown
     assert game.inv("stone") == 0 and game.js(f"combAt({game.pos()[0] + 1}, {game.pos()[1]})") == "T"
     assert game.rpc("act", tool="dig", args={"dir": "E"})["error"] == "hands_full"   # (the server's own rule, asked past the page)
@@ -76,7 +79,7 @@ def test_you_eat_while_you_walk(game):
     stops, i0 = [], 0                                                                       # ...and you never stood still for it
     for i in range(1, len(rec)):
         if abs(rec[i][1] - rec[i0][1]) > 1e-6:
-            if rec[i][0] - rec[i0][0] > 80 and rec[i0][0] > 300:
+            if i - i0 > 1 and rec[i][0] - rec[i0][0] > 80 and rec[i0][0] > 300:   # (a frame drawn where the last one was: one frame apart is a slow machine's frame, 100 to 200 ms on a runner, not a stop)
                 stops.append(round(rec[i][0] - rec[i0][0]))
             i0 = i
     assert not stops and game.pos()[0] >= x0 + 5, (stops, game.pos()[0] - x0)           # (slower while you chew: EAT_PACE)

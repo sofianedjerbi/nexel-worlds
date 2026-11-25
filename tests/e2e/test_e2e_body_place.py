@@ -5,12 +5,9 @@ window opened and the earth's light came on: the picture took the tile you were 
 under its top: "under a roof".) And walking into a room dug under the meadow, or a tunnel's mouth in a hill, the
 window opens once at its edge and shuts once on the way out: no flicker."""
 
-import json
-
 import pytest
 from test_e2e_hd_sun import LIGHT, hd
 
-TMP = "/Users/sdjerbi/.claude/jobs/fa29ccbd/tmp"
 # every frame: [your y, x, how open the window is (this file's count), the painter's, behind land (hid), the record's roof, its dep, your lantern lit (night), then the light of each tile asked (null: off the picture)]
 REC = """(tiles) => { window.__r = []; window.__on = true; const light = """ + LIGHT + """, f = () => { const e = ents.get('agent' + myId), P = HdLevel.cover, H = innerHeight - 20;
   if (e && P) __r.push([+e.y.toFixed(3), +e.x.toFixed(3), +HdLook.u.toFixed(2), +HdLook.win.a.toFixed(2), HdLook.hid, P.roof ? 1 : 0, P.dep, HdLook.youLit === false ? 0 : 1,
@@ -19,15 +16,6 @@ REC = """(tiles) => { window.__r = []; window.__on = true; const light = """ + L
 STOP = "(() => { __on = false; return __r; })()"
 OPEN = [0, 0, 0, 0, 1]             # (no window, nothing over you, no land over you, your lantern lit)
 open_ = lambda r: r[2:4] + r[5:8]   # (all but hid: you are shown through what stands in front of you, a ladder too, as you would standing there)
-
-
-def dump(name, v):
-    with open(f"{TMP}/place-{name}.json", "w") as f:
-        json.dump(v, f)
-
-
-def shot(g, name):
-    g.page.screenshot(path=f"{TMP}/place-{name}.png")
 
 
 def go(g, key, done, jump=False):
@@ -63,14 +51,11 @@ def test_up_and_down_a_ladder_in_the_open_nothing_of_the_light_or_the_window_cha
         g.js(REC, tiles)
         go(g, "ArrowUp", "myAt.z === 6 && !Climb.climbOf(ents.get('agent' + myId))")
         up = g.js(STOP)
-        shot(g, f"ladder-top-{phase}")
         g.js(REC, tiles); g.sleep(300)
         stood = g.js(STOP)
         g.js(REC, tiles)
         go(g, "ArrowDown", "myAt.z === 0 && !Climb.climbOf(ents.get('agent' + myId))")
         down = g.js(STOP)
-        shot(g, f"ladder-foot-{phase}")
-        dump(f"ladder-{phase}", {"foot": foot, "up": up, "stood": stood, "down": down})
         assert foot and stood and all(open_(r) == OPEN for r in foot + stood), (foot[:2], stood[:2])
         assert len(up) > 20 and len(down) > 20
         bad = [r for r in up + down if open_(r) != OPEN]
@@ -118,12 +103,9 @@ def test_into_a_dug_room_and_a_tunnel_mouth_the_window_opens_once_and_shuts_once
         g.rpc("dev_teleport", x=x, y=y, z=0); g.arrive(); g.rest(); g.sleep(400)
         g.js(REC, [])
         go(g, k_in, done_in)
-        shot(g, f"{name}-in")
         go(g, k_out, done_out, jump)
         g.wait("HdLook.win.a === 0", 3000)                                            # (the window shuts 300 ms after the land last hid you, then fades)
         r = g.js(STOP)
-        shot(g, f"{name}-out")
-        dump(name, r)
         assert flips(r, 5) == 2 and r[-1][5] == 0 and max(q[5] for q in r) == 1, (name, [(q[0], q[1], q[5]) for q in r])   # (under the land: once in, once out)
         assert turns(r, 2) <= 1 and turns(r, 3) <= 1, (name, [(q[0], q[1], q[2], q[3]) for q in r])                      # (the window: open, then shut)
         assert max(q[3] for q in r) == 1 and r[-1][3] == 0

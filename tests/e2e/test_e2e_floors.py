@@ -149,9 +149,12 @@ def test_you_see_the_floor_you_are_on_and_fall_off_its_edge(game):
     assert alpha((x0 + 2, y0, 6), (x0 + 2, y0 + 3, 6)) == [1, 1]                                    # not seen through as a room is
     go(game, x0 + 3, y0 + 3, 3)                                               # upstairs again; a gap is cut in the south wall, and off you walk
     assert game.rpc("act", tool="dig", args={"x": x0 + 3, "y": y0 + 4, "z": 3, "with": "axe"})["ok"]
-    game.sleep(400)
-    game.hold(["ArrowDown"], 500)
-    game.sleep(900)
+    game.wait(f"!Floors.built({x0 + 3}, {y0 + 4}, 3)", 8000)                                      # (the gap on the page: the dig takes its time)
+    game.page.keyboard.down("ArrowDown")                                                            # (walked till you are down: half a second of walking
+    game.wait(f"myAt && myAt.y >= {y0 + 5} && myAt.z === 0", 8000)                                  # was still upstairs on a runner)
+    game.page.keyboard.up("ArrowDown")
+    game.wait("!walking && !pred", 4000)
+    game.wait("ents.get('agent' + myId).e.z === 0", 4000)                                          # (and the world has you down)
     s = game.server()
     assert (s["x"], s["z"]) == (x0 + 3, 0) and s["y"] >= y0 + 5 and s["hp"] == 20                    # down on the ground before the door, unhurt (three layers)
     assert not game.errors

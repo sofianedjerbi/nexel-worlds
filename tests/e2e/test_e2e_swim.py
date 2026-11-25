@@ -11,6 +11,21 @@ def mine(game, js):
     return game.js(f"(() => {{ const p = ents.get('agent' + myId); return {js}; }})()")
 
 
+def swim_until(game, key, done, timeout=8000):
+    """`key` held until the page has `done` (of p, you): a way in the water is so many tiles, not so many ms."""
+    game.page.keyboard.down(key)
+    try:
+        game.wait(f"(() => {{ const p = ents.get('agent' + myId); return {done}; }})()", timeout)
+    finally:
+        game.page.keyboard.up(key)
+
+
+def gaps(ts):
+    """the middle one of the ms between marks laid one after another"""
+    d = sorted(b - a for a, b in zip(ts, ts[1:]))
+    return d[len(d) // 2] if d else None
+
+
 def test_you_swim_across_water_of_every_depth_and_leave_a_wake(game):
     game.clear_area(8)
     s = game.server()
@@ -25,14 +40,15 @@ def test_you_swim_across_water_of_every_depth_and_leave_a_wake(game):
     assert game.js("[depthAt(%d, %d), depthAt(%d, %d), depthAt(%d, %d)]" % (s["x"] + 2, s["y"], s["x"] + 5, s["y"], s["x"] + 9, s["y"])) == [1, 2, 4]
     if SHOT:
         game.page.screenshot(path=f"{SHOT}/water.png")
-    game.hold(["d"], 900)                                      # into the shallows
-    assert mine(game, "swimsAt(p, p.e)") and game.server()["swimming"]
-    assert mine(game, "p.wake.length") >= 2                    # a wake behind us
-    game.hold(["d"], 500)                                      # and on over the deep
+    swim_until(game, "d", f"swimsAt(p, p.e) && p.tx >= {s['x'] + 3}")   # into the shallows
+    assert game.server()["swimming"]
+    game.wait("(() => { const p = ents.get('agent' + myId); return !!p.wake && p.wake.length >= 2; })()")   # a wake behind us (laid as the swimmer is drawn: a frame or two after you are in)
+    swim_until(game, "d", f"p.tx >= {s['x'] + 6}")             # and on over the deep (a tile on: the world has you past +5)
     assert game.server()["swimming"] and game.server()["x"] >= s["x"] + 5
     if SHOT:
         game.page.screenshot(path=f"{SHOT}/water_swim.png")
-    game.hold(["a"], 2600)                                     # and back out
+    swim_until(game, "a", f"p.tx <= {s['x'] + 1} && !swimsAt(p, p.e)")   # and back out
+    game.wait("!walking && !pred", 4000)
     assert not game.server()["swimming"] and not mine(game, "swimsAt(p, p.e)")
     assert not game.errors
 
@@ -80,17 +96,19 @@ def test_a_sprint_in_the_water_is_twice_as_fast_and_leaves_a_longer_wake(game):
     assert mine(game, "swimsAt(p, p.e)") and game.js("SWIM_SPRINT") is True
     x0 = game.server()["x"]
     game.hold(["d"], 1000)
-    swum, slow = game.server()["x"] - x0, mine(game, "p.wake.filter((w) => !w.dash).length")
+    swum, slow = game.server()["x"] - x0, gaps(mine(game, "p.wake.filter((w) => !w.dash).map((w) => w.t)"))
     game.page.keyboard.down("Shift")
     x0 = game.server()["x"]
+    game.js("(() => { window.__fr = []; window.__frOn = true; const f = (now) => { __fr.push(now); if (__frOn) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; })()")
     game.page.keyboard.down("d")
     game.sleep(1000)
     ran = mine(game, "p.running")                              # (asked while still at it: asked after the keys were let go, it was sometimes over)
     game.page.keyboard.up("d")
-    dashed, marks = game.server()["x"] - x0, mine(game, "p.wake.filter((w) => w.dash).length")
+    dashed, marks = game.server()["x"] - x0, gaps(mine(game, "p.wake.filter((w) => w.dash).map((w) => w.t)"))
     game.page.keyboard.up("Shift")
+    frame = gaps(game.js("(() => { __frOn = false; return __fr; })()"))
     assert 2 <= swum <= 3 and 4 <= dashed <= 6 and game.js("SWIM_PACE") == 2, (swum, dashed)   # 2.5 tiles a second, then five
-    assert marks >= 18 and 8 <= slow <= 13 and ran is True, (slow, marks)                      # (its wake: a mark every 45 ms, not every 110)
+    assert ran is True and slow and marks and slow >= 110 and 45 <= marks <= 45 + 1.5 * frame and marks < slow, (slow, marks, frame)   # (its wake: a mark every 45 ms, not every 110: the first frame past it, a mark a frame at most. Counted in a second it was the machine's frames a second)
     assert game.server()["swimming"] and not game.errors
 
 
@@ -144,12 +162,12 @@ def test_letting_go_of_the_key_in_the_water_you_swim_on_into_place_not_walk(game
     game.hold(["d"], 1500)                                     # in, and swimming
     glide = []
     for ms in (700, 550, 820, 640):                            # (let go wherever the walk is: a walk that ends on the world's own tile has no glide)
-        game.js("""(() => { window.__sw = []; const f = () => { const p = ents.get('agent' + myId); __sw.push([performance.now(), p.x, walking && p.walking ? 1 : 0]);
+        game.js("""(() => { window.__sw = []; const f = (now) => { const p = ents.get('agent' + myId); __sw.push([now, p.x, walking && p.walking ? 1 : 0]);
           if (__sw.length < 150) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; })()""")
         game.hold(["d"], ms)
         game.sleep(1300)
         rec = game.js("__sw")
-        glide += [(b[1] - a[1]) / (b[0] - a[0]) * 1000 for a, b in zip(rec, rec[1:]) if not a[2] and not b[2] and b[0] > a[0] and b[1] != a[1]]
+        glide += [(b[1] - a[1]) / min(.1, (b[0] - a[0]) / 1000) for a, b in zip(rec, rec[1:]) if not a[2] and not b[2] and b[0] > a[0] and b[1] != a[1]]
         if len(glide) >= 5:
             break
     assert glide and max(glide) < 2.5 * 1.35, [round(v, 2) for v in glide]                    # (it was 5 to 6.5: the pace on land)

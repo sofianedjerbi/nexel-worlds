@@ -54,17 +54,20 @@ def test_a_blocks_water_is_made_again_only_when_it_changed(game):
 
 GLIDE = """() => new Promise((ok) => { follow = null; const out = [], of = window.__frame0 || (window.__frame0 = window.frame), x0 = cam.x, y0 = cam.y, t0 = performance.now(); let done = false;
   window.frame = function (now) { if (done) return of(now); const s = (performance.now() - t0) / 1000; cam.x = camT.x = x0 + 7 * s; cam.y = camT.y = y0 + 7 * s;
-    const t = performance.now(); of(now); const js = performance.now() - t;
+    let land = 0; const pf = window.perfFrame; window.perfFrame = (n, js, ms) => { land = ms; return pf(n, js, ms); };   // (the land's share of the frame, as render.js measures it for /perf)
+    try { of(now); } finally { window.perfFrame = pf; }
     const [qx, qy, qw, qh] = viewRect(0); let miss = 0;
     for (const b of blocks.values()) if (!Voxels.made(b) && b.bx * B < qx + qw && (b.bx + 1) * B > qx && b.by * B < qy + qh && (b.by + 1) * B > qy) miss++;
-    out.push([js, miss]); if (s > 6) { done = true; window.frame = of; ok(out); } }; })"""   # (the page's own frame kept once (__frame0), and a glide that is done only passes on: a second glide hung, its frame put away by the first one's, which a frame already asked for still ran)
+    out.push([land, miss]); if (s > 6) { done = true; window.frame = of; ok(out); } }; })"""   # (the page's own frame kept once (__frame0), and a glide that is done only passes on: a second glide hung, its frame put away by the first one's, which a frame already asked for still ran)
 
 
 @pytest.mark.realtime
 def test_land_coming_in_at_a_sprint_takes_little_of_a_frame(browser, server):
     """Watching, the camera glides ten tiles a second into new land for six seconds: all the land is there when it
     comes on the screen, and building it never takes a frame (it took 9-13 ms of some on a fast machine, 36 ms on a
-    phone-speed one: the only late frames there were)."""
+    phone-speed one: the only late frames there were). What is measured is the land's own share of each frame
+    (render.js `landMs`, kept to LAND_MS): the whole frame is the machine's drawing too (13 to 97 ms on a runner's CPU
+    renderer, 30 frames a second: what the land costs was not what was read)."""
     page = browser.new_page(viewport={"width": 844, "height": 390})
     errors = []
     page.on("pageerror", lambda e: errors.append(str(e)))
@@ -78,9 +81,9 @@ def test_land_coming_in_at_a_sprint_takes_little_of_a_frame(browser, server):
         frames = page.evaluate(GLIDE)[5:]
         work = sorted(f[0] for f in frames)
         seen = (len(frames), sum(1 for f in frames if f[1]), work[-5:])
-        if len(frames) > 200 and not seen[1] and work[int(len(work) * .99)] < 8 and work[-1] < 25:
+        if len(frames) > 60 and not seen[1] and work[int(len(work) * .99)] < 8 and work[-1] < 25:
             break
     page.close()
-    assert len(frames) > 200 and not errors, seen
+    assert len(frames) > 60 and not errors, seen
     assert sum(1 for f in frames if f[1]) == 0, seen             # nothing missing on the screen, in any frame
     assert work[int(len(work) * .99)] < 8 and work[-1] < 25, seen
