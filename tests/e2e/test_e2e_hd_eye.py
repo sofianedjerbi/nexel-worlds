@@ -7,7 +7,7 @@ import pytest
 from test_e2e_hd_sun import hd
 
 REC = """([fx, fy, fz]) => { window.__r = []; window.__on = true; const f = () => { const e = ents.get('agent' + myId), a = HdLook.screenOf(fx + .5, fy + .5, fz);
-  if (e && a) __r.push([+e.x.toFixed(3), +e.y.toFixed(3), +HdLook.cam.pitch.toFixed(2), +a[1].toFixed(1), HdLevel.cover.roof ? 1 : 0, HdLook.level[1], HdLook.level[0], cv.width]); if (__on) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""
+  if (e && a) __r.push([+e.x.toFixed(3), +e.y.toFixed(3), +HdLook.cam.pitch.toFixed(2), +a[1].toFixed(1), HdLevel.cover.roof ? 1 : 0, HdLook.level[1], HdLook.level[0], cv.width, +artPx().toFixed(3), +((HdLook.screenOf(e.x + .5, e.y + .5, HdLook.level[2]) || [0, 0])[1]).toFixed(1), HdLook.bend, performance.now() | 0]); if (__on) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""
 
 
 def walk(g, key, done, mark):
@@ -46,5 +46,5 @@ def test_across_a_dip_the_eye_keeps_its_pitch_and_under_a_hill_it_tilts_once(bro
     d2 = [abs((c[3] - b[3]) - (b[3] - a[3])) for a, b, c in zip(r, r[1:], r[2:])]
     step = sorted(abs(b[3] - a[3]) for a, b in zip(r, r[1:]))[len(r) // 2]
     j = d2.index(max(d2))
-    assert max(d2) < max(8, 2 * step), (max(d2), step, r[max(0, j - 3):j + 6])               # the land moves on smoothly through the tilt: no jolt from one frame to the next (the rows round the worst: [x, y, pitch, the tile's screen y, roof, the eye's level, yours, the canvas's width])
+    assert max(d2) < max(8, 2 * step), f"{max(d2)} {step} {r[max(0, j - 3):j + 6]}"               # the land moves on smoothly through the tilt: no jolt from one frame to the next (the rows round the worst: [x, y, pitch, the tile's screen y, roof, the eye's level, yours, the canvas's width, artPx, your screen y, bend, ms])
     assert not g.errors

@@ -1,0 +1,32 @@
+# TEMPORARY (#47): hd_eye's alternating screen y, four runners at once (it comes one run in two or so). Removed before merge.
+name: hd_eye probe
+on:
+  push:
+    branches: [fix/hd-eye-flip]
+jobs:
+  eye:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        run: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.4.0
+        with:
+          python-version: "3.14"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked
+      - run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends mesa-vulkan-drivers
+      - env:
+          E2E_CHROME_ARGS: --use-angle=vulkan --enable-features=Vulkan --ignore-gpu-blocklist
+          E2E_SHOTS: ${{ runner.temp }}/shots
+        run: uv run pytest -m e2e -n 0 -q -rf tests/e2e/test_e2e_hd_eye.py tests/e2e/test_e2e_hd_xray.py -k "dip or level_floor"
+      - if: failure()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: shots-${{ matrix.run }}
+          path: ${{ runner.temp }}/shots
+          if-no-files-found: ignore
