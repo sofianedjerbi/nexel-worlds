@@ -66,18 +66,50 @@ jobs:
       - run: uv sync --locked
       - run: uv run pytest tests -q --ignore=tests/e2e
 
-  # The browser tests (tests/e2e): the game in real Chrome against a fresh server, here and not on the shared Mac,
-  # on every pull request and every push to main. Twenty runners, a twentieth of the files each (every twentieth, by
-  # name), one test at a time: no GPU here, Chrome draws the land on the CPU, and two tests at once starve each other.
-  # The tests that need the built sounds (not in git: tools/build_audio.py) skip here.
+  # The browser tests (tests/e2e): the game in real Chrome against a fresh server, here and never on the shared Mac.
+  # A pull request runs the ones its changes ask for (tools/affected.py: the tests naming what it changed); main runs
+  # them all, and all of them must pass. The files are dealt out to runners, about three files each (at most 16), one
+  # test at a time on each: there is no GPU here, Chrome draws the land on the CPU, and two tests at once starve each
+  # other. The tests that need the built sounds (not in git: tools/build_audio.py) skip here.
+  e2e-plan:
+    name: Browser tests to run
+    runs-on: ubuntu-latest
+    outputs:
+      shards: ${{ steps.plan.outputs.shards }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$EVENT" = pull_request ]; then
+            changed=$(git diff --name-only "$BASE"...HEAD)
+            files=$(python3 tools/affected.py $changed | grep '^tests/e2e/' || true)
+          else
+            files=$(ls tests/e2e/test_*.py)
+          fi
+          python3 - "$files" >> "$GITHUB_OUTPUT" <<'PY'
+          import json, math, sys
+          files = sorted(f for f in sys.argv[1].split() if f)
+          n = min(16, math.ceil(len(files) / 3))
+          shards = [" ".join(files[i::n]) for i in range(n)]
+          print("shards=" + json.dumps(shards))
+          PY
+          echo "browser test files: $(echo $files | wc -w)" >> "$GITHUB_STEP_SUMMARY"
+
   e2e:
-    name: Browser tests (${{ matrix.shard }}/20)
+    name: Browser tests
+    needs: e2e-plan
+    if: needs.e2e-plan.outputs.shards != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+        files: ${{ fromJSON(needs.e2e-plan.outputs.shards) }}
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.4.0
@@ -88,10 +120,8 @@ jobs:
       - run: uv sync --locked
       - name: The game in Chrome (the runner's own Google Chrome)
         env:
-          SHARD: ${{ matrix.shard }}
-        run: |
-          files=$(ls tests/e2e/test_*.py | sort | awk -v s="$SHARD" 'NR % 20 == s % 20')
-          uv run pytest -m e2e -n 0 -q --durations=10 $files
+          FILES: ${{ matrix.files }}
+        run: uv run pytest -m e2e -n 0 -q --durations=10 $FILES
 
   commits:
     name: Conventional Commits
