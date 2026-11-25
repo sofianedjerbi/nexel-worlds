@@ -41,13 +41,15 @@ def test_standing_still_makes_little_memory(game):
     (60 MB a second: an array and a pair made for every tile asked about, the same edges and hints worked out again
     for each tree, each frame); standing in the live world as a phone, 12 to 23 MB a second. A ninth of that here.
     (With the HD look it was 340 to 440 KB a frame again: a new vertex buffer and small arrays for each sprite, the
-    selection box's px, the marks' recorded calls, all made again each frame. Kept and written over now: 120-130 KB.)"""
+    selection box's px, the marks' recorded calls, all made again each frame. Kept and written over now: 120-130 KB.)
+    What is worked out by the clock, not by the frame (the reach of the picture twice a second, the world's ticks), is
+    allowed by the second: at 12 frames a second (a runner drawing on the CPU) it was most of a frame's share."""
     cdp = game.page.context.new_cdp_session(game.page)
     game.stamp(-6, -8, ["T" * 13, "T" * 13] + ["." * 13] * 3, levels=["0" * 13] * 2 + ["3" * 13] * 3)   # trees behind a hill: cut at its edge, each frame
-    game.wait(DRAWN, 8000); game.sleep(1200)
+    game.wait(DRAWN, 8000); game.rest(); game.wait("!HdLook.busy && HdLook.bare() === 0", 15000)   # (the land made: not counted)
     cdp.send("HeapProfiler.enable")
     cdp.send("HeapProfiler.startSampling", {"samplingInterval": 4096, "includeObjectsCollectedByMajorGC": True, "includeObjectsCollectedByMinorGC": True})
-    frames = game.js("new Promise((res) => { let n = 0; const t0 = performance.now(); (function f() { n++; if (performance.now() - t0 < 3000) requestAnimationFrame(f); else res(n); })(); })")
+    frames, ms = game.js("new Promise((res) => { let n = 0; const t0 = performance.now(); (function f() { n++; const t = performance.now() - t0; if (t < 3000 || n < 60) requestAnimationFrame(f); else res([n, t]); })(); })")
     prof = cdp.send("HeapProfiler.stopSampling")["profile"]
     by = {}
     def walk(node):
@@ -56,8 +58,8 @@ def test_standing_still_makes_little_memory(game):
         for c in node.get("children", []):
             walk(c)
     walk(prof["head"])
-    a_frame = sum(by.values()) / max(1, frames)
+    made = sum(by.values())
     top = sorted(by.items(), key=lambda kv: -kv[1])[:6]
-    print("memory made a frame: %.0f KB over %d frames" % (a_frame / 1000, frames), top)
+    print("memory made: %.0f KB a frame over %d frames, %.1f s" % (made / frames / 1000, frames, ms / 1000), top)
     game.clear_area(14)
-    assert frames > 30 and a_frame < 200_000, (round(a_frame), frames, top)
+    assert frames >= 60 and made < 200_000 * frames + 1_500_000 * ms / 1000, (round(made / frames), frames, round(ms), top)

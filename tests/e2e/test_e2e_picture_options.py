@@ -21,7 +21,8 @@ ROI = """([dx0, dy0, dx1, dy1]) => { const p = myPos(), xs = [], ys = []; for (c
 # the picture only: the land's canvas and the game's (names, hearts, marks), none of the page's panels (the welcome fades out meanwhile)
 BARE = "(() => { const s = document.createElement('style'); s.textContent = 'body > :not(#c):not(#hd) { visibility: hidden !important; }'; document.head.appendChild(s); return 1; })()"
 FX = "(() => { const p = myPos(); burst(p.x + 3, p.y - 1, 'hit', 30); smoke(p.x + 4, p.y - 1, 12); return 1; })()"
-FLOAT = "(() => { const p = myPos(); floats.push({x: p.x, y: p.y, text: '+5 wood', color: '#fff1a8', t: performance.now() / 1000}); return 1; })()"
+# (words held a third of a second into their rise: they last 1.4 s, and a slow machine's frames and screenshot took longer)
+FLOAT = "(() => { const p = myPos(), f = {x: p.x, y: p.y, text: '+5 wood', color: '#fff1a8'}; Object.defineProperty(f, 't', {get: () => performance.now() / 1000 - .3}); floats.push(f); return 1; })()"
 QUAKE = "(() => { window.__fs = window.__fs || FALL.shake[1]; FALL.shake[1] = 60; fallQuake = opt('shake') ? {t0: performance.now() - 100, amp: 40} : null; return 1; })()"   # (a shake held a minute: on the picture whenever it is read)
 ZOOMING = "(() => { zoomBy(1); return 1; })()"
 # each setting: [its key, one value, the other, what is done before each picture (js), the hour, where it is read (tiles from you; None: all of it),
@@ -76,7 +77,7 @@ def test_every_picture_setting_changes_the_picture(browser, server):
             out[key] = [ab, na, nb] + ([[round(v) for v in r]] if r else [])
             g.js(f"setOpt('{key}', OPT_DEFAULT['{key}'])")
     finally:
-        g.js("(() => { for (const k of Object.keys(OPT_DEFAULT)) setOpt(k, OPT_DEFAULT[k]); setOpt('names', false); setOpt('hints', false); zoom = ZOOM.to = 3; if (window.__fs) FALL.shake[1] = window.__fs; fallQuake = null; return 1; })()")
+        g.js("(() => { for (const k of Object.keys(OPT_DEFAULT)) setOpt(k, OPT_DEFAULT[k]); setOpt('names', false); setOpt('hints', false); zoom = ZOOM.to = 3; if (window.__fs) FALL.shake[1] = window.__fs; fallQuake = null; floats = []; return 1; })()")
     if SHOTS:
         open(os.path.join(SHOTS, "diffs.txt"), "w").write(repr(out))
     # (the two pictures apart by over twice the most either moves by itself and 0.2 % more (of the screen, or of where

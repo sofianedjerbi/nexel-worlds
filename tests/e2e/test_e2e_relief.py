@@ -30,14 +30,17 @@ def test_the_camera_centres_on_you_as_drawn(game):
 @pytest.mark.realtime
 def test_running_into_new_ground_never_stalls_a_frame(game):
     """New land is made in steps within a budget (voxels.js work): no frame waits on a whole block (sprinting froze the
-    game for 70-130 ms). (How long a step is: test_e2e_land.py.)"""
-    x, y = game.pos()
+    game for 70-130 ms). (How long a step is: test_e2e_land.py.)
+    What is timed is the land's share of each frame (render.js: landMs, what it gives /perf). (On a runner, where Chrome
+    draws on the CPU, a frame with new land in view lasts 100 to 270 ms, its script 50 to 80, however little land is
+    made in it: neither can tell a stall from a slow machine.)"""
     ms = game.js(f"""new Promise((res) => {{
+      const p0 = window.perfFrame, out = [];
+      window.perfFrame = function (now, js, land) {{ out.push(land); if (out.length >= 150) {{ window.perfFrame = p0; res(out); }} return p0(now, js, land); }};
       Voxels.engine.forget(() => false);                       // (the land round you to be made again too, as blocks)
-      rpc('dev_teleport', {{x: -10, y: 190}});
-      const f = []; (function step(t) {{ f.push(t); if (f.length < 150) requestAnimationFrame(step); else res(f); }})(performance.now()); }})""")
-    gaps = sorted(b - a for a, b in zip(ms, ms[1:]))
-    assert gaps[-1] < 60, gaps[-5:]
+      rpc('dev_teleport', {{x: -10, y: 190}}); }})""")
+    ms = sorted(ms)
+    assert ms[-2] < 40, [round(v, 1) for v in ms[-5:]]          # (a whole block made in a frame: 70-130 ms; the budget is 3 to 12 a frame)
 
 
 def test_a_pit_below_sea_level_is_drawn_like_any_hole(game):

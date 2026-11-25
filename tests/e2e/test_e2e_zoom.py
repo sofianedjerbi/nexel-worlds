@@ -10,12 +10,12 @@ def test_a_wheel_notch_is_one_level_and_a_trackpad_swipe_is_not_a_dozen(game):
     page.mouse.move(600, 300)
     z = game.js("zoom")
     page.mouse.wheel(0, -100)                                  # one notch of a mouse wheel
-    game.wait(f"zoom === {z + 1}", 2000)
-    for _ in range(40):                                        # one swipe on a trackpad: forty small events (it used to fly to the end)
-        page.mouse.wheel(0, 4)
-        page.wait_for_timeout(8)
-    game.sleep(500)
-    assert game.js("zoom") == z, game.js("zoom")
+    game.wait(f"zoom === {z + 1} && performance.now() - ZOOM.stepped > 250", 2000)   # (a swipe right after a step waits its turn: 200 ms)
+    # one swipe on a trackpad: forty small events (it used to fly to the end). Sent by the page in one go: sent one by
+    # one from here, a slow machine's frames put more than a gesture's pause (220 ms) between two and none counted.
+    game.js("(() => { for (let i = 0; i < 40; i++) cv.dispatchEvent(new WheelEvent('wheel', {deltaY: 4, clientX: 600, clientY: 300, bubbles: true, cancelable: true})); return 1; })()")
+    game.wait(f"zoom === {z} && !ZOOM.busy", 2000)
+    assert game.js("[zoom, ZOOM.to]") == [z, z]                                 # one level, and no more on its way
     assert game.js("localStorage.getItem('nexel-zoom')") == str(z)      # kept for the next visit
 
 
@@ -24,8 +24,7 @@ def test_a_level_glides_and_the_sign_shows_where_you_are_and_where_it_stops(game
     game.press("-", 0)
     assert game.js("zoom") == 2 and game.js("cv.getAnimations().length") == 1   # drawn wide at once, the picture let down to it
     assert game.js("$('zoomer').classList.contains('show')") and game.js("document.querySelectorAll('#zoomer i.on').length") == 1
-    game.sleep(400)
-    assert game.js("cv.getAnimations().length") == 0 and game.js("getComputedStyle(cv).transform") == "none"
+    game.wait("cv.getAnimations().length === 0 && getComputedStyle(cv).transform === 'none'", 2000)   # (the glide over: the picture at its size)
     game.press("-", 300)                                       # a player is never a few pixels tall: 2 is the widest
     assert game.js("zoom") == 2 and game.js("$('zoomer').classList.contains('nod')")
     game.page.click("#zoomer b[data-d='1']")                   # the sign's own +
@@ -34,8 +33,7 @@ def test_a_level_glides_and_the_sign_shows_where_you_are_and_where_it_stops(game
     for _ in range(6):
         game.press("+", 200)
     assert game.js("zoom") == 6
-    game.sleep(2200)
-    assert not game.js("$('zoomer').classList.contains('show')")                # it goes away on its own
+    game.wait("!$('zoomer').classList.contains('show')", 6000)                 # it goes away on its own
 
 
 def test_the_keys_of_the_main_row_zoom_on_any_layout_and_for_a_watcher_too(game, browser, server):
