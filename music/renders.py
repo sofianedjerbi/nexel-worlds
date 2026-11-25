@@ -28,6 +28,7 @@ AUDIO = ["uv", "run", "--extra", "audio", "python"]
 LISTS = {"PIECES", "PALETTES", "VARIANTS"}              # the lists of entries, one render each
 RENDERS = [  # script, its list, the entries the game plays (master.py reads them all: far shore night D too), the file each writes
     ("pieces.py", "PIECES", ["cute1", "shore", "mc1", "shore_night_c", "shore_night_d", "mossback2"], "piece_{}"),
+    ("adventure.py", "PIECES", ["trail"], "piece_{}"),
     ("bright.py", "PALETTES", ["dream"], "bright_{}"),
     ("slowtide.py", "VARIANTS", ["high", "full"], "menu_tide_{}"),
 ]

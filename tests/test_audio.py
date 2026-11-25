@@ -120,3 +120,18 @@ def test_a_music_loop_is_cut_into_lossless_pieces_that_join_exactly(tmp_path):
     for secs in (m["seg"], m["pad"]):                        # whole samples at every rate a browser plays at
         assert all(abs(secs * r - round(secs * r)) < 1e-9 for r in (32000, 44100, 48000))
 
+
+
+def test_the_adventure_piece_is_built_for_its_role_and_has_no_note_that_sounds_off():
+    """Trailblazer plays by day far from home (audio.js farFromHome(), play.adventure). "Some notes sound off" (2026-11-25):
+    a held major seventh on the chord's root, and a bass leading in from outside the key. Its score must keep none:
+    no clash, no held seventh, nothing outside E minor, no staircase (music/adventure.py audit)."""
+    import sys
+    assert build_audio.TRACKS["trailblazer"] == "adventure"
+    sys.path.insert(0, str(ROOT / "music"))
+    try:
+        import adventure
+        import pieces
+        assert adventure.audit(pieces.BASE | adventure.PIECES[0]) == dict(clashes=[], held_sevenths=[], outside_key=[], staircases=[])
+    finally:
+        sys.path.remove(str(ROOT / "music"))
