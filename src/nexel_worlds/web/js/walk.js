@@ -8,6 +8,7 @@
 // from where the world has you. Where it couldn't follow, you go back to where it has you.
 
 let walking = null;          // {dir, run, lane, at}: lane: the row (column) you walk along; at: the tile you turn at, until you're on it
+let walkN = 0;               // walks started: a late answer counts only for the last one (syncWalk)
 const trail = [];            // {x, y, n}: tiles you turned or stopped at that the server hasn't made yet
 let trailN = 0, srv = null;  // srv: the server's last step for you {x0, y0, x, y, t, ms} (from, to, when, how long its steps take)
 const LEAD = [2, 4];         // tiles ahead of the server: from the first you slow down, at the second you wait for it
@@ -88,11 +89,14 @@ function syncWalk() {
     BodyPlace.face(p, dx, dy); p.walking = true; p.running = want.run; p.moved = now;
   }
   myAction = null; pred = null;
-  const mine = want, from = p ? p.tx + "," + p.ty : "";
+  const mine = want, n = ++walkN, from = p ? p.tx + "," + p.ty : "";
   rpc("act", {tool: "walk", args}).then((r) => {
-    if (walking !== mine) return;              // replaced by a newer walk / stop
-    walking = null; if (p) p.walking = false;    // it ended (a wall, a fall that hurt): the next tick says where you are
-    if (r.ok && r.result.stopped === "blocked") { const q = ents.get("agent" + myId); if (q) { BodyPlace.face(q, dx, dy); if (q.tx + "," + q.ty === from) WayShow.mine(); } }
+    const wall = r.ok && r.result.stopped === "blocked";
+    // replaced by a newer walk: that one says. By letting go (a stop): a tap at a wall that was let go before the server
+    // answered (a slow link, a short tap) was still a turn to the wall (it was dropped: the way out stayed, nothing aimed)
+    if (walking !== mine && !(walking === null && wall && n === walkN)) return;
+    if (walking === mine) { walking = null; if (p) p.walking = false; }    // it ended (a wall, a fall that hurt): the next tick says where you are
+    if (wall) { const q = ents.get("agent" + myId); if (q) { BodyPlace.face(q, dx, dy); if (q.tx + "," + q.ty === from) WayShow.mine(); } }
     // (you turned to a wall where you stand: you are at work on it: the shown way out is put away, as at a key of your own. It stayed, and while it is shown nothing you face is offered: standing two seconds in a cave you can walk out of, then facing a wall: no bracket, no key, for good)
   });
 }
