@@ -183,6 +183,12 @@ GEN["wire"] = [
     "                ", "                ", "                ", "                "]
 PAL["wire"] = {"a": hexc("a8552e"), "A": hexc("f2b27e")}
 
+# Nyxwing's drop: the core at the end of its tail, an eclipse (a dark moon over a gold sun), as an item of the usual size
+GEN["eclipse_core"] = [
+        "                ", "             Y  ", "     nnnnnn     ", "    nNNNGGGn    ", "   nNNGkkkkGn   ", "  nNYGkkkkkkGn  ",
+        "  nNNGkkkkkkGn  ", "  nNNGkkkkkkGn  ", "  nNNNGkkkkGGn  ", "  nNNNNGkkGGNn  ", "  nNNNNNGGGNNn  ", "   nNNNNNNNNn   ",
+        "    nNNNNNNn    ", "     nnnnnn     ", "            Y   ", "                "]
+
 
 def gen_sheet():
     """The generated sprites in one strip, 16 px each, and their names in its order (web/assets gen.png, gen.txt)."""
@@ -200,3 +206,4 @@ if __name__ == "__main__":       # only the strip (the rest of the art needs the
     sheet.save(out / "gen.png")
     (out / "gen.txt").write_text("\n".join(names) + "\n")
     print("wrote gen.png:", len(names), "sprites")
+

@@ -10,13 +10,14 @@ a tree, and stands stunned.
 from ..tiles import DEPTH, DIRS
 from .constants import cheb, sec, toward
 from .boss import Boss
+from .nyxwing import Nyxwing
 from .gust import Gust
 from .hob import Hob
 from .stump import Bloom, Stump
 from .entities import CREATURES
 
 WILD = ("tusker", "pincer", "strawman", "wisp", "wyrm", "gustling", "grumblestump", "snapbloom", "mossback", "sporeling",
-        "hob")       # (mossback and sporeling: boss.py; the hob is no enemy, an ally: hob.py)
+        "nyxwing", "hob")       # (mossback and sporeling: boss.py; nyxwing: nyxwing.py; the hob is no enemy, an ally: hob.py)
 TUSKER_SEES, TUSKER_WINDUP, TUSKER_RUN = 4, 0.7, 8        # tiles; seconds pawing the ground; tiles it charges
 TUSKER_STUN, TUSKER_REST = 2.5, 3.0                       # seconds stunned after ramming something; between charges
 # A tusker that is hit is angry for a while (it only went on as before: a charge, a long rest, whoever was nearest).
@@ -40,7 +41,7 @@ BITE_HIGH = 4            # layers: how far up or down a bite reaches (two tiles:
 SEES_HIGH = 4            # layers: who is further over it or under it than that is not seen, nor gone for
 
 
-class Wild(Gust, Stump, Bloom, Hob, Boss):
+class Wild(Gust, Stump, Bloom, Hob, Boss, Nyxwing):
     """Simulation mixin: how the wild enemies behave (and, from Boss, Old Mossback and its sporelings; and the gustling, the grumblestump, the snapbloom and the hob from theirs)."""
 
     def step_wild(self, c, online):

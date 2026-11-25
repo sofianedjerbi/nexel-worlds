@@ -14,6 +14,7 @@ LEGEND = {
     "a": "hob (a walking hearth: an ally; it burns wild creatures that come close to it)", "E": "wyrm (a sea serpent in deep water: keep off its line)",
     "G": "Old Mossback (a giant tortoise, three tiles wide, asleep until hit: back off when it rises, step aside when its head pulls in)",
     "s": "sporeling (a small walking mushroom: one hit kills it)",
+    "A": "Nyxwing (a dragon of the night sky, three tiles wide, always flying: get out of its line when its jaws glow, find the gaps in its rings of stars, run from its shadow, get far when its tail coils)",
     "$": "items on ground",
     **{g.char: g.name for g in GROUNDS},
     **{b.char: b.name for b in BLOCKS if b.name != "none"},

@@ -12,7 +12,7 @@ octave under the bass, toms, and a middle in C minor (the same notes, the relati
   rage    (16) everything: lead, brass, pluck over, choir, toms at the end of every fourth bar, a crash every four
 It loops: the rise follows the rage. Beat 1 of bar 1 is at 0 s.
 
-    uv run --no-project --python 3.11 --with dawdreamer --with numpy python music/rush.py [out.wav]
+    uv run --no-project --python 3.11 --with dawdreamer --with numpy python music/rush.py [nyxwing]     # -> site/audio/rush_nyxwing.wav
 """
 import json
 import sys
@@ -30,6 +30,8 @@ from directions import midi
 SUGAR = next(m for m in menu.LATER if m["id"] == "sugar")
 ACC = pieces.ACC
 MINOR = ["Cm9", "Gm7", "Abmaj9", "Gm7", "Cm9", "Gm7", "Fm9", "Abmaj9"]                # the break: the relative minor's own cycle, the kept voicings
+# The renders (music/renders.py runs `rush.py <id>`): one, the game's, Nyxwing's fight (tools/build_audio.py "sugar_rush").
+VARIANTS = [dict(id="nyxwing", title="Sugar rush, the boss cut", boss="Nyxwing")]
 SECTIONS = [("rise", 8), ("fight", 16), ("fight+", 16), ("break", 8), ("build", 8), ("rage", 16)]
 # Every added sound measured on the beat (surge.timing at 156 BPM, ms to half its peak): Main Brass 2, Brass N4 -1,
 # Sub 3 0. The first choice for the brass (Big Brass) spoke 90 ms late, nearly a sixteenth (96 ms), and was heard as
@@ -177,4 +179,6 @@ def render(out):
 
 
 if __name__ == "__main__":
-    render(sys.argv[1] if sys.argv[1:] else pieces.OUT / "boss_rush.wav")
+    for v in VARIANTS:
+        if not sys.argv[1:] or v["id"] in sys.argv[1:]:
+            render(pieces.OUT / f"rush_{v['id']}.wav")

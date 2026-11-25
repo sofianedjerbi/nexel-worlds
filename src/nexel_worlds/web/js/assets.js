@@ -7,10 +7,10 @@ const IMG = {};
 const ANIMAL_SHEETS = ["chicken_brown", "chicken_red", "chicken_blue", "chicken_green", "cow_light", "cow_pink", "cow_purple", "cow_green",
   "chick", "chick_brown", "chick_red", "chick_blue", "chick_green", "calf", "calf_light", "calf_pink", "calf_purple", "calf_green"];
 const ASSETS = [...ANIMAL_SHEETS, "thin_fall", "stump_thin", "fruit_bare", "barn", "well", "coop", "blanket", "basket", "mailbox", "boats", "deep_mask", "house_walls", "house_roof", "gates", "bridge", "furniture", "tilled_wet", "tree_apple", "tree_pear", "tree_peach", "tree_orange", "water_objects", "emoji", "hearts", "sliders", "hill1", "hill2", "hill3", "tree_anim", "tree_fall", "water", "water_deep", "soil", "grass", "tilled", "ash", "stone", "hedge", "cobble", "planks", "fences", "chest",
-  "door", "trees", "nature", "workbench", "signs", "crops", "items", "character", "chicken", "cow", "gen", "tusker", "pincer", "strawman", "wisp", "wyrm", "gustling", "grumblestump", "snapbloom", "hob", "mossback", "sporeling", "slot"];
+  "door", "trees", "nature", "workbench", "signs", "crops", "items", "character", "chicken", "cow", "gen", "tusker", "pincer", "strawman", "wisp", "wyrm", "gustling", "grumblestump", "snapbloom", "hob", "mossback", "sporeling", "nyxwing", "slot"];
 // the sheets the first screen never shows (the wild ones, the emotes: 0.2 MB of the pack's 0.5): last in the pack (web_bundle.py),
 // and the title does not wait for them; a body drawn before its sheet has come is drawn again when it has (hd_view.js recorder: the width)
-const LATE = ["emoji", "tusker", "pincer", "strawman", "wisp", "wyrm", "gustling", "grumblestump", "snapbloom", "hob", "mossback", "sporeling"];
+const LATE = ["emoji", "tusker", "pincer", "strawman", "wisp", "wyrm", "gustling", "grumblestump", "snapbloom", "hob", "mossback", "sporeling", "nyxwing"];
 let GEN = {};
 // A build that sends the pictures as one file (web_bundle.py: the online demo, a server started with --bundle) says so
 // in the page: ASSET_PACK = {url, files: {name: [where, how long]}, blob: the file, coming}. One request, not seventy; each picture's bytes are

@@ -21,13 +21,13 @@ from art import mirror  # noqa: E402
 
 SITE = HERE / "site"
 ASSETS = HERE.parent.parent / "src" / "nexel_worlds" / "web" / "assets"
-ORDER = ["mossback", "sporeling", "sporecap", "hopper", "burrow"]      # on the page: the boss, its brood and the three kept mobs (older designs stay in roster/, off it)
+ORDER = ["nyxwing", "mossback", "sporeling", "sporecap", "hopper", "burrow"]      # on the page: the boss, its brood and the three kept mobs (older designs stay in roster/, off it)
 CREATURES = ["hob", "grumblestump", "gustling", "snapbloom"]   # the ally, the night, the rare day (burr, nightfleece, moonsnail, glintbeetle: off it)
 PAGES = [(SITE, "enemies.json", ORDER), (SITE, "creatures.js", CREATURES)]     # (folder, its data file, who is on it)
 # The pages themselves are drafts in ~/nexel/local/design/ (index.html, creatures.html): they read these files through
 # <base href="../../nexel-worlds/design/enemies/site/">.
 DIRS = ["down", "up", "left", "right"]
-IN_GAME = ["tusker", "pincer", "strawman", "wisp", "wyrm", "gustling", "grumblestump", "snapbloom", "hob", "mossback", "sporeling"]     # (their frame columns and timings are also in web/js/world_decor.js WILD)
+IN_GAME = ["tusker", "pincer", "strawman", "wisp", "wyrm", "gustling", "grumblestump", "snapbloom", "hob", "mossback", "sporeling", "nyxwing"]     # (their frame columns and timings are also in web/js/world_decor.js WILD)
 SHADOW = (80, 64, 134, 46)        # the cow's and chicken's shadow colour, a touch stronger for the lighter page grass
 FOOT = 2                       # empty pixels under the sprite in its cell
 
@@ -123,7 +123,21 @@ def build():
                 old.unlink()
         print(f"{out.relative_to(HERE.parent.parent)}/{page}: {len(meta)} creatures, {sum(m['frames'] * 4 for m in meta)} frames")
     for key in IN_GAME:                                       # the ones the game uses: their sheets go straight to its assets
-        sheet(load(key))[0].save(ASSETS / f"{key}.png")
+        save_indexed(sheet(load(key))[0], ASSETS / f"{key}.png")
+
+
+def save_indexed(img, path):
+    """A sheet as an indexed PNG, its palette exactly its colours (each with its own alpha): the same pixels in less than
+    half the bytes (Nyxwing's: 438 KB as RGBA, 185 KB so). One with more than 256 colours stays RGBA."""
+    img = img.convert("RGBA")
+    cols = img.getcolors(256)
+    if cols is None:
+        return img.save(path, optimize=True)
+    index = {c: i for i, (_, c) in enumerate(cols)}
+    out = Image.new("P", img.size)
+    out.putdata([index[c] for c in img.get_flattened_data()])
+    out.putpalette([v for _, c in cols for v in c[:3]])
+    out.save(path, optimize=True, transparency=bytes(c[3] for _, c in cols))
 
 
 if __name__ == "__main__":

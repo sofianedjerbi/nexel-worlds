@@ -241,10 +241,11 @@ function onEvent(e) {
   }
   if (e.type === "creature_died" || e.type === "fade") {   // it flashes, lifts and fades away in a puff of smoke
     const key = e.kind + e.id, p = ents.get(key) || (recentlyGone.get(key) || {}).p;
-    if (p && p.e) dyingPoof(p, performance.now()); else smoke(e.x, e.y, 8);
+    if (e.kind === "nyxwing") Nyx.died(e);                // (it breaks into stars: nyxwing.js)
+    else if (p && p.e) dyingPoof(p, performance.now()); else smoke(e.x, e.y, 8);
     if (e.drops) dropLoot(e.x, e.y, e.drops, performance.now());
     ents.delete(key);
-    sfx("poof", e.x, e.y);
+    if (e.kind !== "nyxwing") sfx("poof", e.x, e.y);
   }
   if (e.type === "death") { smoke(e.x, e.y, 10); sfx("poof", e.x, e.y); dropLoot(e.x, e.y, e.dropped, performance.now()); }
   const warn = e.type === "windup" && (CRY[e.kind] || {}).warn;

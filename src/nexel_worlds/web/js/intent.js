@@ -81,7 +81,7 @@ function intent0(p, brk, t, c, g, flower, ent, s) {
         wyrm: "A wyrm: stay out of its line", gustling: "A gustling: it snatches what you hold",
         grumblestump: "A grumblestump: back off when its arms go up", snapbloom: "A snapbloom: step aside when it rears",
         hob: "A hob: it keeps wild things off",
-        mossback: "Old Mossback: hit the neck", sporeling: "A sporeling: one hit"}[ent.e.kind] || who, info: true};
+        mossback: "Old Mossback: hit the neck", sporeling: "A sporeling: one hit", nyxwing: "Nyxwing: hit it between its moves"}[ent.e.kind] || who, info: true};
     }
     return {ent, text: weapon ? `Attack ${who}` : `Punch ${who}`, reach: "melee", diag: true, attack: true,      // X hits (a left click)
       run: () => act("attack", weapon ? {target: ent.e.id, with: weapon} : {target: ent.e.id})};

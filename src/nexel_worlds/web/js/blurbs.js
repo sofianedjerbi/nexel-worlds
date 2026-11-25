@@ -122,4 +122,5 @@ const BLURB = {
   carrot: "Orange, crunchy, underground until now.",
   flower: "Does nothing. Does it beautifully.",
   shell_plate: "A piece of Old Mossback. Still warm.",
+  eclipse_core: "A dark moon over a gold sun. It hums.",
 };

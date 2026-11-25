@@ -88,7 +88,7 @@ class Agent:
 @dataclass
 class Creature:
     id: int
-    kind: str  # chicken | cow | chick | calf | tusker | pincer | strawman | wisp | wyrm | gustling | grumblestump | snapbloom | mossback | sporeling | hob
+    kind: str  # chicken | cow | chick | calf | tusker | pincer | strawman | wisp | wyrm | gustling | grumblestump | snapbloom | mossback | sporeling | nyxwing | hob
     x: int
     y: int
     hp: int
@@ -141,6 +141,9 @@ CREATURES = {
     "hob": {"hp": 20, "drops": (("stone", 1, 3, 5), ("flame_charm", .1, 1, 1)), "char": "a"},     # an ally (hob.py)
     "wyrm": {"hp": 12, "drops": (("meat", 1, 2, 4), ("frost_charm", .1, 1, 1)), "char": "E", "damage": 3.5},
     "mossback": {"hp": 60, "drops": (("shell_plate", 1, 5, 5), ("meat", 1, 6, 6), ("fruit", 1, 4, 4), ("mushroom", 1, 3, 3)), "char": "G", "damage": 4.5, "snap": 5.5, "wide": 1},   # (wide: a tile each side of its own)   # the first boss (boss.py)
+    # Nyxwing (nyxwing.py): flies, three tiles wide. damage: its breath; star: a star of a ring; sweep: its tail;
+    # crash: under it when it falls from the sky, blast: out to four tiles. Its drop: the core at the end of its tail.
+    "nyxwing": {"hp": 120, "drops": (("eclipse_core", 1, 1, 1),), "char": "A", "damage": 5, "star": 2, "sweep": 4, "crash": 7, "blast": 3, "wide": 1},
     "sporeling": {"hp": 1, "drops": (("mushroom", .05, 1, 1),), "char": "s", "damage": 0.5},
 }
 

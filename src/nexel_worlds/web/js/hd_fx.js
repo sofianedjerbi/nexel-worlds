@@ -20,6 +20,7 @@ const HdFx = (() => {
   function add(list, p, now, dt) {
     const t = now / 1000, near = (x, y) => Math.abs(x - p.x) < 26 && y > p.y - 26 && y < p.y + 26, put = (s) => { if (near(s.x, s.y)) list.push(Object.assign({d: true, still: true}, s)); };
     let n = 0;
+    Nyx.hd(put, ground, now);                    // Nyxwing's entrance, its shadow in the sky, its death (nyxwing.js)
     for (const q of parts) { if (q.age < 0 || q.age > q.life) continue; const base = q.floor !== undefined ? q.floor : (q.by === undefined ? (q.by = q.y + HdLevel.DRAW_AT.chip[1]) : q.by), [, a] = opaque(q.c);   // (a chip: its floor; a spark or a puff of dust: where it came out, a little over the ground)
       put({canvas: dot(q.c, q.s), fx: 0, fy: q.s + Math.round(Math.max(0, base - q.y) * 16), x: q.x, y: base, z: ground(q.x, base), fade: Math.min(1, 3.3 * (1 - q.age / q.life)) * a}); n++; }
     last.parts = n; n = 0;
