@@ -17,11 +17,11 @@ def test_old_mossback_sleeps_wakes_and_fights(game):
     shot(game, "boss_asleep")
     assert game.server()["hp"] == 20                          # asleep, it hurts nobody
     game.act("attack", target=boss["id"])
-    game.wait("[...ents.values()].some((q) => q.e && q.e.kind === 'mossback' && q.e.act !== 'sleep')", 4000)
+    game.wait("[...ents.values()].some((q) => q.e && q.e.kind === 'mossback' && q.e.act !== 'sleep')", 10000)
     shot(game, "boss_awake")
     game.wait("[...ents.values()].some((q) => q.e && q.e.kind === 'mossback' && ['stomp', 'snap', 'shake'].includes(q.e.act))", 8000)
     shot(game, "boss_warning")
-    game.sleep(3500)
+    # we stood there: it hit us, or shook its brood loose (whichever it chose, on its warning's end)
+    game.wait("meObs.self.hp < 20 || [...ents.values()].some((q) => q.e && q.e.kind === 'sporeling')", 10000)
     shot(game, "boss_after")
-    assert game.server()["hp"] < 20 or kind(game, "sporeling")      # we stood there: it hit us, or shook its brood loose
     assert not game.errors

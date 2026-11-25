@@ -33,7 +33,9 @@ def test_the_first_screen_shows_an_island_of_its_own_at_once(browser, server):
     page.wait_for_function("TitleScene.on && !arrivingNow", timeout=10000)
     cast = page.evaluate(CAST)
     start, cam0, phase0 = {c[1] or f"{c[0]}{i}": c[2:4] for i, c in enumerate(cast)}, page.evaluate("[cam.x, cam.y]"), page.evaluate("clock.phase")
-    page.wait_for_timeout(4000)
+    # (until it has: on a CPU renderer 4 s of the machine's time were a handful of frames, the view not yet moved)
+    page.wait_for_function(f"""([start, cam0, phase0]) => {{ const now = {{}}; ({CAST}).forEach((c, i) => now[c[1] || c[0] + i] = c.slice(2, 4)); const moved = (n) => String(now[n]) !== String(start[n]);
+      return moved('Pip') && ['Mira', 'Tobi', 'Nell'].filter(moved).length >= 2 && clock.phase > phase0 && String([cam.x, cam.y]) !== String(cam0); }}""", arg=[start, cam0, phase0], timeout=30000)
     cast = page.evaluate(CAST)
     now = {c[1] or f"{c[0]}{i}": c[2:4] for i, c in enumerate(cast)}
     assert now["Pip"] != start["Pip"] and sum(now[n] != start[n] for n in ("Mira", "Tobi", "Nell")) >= 2       # the boat goes on; its people go about
@@ -126,7 +128,7 @@ def test_nobody_s_words_or_name_are_drawn_under_the_name_of_the_game_its_line_or
         page.wait_for_function("typeof TitleScene !== 'undefined' && TitleScene.on && document.body.classList.contains('scene')", timeout=15000)
         drawn = hidden = 0
         for who in range(5):                                     # the eye on each of them in turn: they come under every box
-            page.evaluate("""(i) => { const S = TitleScene.S, p = S.people[i % S.people.length]; cam.x = camT.x = S.ox + p.x; cam.y = camT.y = S.oy + p.y; S.till = S.tick + 1e6; S.eye = p; bubbles.length = 0;
+            page.evaluate("""(i) => { const S = TitleScene.S, p = S.people[i % S.people.length]; cam.x = camT.x = S.ox + p.x; cam.y = camT.y = S.oy + p.y; S.till = S.tick + 1e6; S.eye = p; bubbles.length = 0; BUBBLE.life = 1e6;
               S.people.forEach((q) => S.say(q, 'Did you water the wheat today?')); window.__f = 0; return 1; }""", who)
             page.wait_for_function("++window.__f > 12", polling="raf")
             s = page.evaluate(SPOKEN)
@@ -146,11 +148,11 @@ def test_over_a_terrace_the_islands_eye_cuts_no_hole_in_the_hill(browser, server
     found it under the land and the x-ray window opened there: the window's dark back and its lit near edge. A free
     eye has no space of its own and no window, wherever the view goes."""
     page, errors = open_page(browser, server)
-    page.wait_for_function("typeof TitleScene !== 'undefined' && TitleScene.on && document.body.classList.contains('scene') && HdLook.live && !HdLook.busy", timeout=15000)
+    page.wait_for_function("typeof TitleScene !== 'undefined' && TitleScene.on && document.body.classList.contains('scene') && HdLook.live && !HdLook.busy", timeout=60000)
     at = page.evaluate("""(() => { const S = TitleScene.S, [x0, y0, x1, y1] = S.C.view; clearInterval(S.timer); for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (levelAt(S.ox + x, S.oy + y) >= 2) {
       cam.x = camT.x = S.ox + x; cam.y = camT.y = S.oy + y; window.__b = HdLook.builds; return [x, y, levelAt(S.ox + x, S.oy + y), HdLook.eye().z]; } return null; })()""")
     assert at and at[2] > at[3] + 1, at                              # (the eye's level under the terrace's top)
-    page.wait_for_function("HdLook.builds > window.__b && !HdLook.busy", timeout=10000)
+    page.wait_for_function("HdLook.builds > window.__b && !HdLook.busy", timeout=30000)
     page.wait_for_function("(window.__f = (window.__f || 0) + 1) > 8", polling="raf")     # (the window eases open over frames)
     assert page.evaluate("[HdLook.win.n, HdLook.win.a]") == [0, 0], at
     page.close()
@@ -167,17 +169,17 @@ def test_a_lost_gpu_context_gives_the_land_back(browser, server):
     wanted). The land's own and the sky's were never asked for again: the land gone for good, the sky and the names
     left. Both are made again: the land comes back whole, every face with its paint."""
     page, errors = open_page(browser, server)
-    page.wait_for_function("typeof TitleScene !== 'undefined' && TitleScene.on && document.body.classList.contains('scene') && HdLook.live && !HdLook.busy", timeout=15000)
+    page.wait_for_function("typeof TitleScene !== 'undefined' && TitleScene.on && document.body.classList.contains('scene') && HdLook.live && !HdLook.busy", timeout=60000)
     assert page.evaluate(LAND) > .5
     page.evaluate("[HdView.pic.getContext('webgl2'), VoxGL.gl].forEach((g) => g.getExtension('WEBGL_lose_context').loseContext())")
-    page.wait_for_function(f"HdLook.live && !HdView.pic.getContext('webgl2').isContextLost() && VoxGL.gl && !VoxGL.gl.isContextLost() && {LAND} > .5 && HdLook.raw() === 0", timeout=5000)
+    page.wait_for_function(f"HdLook.live && !HdView.pic.getContext('webgl2').isContextLost() && VoxGL.gl && !VoxGL.gl.isContextLost() && {LAND} > .5 && HdLook.raw() === 0", timeout=30000)
     page.close()
     assert not errors, errors
 
 # Mira, held where the test puts her, shouts; the view put by hand: [view's x, view's y] from her, her place on the island (or where she is)
 SHOUT = """async ([dx, dy, at]) => { const S = TitleScene.S, m = S.people[0];
   if (at) { m.x = at[0]; m.y = at[1]; } m.hold = 1e6; TitleScene.step(); S.eye = m; S.till = S.tick + 1e6;
-  cam.x = camT.x = S.ox + m.x + dx; cam.y = camT.y = S.oy + m.y + dy; bubbles.length = 0; S.say(m, 'DINNER AT SUNDOWN!', true);
+  cam.x = camT.x = S.ox + m.x + dx; cam.y = camT.y = S.oy + m.y + dy; bubbles.length = 0; BUBBLE.life = 1e6; S.say(m, 'DINNER AT SUNDOWN!', true);
   window.__f = 0; await new Promise((r) => { const f = () => (++window.__f > 12 ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); });
   const b = bubbles.find((q) => q.name === 'Mira'); return b && b.at ? [b.at[0], b.at[1], b.w, b.h] : null; }"""
 

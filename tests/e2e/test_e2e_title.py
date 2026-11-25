@@ -28,8 +28,7 @@ def test_the_first_screen_is_a_menu_played_with_the_keys(browser, server):
     assert js("!me") and js("$('name').classList.contains('need')")
     page.keyboard.type("Ash")
     tint = js("agentTint('Ash')")
-    page.wait_for_timeout(200)
-    assert js("(() => { const d = $('titleme').getContext('2d').getImageData(0, 0, 24, 26).data; let n = 0; for (let i = 3; i < d.length; i += 4) n += d[i] > 0; return n; })()") > 100   # you are drawn
+    page.wait_for_function("(() => { const d = $('titleme').getContext('2d').getImageData(0, 0, 24, 26).data; let n = 0; for (let i = 3; i < d.length; i += 4) n += d[i] > 0; return n; })() > 100", timeout=10000)   # you are drawn
     page.keyboard.press("ArrowUp")
     assert js(ON) == "racepick"
     page.keyboard.press("ArrowRight")
@@ -191,7 +190,7 @@ def test_the_wait_is_alone_until_the_island_is_whole_then_the_island_in_the_hd_l
         assert js("[HdLook.live, HdLook.builds > 0, getComputedStyle(document.getElementById('hd')).display, !!HdLook.eye, Curve.on]") == [True, True, "block", True, True]
         got = js(seen)
         assert got["kinds"] > 40 and got["clear"] == 0 and got["sky"] > .8 and got["land"] > .5, (kw["viewport"], got)      # drawn, all of it: the sky over the land (not the clear colour, not one flat colour)
-        page.wait_for_function("getComputedStyle(document.getElementById('hd')).opacity === '1' && !document.getElementById('boot')", timeout=5000)
+        page.wait_for_function("getComputedStyle(document.getElementById('hd')).opacity === '1' && !document.getElementById('boot')", timeout=20000)
         page.wait_for_function(still + " > .05", timeout=20000)   # then the view goes after someone, as ever
         assert js(boxes) == before
         if not small:                                             # the menu still works: you wake up, in the world, in the same look, its eye on you
