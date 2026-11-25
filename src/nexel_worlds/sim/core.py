@@ -11,6 +11,7 @@ from pathlib import Path
 
 from ..tiles import BLOCKS, DIRS
 from ..world import Store, World
+from . import builds
 from .animals import Animals
 from .bodies import Bodies
 from .building import Building
@@ -48,7 +49,7 @@ from .specs import TOOL_SPECS
 class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Underground, Building, Storeys, Climbing, Items, Combat, Animals, Wild, Wear, Needs, Social, Environment, Waters, Observation):
     """The world and everyone in it, advanced one tick at a time. Each mixin owns one domain."""
 
-    ENCLOSE = ("wood_wall", "stone_wall", "door", "gate")   # what closes a room (shelter)
+    ENCLOSE = builds.ENCLOSE                            # what closes a room (shelter: sim/builds.py)
     current = None                                      # the action being stepped right now (wait() marks its length on it)
 
     def __init__(self, store: Store | str | Path, seed: int | None = None, event_log: Path | str | None = None):
@@ -177,19 +178,8 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
             return True
         if sum(1 for dx, dy in DIRS.values() if BLOCKS[self.world.get(x + dx, y + dy)[1]].wall) >= 3:
             return True
-        seen, stack = {(x, y)}, [(x, y)]
-        while stack:
-            cx, cy = stack.pop()
-            if len(seen) > 160:
-                return False
-            for dx, dy in DIRS.values():
-                n = (cx + dx, cy + dy)
-                if n not in seen and self.world.block(*n) not in self.ENCLOSE:
-                    seen.add(n)
-                    stack.append(n)
-        xs, ys = [p[0] for p in seen], [p[1] for p in seen]
-        w, h = max(xs) - min(xs) + 1, max(ys) - min(ys) + 1
-        return w <= 14 and h <= 14 and len(seen) >= 0.6 * w * h   # same compactness rule as the client's roofs
+        tiles = builds.inside(self.world, x, y)
+        return tiles is not None and builds.compact(tiles)         # (the client's roof rule too: sim/builds.py)
 
     def wait(self, a: Agent, seconds: float):
         """Take `seconds` of game time (doubled when exhausted). The starting tick counts."""
