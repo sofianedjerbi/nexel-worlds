@@ -187,7 +187,7 @@ def test_on_a_phone_a_held_with_the_stick_is_a_row_and_held_still_places_once(br
         cdp = ctx.new_cdp_session(g.page)
         send = lambda kind, pts: cdp.send("Input.dispatchTouchEvent", {"type": kind, "touchPoints": [{"x": px, "y": py, "id": i} for i, (px, py) in pts.items()]})
         x, y = g.pos()
-        g.give(dirt=8); g.js("selectItem('dirt')")
+        g.give(dirt=12); g.js("selectItem('dirt')")
         g.face(1, 0)
         g.page.touchscreen.tap(*g.js(MID, "#tBuild")); g.wait("Build.on", 3000)
         a = tuple(g.js(MID, "#tA"))
@@ -195,12 +195,14 @@ def test_on_a_phone_a_held_with_the_stick_is_a_row_and_held_still_places_once(br
         g.wait("Build.S.plans.size + (topAt(%d, %d) > 0 ? 1 : 0) >= 1" % (x + 1, y), 3000)
         g.sleep(900)                                             # held still: one block, not a pile (a second would go on top of the first)
         assert g.js(f"[...Build.S.plans.values()].filter((j) => j.x === {x + 1}).length + topAt({x + 1}, {y})") == 1
-        for i in (2, 3):                                         # two pushes of the stick, A still held
-            send("touchStart", {2: a, 1: (90, 600)}); send("touchMove", {2: a, 1: (130, 600)})
-            g.wait(f"Build.S.at.x === {x} + {i}", 3000)
-            send("touchMove", {2: a})
+        # the stick pushed east, A still held, till the cursor is two tiles on (a held stick steps on at the cursor's own
+        # pace, build.js: how far past it goes before the thumb lifts is the machine's, so the row is checked to where it got)
+        send("touchStart", {2: a, 1: (90, 600)}); send("touchMove", {2: a, 1: (130, 600)})
+        g.wait(f"Build.S.at.x >= {x} + 3", 3000)
+        send("touchMove", {2: a})
+        end = g.js("Build.S.at.x")
         send("touchEnd", {})
         g.wait(BUILT, 30000)
-        assert g.js(f"[1, 2, 3].map((i) => topAt({x} + i, {y}))") == [1, 1, 1] and not g.errors, g.errors
+        assert g.js(f"Array.from({{length: {end + 2 - x}}}, (_, i) => topAt({x} + i, {y}))") == [0] + [1] * (end - x) + [0] and not g.errors, (end - x, g.errors)   # a row from your feet to the cursor, one block high, and none past it
     finally:
         ctx.close()
