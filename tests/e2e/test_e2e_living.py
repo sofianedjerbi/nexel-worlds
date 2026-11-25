@@ -9,9 +9,11 @@ def test_eating_takes_three_bites_and_stops_when_full(game):
     hunger0 = game.server()["hunger"]
     game.hold_item("bread")
     game.press("e", 0)
-    game.sleep(450)
-    assert game.js("myAside && myAside.tool") == "eat" and game.js("biteIcon('bread', 1) !== null")
-    game.sleep(900)
+    game.wait("myAside && myAside.tool === 'eat' && biteIcon('bread', 1) !== null", 3000)   # (asked as it begins: 450 ms on, on a runner, the 0.9 s meal was over)
+    for _ in range(50):                                        # (until the world has it: the meal's end, then its word)
+        if game.server()["hunger"] == hunger0 + 10:
+            break
+        game.sleep(100)
     assert game.server()["hunger"] == hunger0 + 10            # one bread: five pieces
     game.rpc("dev_needs", hunger=20)
     while game.server()["hunger"] < 20 and game.inv("bread"):

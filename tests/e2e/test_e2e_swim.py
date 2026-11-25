@@ -37,11 +37,13 @@ TRACK = """(() => { window.__sw = []; window.__swOn = true; const f = (now) => {
 
 
 def pace(game):
-    """tiles a second you went, as drawn, by the frames' own time since TRACK, while the key had you walking (not the
-    glide into place and the stop after it), its first 300 ms left out (setting off)"""
+    """tiles a second you went, as drawn, in the game's own time since TRACK (a frame is 0.1 s of it at the most,
+    render.js: frames of a runner's 10 a second lost some, and the swim measured 1.8), while the key had you walking
+    (not the glide into place and the stop after it), its first 300 ms left out (setting off)"""
     rec = game.js("(() => { __swOn = false; return __sw; })()")
     rec = [r for r in rec if r[2] and r[0] >= rec[0][0] + 300]
-    return (rec[-1][1] - rec[0][1]) / (rec[-1][0] - rec[0][0]) * 1000 if len(rec) > 2 and rec[-1][0] > rec[0][0] else None
+    t = sum(min(100, b[0] - a[0]) for a, b in zip(rec, rec[1:]))
+    return (rec[-1][1] - rec[0][1]) / t * 1000 if len(rec) > 2 and t > 0 else None
 
 
 def gaps(ts):
