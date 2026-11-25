@@ -129,6 +129,19 @@ jobs:
       # Mesa's GL driver through ANGLE (--use-angle=gl-egl) did not take: Chrome fell back to SwiftShader. The run's last
       # line names the renderer it got (tests/e2e/conftest.py).
       - run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends mesa-vulkan-drivers
+      # The sounds, so the sound tests run instead of skipping (#47). The effects are numpy, made here; the music is cut
+      # from the renders game.yml keeps (the same cache, only read: nothing is played on Surge in this job). With no
+      # renders cached, the effects are still built and the music's tests skip on their own ("no music rendered").
+      - name: The music's renders, the last ones kept (game.yml's cache, read only)
+        uses: actions/cache/restore@v6.1.0
+        with:
+          path: music/site/audio
+          key: music-${{ hashFiles('music/*.py', 'music/*.json', '!music/sfx*') }}
+          restore-keys: music-
+      - name: The game's sounds (tools/build_audio.py)
+        run: |
+          ls music/site/audio/final_*.wav 2>/dev/null | wc -l | xargs echo "music renders cached:" >> "$GITHUB_STEP_SUMMARY"
+          uv run --extra audio python tools/build_audio.py
       - name: The game in Chrome (the runner's own Google Chrome)
         env:
           FILES: ${{ matrix.files }}

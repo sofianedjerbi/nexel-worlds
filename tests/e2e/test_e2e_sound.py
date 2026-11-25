@@ -5,10 +5,14 @@ from pathlib import Path
 import pytest
 
 AUDIO = Path(__file__).parents[2] / "src" / "nexel_worlds" / "web" / "audio" / "sfx.json"
-pytestmark = pytest.mark.skipif(not AUDIO.exists(), reason="no sounds built: uv run python tools/build_audio.py")
+pytestmark = pytest.mark.skipif(not AUDIO.exists(), reason="no sounds built: uv run --extra audio python tools/build_audio.py (CI builds them: ci.yml)")
 
 ALL_LOADED = """sounds.manifest && Object.values(sounds.manifest.sounds).flatMap((s) => s.files)
                 .every((f) => sounds.buffers.get(f) instanceof AudioBuffer)"""
+
+
+BOSS_STATE = """JSON.stringify({fight, muted, awake: awake(), loop: sounds.manifest.play[fight], on: bossTrack.on, nodes: bossTrack.nodes.size,
+  at: bossTrack.at, run: bossTrack.run, music: music.on, ctx: audio && audio.state})"""
 
 
 def played(game) -> set:
@@ -73,25 +77,31 @@ def test_a_piece_of_music_plays_as_a_moment_and_m_silences_it(game):
     assert game.js("music.gain.gain.value") > 0.05
 
 
-def test_the_boss_piece_takes_over_during_a_fight_and_hands_back(game):
+@pytest.mark.parametrize("fight", ["boss", "nyxwing"])
+def test_the_boss_piece_takes_over_during_a_fight_and_hands_back(game, fight):
+    """Each fight its own loop (boss.js names it): Old Mossback's "boss" (Old Mossback), Nyxwing's "nyxwing" (Sugar
+    rush). It comes in over the moment, none starts while it is on, silence after."""
     if not game.js("!!sounds.manifest"):
         game.wait("sounds.manifest", 20000)
-    if not game.js("!!sounds.manifest.tracks && !!sounds.manifest.play.boss"):
+    if not game.js(f"!!sounds.manifest.tracks && !!sounds.manifest.play['{fight}']"):
         pytest.skip("no music rendered")
     game.js("moment.next = 0")
     game.wait("music.on && music.nodes.size > 0", 30000)
     game.js("(() => { window.realBossMusic = bossMusic; bossMusic = () => {}; })()")     # (boss.js turns it off twice a second: no boss in view)
-    game.js("realBossMusic(true)")
-    game.wait("bossTrack.on && bossTrack.nodes.size > 0", 15000)
-    game.sleep(6500)                                           # (the moment takes SOUND.giveWay seconds to recede)
-    assert game.js("bossTrack.key") == game.js("sounds.manifest.play.boss") and game.js("bossTrack.gain.gain.value") > 0.3
-    assert not game.js("music.on") and game.js("music.gain.gain.value") < 0.02                 # the moment gave way
+    game.js(f"realBossMusic('{fight}')")                       # (a fight is named since Nyxwing, #40: "boss" or "nyxwing", false)
+    try:                                                       # (on GitHub's runners it once never started: say why, #47)
+        game.wait("bossTrack.on && bossTrack.nodes.size > 0", 15000)
+    except Exception:
+        raise AssertionError("the boss piece never started: " + game.js(BOSS_STATE)) from None
+    # the boss's piece comes in and the moment recedes (SOUND.giveWay): waited for, not timed (a slow runner's timers are late)
+    game.wait("bossTrack.gain.gain.value > 0.3 && !music.on && music.gain.gain.value < 0.02", 20000)
+    assert game.js("bossTrack.key") == game.js(f"sounds.manifest.play['{fight}']")
     game.js("moment.next = 0")
     game.sleep(1500)
     assert not game.js("music.on")                             # no moment starts while the fight is on
     game.js("realBossMusic(false)")
-    game.sleep(500)
-    assert not game.js("bossTrack.on") and game.js("moment.next") > game.js("performance.now()") + 15000    # silence after the fight
+    game.wait("!bossTrack.on", 3000)
+    assert game.js("moment.next") > game.js("performance.now()") + 15000    # silence after the fight
     game.js("bossMusic = realBossMusic")
 
 

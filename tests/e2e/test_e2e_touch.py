@@ -99,9 +99,11 @@ def test_out_of_your_own_shaft_with_the_thumbs(browser, server):
             g.sleep(30)
         g.wait(f"myAt && myAt.x === {x + 1} && myAt.z === 0", 6000)
         g.touch("touchEnd")
-        g.sleep(300)
+        g.wait("!walking && !myAction", 3000)
         s = g.server()
-        assert (s["x"], s["y"], s["z"]) == (x + 1, y, 0)
+        # out of the shaft, on the ground, east: the tile where it stops is when the thumb is lifted, and on a slow runner
+        # the walk went one more before the release came (#47: x + 2). Not where the stick is let go, the climb out.
+        assert s["z"] == 0 and s["y"] == y and s["x"] in (x + 1, x + 2), (s["x"] - x, s["y"] - y, s["z"])
         g.js("selectItem('plank')")
         g.wait("$('tBuild').style.display === 'flex'", 3000)
         at = mid("tBuild")

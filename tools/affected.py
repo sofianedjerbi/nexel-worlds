@@ -11,6 +11,8 @@ Printed: the e2e test files to run (and the unit test files), one a line. The ma
   read: all of the ui set);
 - a python file of the game (src/nexel_worlds/**.py, not web/): the unit tests that name its module, all of them if
   none does, and the server-facing e2e (tests naming the module, test_e2e_world.py, test_e2e_edits.py);
+- the sound pipeline (tools/build_audio.py, music/**, the CI workflow that builds the sounds): what web/js/audio.js
+  selects, the tests that play sound (sounds, sfx, music, the boss's loop...), as their audio is rebuilt;
 - a test file: itself; a helper of tests/e2e (game.py, waits.py, conftest.py...): the quick set only (below).
 --run: the e2e files with `pytest -m e2e -n 3`, then the quick set (`-m "e2e and quick"`), then the unit files, each
 with stdin from /dev/null. Exit code: the first run that failed."""
@@ -27,6 +29,8 @@ E2E = "tests/e2e/"
 UI_SET = ("test_e2e_ui.py", "test_e2e_menu.py", "test_e2e_title.py", "test_e2e_title_scene.py", "test_e2e_phone.py",
           "test_e2e_phone_taps.py", "test_e2e_hd_phone.py", "test_e2e_touch.py", "test_e2e_help.py")
 SERVER_E2E = ("test_e2e_world.py", "test_e2e_edits.py")
+AUDIO_JS = JS + "audio.js"                       # what plays it: its globals name the tests that play sound
+SOUND_PIPELINE = ("tools/build_audio.py", ".github/workflows/ci.yml")                # (and music/**)
 TOP = re.compile(r"^(?:const|let|var)\s+([A-Za-z_$][\w$]*)|^(?:async\s+)?function\*?\s+([A-Za-z_$][\w$]*)|^class\s+([A-Za-z_$][\w$]*)"
                  r"|^window\.([A-Za-z_$][\w$]*)\s*=|^(?:const|let|var)\s+\{([^}]*)\}\s*=", re.M)
 
@@ -76,6 +80,11 @@ def affected(changed, root: Path = ROOT, why=None):
         s.add(f)
         why.setdefault(f, reason)
     for f in changed:
+        if f in SOUND_PIPELINE or f.startswith("music/"):        # (the sounds made again: every test that plays them)
+            for t in affected([AUDIO_JS], root)[0]:
+                add(e2e, t, f"{Path(f).name}: the game's sounds")
+            if f.startswith("music/") or f == "tools/build_audio.py":
+                continue
         p = Path(f)
         name = p.name
         if f.startswith(E2E):

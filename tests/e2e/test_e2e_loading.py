@@ -122,8 +122,7 @@ def test_the_wait_has_a_day_and_holds_still_at_dusk_when_asked_for_less_motion(b
 
 
 # every frame the wait is on the screen: [ms, the % it says, the script's bytes read, the island's [warm, part %, busy] (hd.js)]; and the page's long tasks
-WATCH = """window.__bar = []; window.__long = [];
-try { new PerformanceObserver((l) => { for (const e of l.getEntries()) __long.push([Math.round(e.startTime), Math.round(e.duration)]); }).observe({entryTypes: ['longtask']}); } catch (e) {}
+WATCH = """window.__bar = [];
 (() => { const f = (t) => { const s = document.getElementById('bootsay'); if (!s && __bar.length) return;
   if (s) __bar.push([Math.round(t), parseInt(s.textContent.replace(/\\D+/g, '')) || 0, window.ASSET_PACK ? ASSET_PACK.jsGot : -1, typeof HdLook === 'object' ? [HdLook.warm, Math.round(HdLook.part * 100), HdLook.busy] : null]); requestAnimationFrame(f); }; requestAnimationFrame(f); })();"""
 
@@ -145,12 +144,14 @@ def bundled(tmp_path_factory):
 
 
 @pytest.mark.realtime
-def test_on_a_phone_the_bar_goes_on_by_small_steps_and_no_task_holds_the_page(browser, bundled):
+def test_on_a_phone_the_bar_goes_on_by_small_steps(browser, bundled):
     """A phone on 4G (9 Mbit/s, 170 ms), its CPU four times slower, the page as a phone gets it (one script, one pack:
     web_bundle.py). The script's bytes are counted as they come (it was a tag: nothing of it counted till it had run, the bar
-    leapt 22% to 58%); the bar never goes back and never leaps more than 15%; no task holds the page over 120 ms till the
-    island is shown (the character's tools were one task of 0.7 s, the island's first picture one of 0.3 s: tool_art.js
-    soon, hd.js warm)."""
+    leapt 22% to 58%); the bar never goes back and never leaps more than 15%. On GitHub's runners the pack was all in
+    before the bar's first look and a third of the way was 1% to 20% at once: a step is 12% at most.
+    (It also held every task under 120 ms till the island was shown. Gone, #47: there Chrome draws on the CPU (lavapipe),
+    and the island's first picture made tasks of 121-132 ms however the CPU was slowed: it measured software drawing, not
+    the game.)"""
     ctx = browser.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=3, is_mobile=True, has_touch=True)
     ctx.add_init_script(WATCH)
     page, errors = ctx.new_page(), []
@@ -166,15 +167,12 @@ def test_on_a_phone_the_bar_goes_on_by_small_steps_and_no_task_holds_the_page(br
         except Exception:
             raise AssertionError("the island never came: " + str(page.evaluate("({bar: window.__bar && __bar.slice(-3), pack: window.ASSET_PACK && [ASSET_PACK.got, ASSET_PACK.need, ASSET_PACK.jsGot, ASSET_PACK.jsLen], "
                                  "decoded: [window.ASSETS_IN, window.ASSETS_OF], warm: typeof HdLook === 'object' ? [HdLook.warm, HdLook.busy, HdLook.part] : null})")) + f" {errors}") from None
-        bar, long, js_len = page.evaluate("__bar"), page.evaluate("__long"), page.evaluate("ASSET_PACK.jsLen")
+        bar, js_len = page.evaluate("__bar"), page.evaluate("ASSET_PACK.jsLen")
         said = [b[1] for b in bar]
         steps = [b - a for a, b in zip(said, said[1:])]
         assert len(said) > 10 and min(steps) >= 0, said                                   # never back
         assert max(steps) <= 15, [(bar[i][0], said[i], said[i + 1], bar[max(0, i - 6):i + 2]) for i, s in enumerate(steps) if s > 15]
         assert any(0 < b[2] < js_len for b in bar), "the script's bytes were not counted as they came"
-        held = [t for t in long if t[0] < bar[-1][0]]                                      # (till the wait went)
-        # (a long task: the frames round it, what the island was making then: hd.js warm -1 the painter made, 0 its start and first picture, 1 what stands, 2 the people, 3 the land)
-        assert max([d for _, d in held] or [0]) <= 120, [(t, d, [b for b in bar if t - 120 <= b[0] <= t + d + 40]) for t, d in held if d > 120]
         assert not errors, errors
     finally:
         ctx.close()
