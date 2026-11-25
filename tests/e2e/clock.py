@@ -10,7 +10,7 @@ server for each second of its own.
   own that is not the page's (the sound card's, a second server, the game in the page with its worker):
   `@pytest.mark.realtime` (or `pytestmark`), and it runs as it always did, at 1.
 - `E2E_PACE=1` in the environment: the whole run at the game's own pace (to tell a test that fails because of the
-  clock from one that fails)."""
+  clock from one that fails). `E2E_PACE` is the most: a machine whose frames are slow gets less (`fit`)."""
 
 import json
 import os
@@ -18,6 +18,12 @@ import os
 import clock_sound
 
 PACE = max(1.0, float(os.environ.get("E2E_PACE", "4")))
+# (a frame is 0.1 s of the game's time at the most: what moves in a longer one is cut there (render.js update), as on a
+# machine that cannot keep up. On the fast clock a frame of the machine's is PACE times as long to the game: Chrome
+# drawing on the CPU (the runners, ci.yml) takes 70 to 100 ms a frame, 0.3 to 0.4 s of the game's at 4, and the walk went
+# at a third of its pace, every jump short. The pace is fitted to the machine (`fit`, conftest.py `machine`): a frame
+# under FRAME_BUDGET ms of the game's time, PACE at the most, 1 at the least)
+FRAME_BUDGET = 70
 AHEAD = os.environ.get("E2E_AHEAD", "1") != "0"     # the next test's page loads while this one plays (pages.py)
 now = 1.0           # the pace of the test that is running (conftest.py: the `pace` fixture)
 coming = None       # the pace of the test after it, if it plays on the `game` fixture's page; None: it does not, or there is none (conftest.py)
@@ -46,6 +52,13 @@ SHIM = """(() => { const K = %s; if (K === 1 || window.__pace) return; window.__
 DAY = """(() => { const K = window.__pace; if (!K || window.__day) return 1; window.__day = 1; const real = onTick; let base = null, last = null;
   onTick = (d) => { const p = d.phase; if (base === null || Math.abs((((p - last) % 1) + 1.5) % 1 - .5) > .002) base = p;
     last = p; const on = (((p - base) % 1) + 1.5) % 1 - .5; d.phase = (((base + on / K) % 1) + 1) % 1; real(d); }; return 1; })()"""
+
+
+def fit(frame_ms: float) -> float:
+    """The pace for a machine whose frame of the game takes `frame_ms` of its time -> PACE, fitted."""
+    global PACE
+    PACE = max(1.0, min(PACE, round(FRAME_BUDGET / max(frame_ms, 1e-3), 1)))
+    return PACE
 
 
 def real(ms: float) -> float:
