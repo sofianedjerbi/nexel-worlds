@@ -82,7 +82,7 @@ def dev_op(sim, agent, op: str, msg: dict) -> dict:
         for x, y in tiles:                       # (laid out, all of it: its stone by the land round it; dug: as it was)
             if not msg.get("dug"):
                 sim.world.relay(x, y)
-            sim.set_tile(x, y, cause="dev")
+            sim.set_tile(x, y, cause="dev", ores=True)
         return {}
     if op == "dev_admin" and getattr(sim, "admins", None):    # you are an admin (the tests' /op: admin.py)
         if not agent.bot:

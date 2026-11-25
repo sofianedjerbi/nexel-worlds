@@ -83,10 +83,12 @@ class Views:
         # char each, SEA + it, as the levels (world.py made_of: earth over it, stone from it down; HIGH and over: stone at every height)
         mats = {str((j - y) * w + i - x): m for j in range(y, y + h) for i in range(x, x + w) if (m := self.sim.placed.mat(i, j, col_runs(raw[(j - y) * w + i - x])))}
         stones = ["".join(chr(SEA + min(HIGH, world.stone(i, j))) for i in range(x, x + w)) for j in range(y, y + h)]
+        # the ore that shows (sim/underground.py shown_ores: a cell of it with air on a side), by tile index: {z: item}. Never what is shut in the rock
+        ores = {str((j - y) * w + i - x): {str(z): o for z, o in sh.items()} for j in range(y, y + h) for i in range(x, x + w) if (sh := self.sim.shown_ores(i, j))}
         # what is built over the land (sim/storeys.py): [tile's index, height, kind, the char of what stands on it]
         floors = [[(j - y) * w + i - x, z, kind, BLOCKS[B[thing]].char] for i, j, z, kind, thing in self.sim.floors.within(x, y, w, h)]
         water = [[(j - y) * w + i - x, z, v] for i, j, z, v in self.sim.water.within(x, y, w, h)]       # (water that runs, and what was poured: [tile's index, height, level], flow.py)
-        return {**({"cols": cols} if cols else {}), **({"mats": mats} if mats else {}), **({"floors": floors} if floors else {}), **({"water": water} if water else {}), "sea": SEA, "x": x, "y": y, "w": w, "h": h, "rows": rows, "ground": ground, "stones": stones, "levels": levels, "entities": self.entities_in(x, y, w, h), "tick": self.sim.tick, "time": self.sim.clock(),
+        return {**({"cols": cols} if cols else {}), **({"mats": mats} if mats else {}), **({"floors": floors} if floors else {}), **({"water": water} if water else {}), **({"ores": ores} if ores else {}), "sea": SEA, "x": x, "y": y, "w": w, "h": h, "rows": rows, "ground": ground, "stones": stones, "levels": levels, "entities": self.entities_in(x, y, w, h), "tick": self.sim.tick, "time": self.sim.clock(),
                 "night": self.sim.is_night(), "phase": round(self.sim.time_of_day(), 4)}
 
     # ----------------------------------------------------------- what they are sent, as it happens

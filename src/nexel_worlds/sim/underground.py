@@ -75,6 +75,27 @@ class Underground:
         self.set_cell(x, y, z, False, by=a, cause=cause)
         return got
 
+    def shown_ores(self, x: int, y: int) -> dict[int, str]:
+        """The ore cells of the tile's column that show: with air on a side (over, under, beside: a cave's wall, a
+        cliff, a hole's side) -> {z: the ore's item}. What is shut in the rock is never told (a screen draws these,
+        an agent is told of them: observe.py): a page cannot be read for the veins under the land."""
+        c, w = self.land_col(x, y), self.world
+        shut = (c << 1) & (c >> 1)
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            shut &= self.land_col(x + dx, y + dy)
+        bare, out, top = c & ~shut, {}, w.stone(x, y)
+        while bare:
+            low = bare & -bare
+            z = low.bit_length() - 1 + LOW
+            bare ^= low
+            if z <= top and self.placed.kind(x, y, z) is None and (o := w.ore(x, y, z)):
+                out[z] = o.item
+        return out
+
+    def ores_near(self, x: int, y: int) -> dict[str, dict]:
+        """...of a tile whose cells changed and of the four beside it (a cell dug bares the ones round it): {"dx,dy": {z: item}}."""
+        return {f"{dx},{dy}": {str(z): o for z, o in self.shown_ores(x + dx, y + dy).items()} for dx, dy in ((0, 0), (1, 0), (-1, 0), (0, 1), (0, -1))}
+
     def open_cell(self, x: int, y: int, z: int) -> bool:
         """A cell of the land with air on a side of it (over it, under it, beside it): it can be dug."""
         w = self.world

@@ -98,3 +98,26 @@ def test_an_agent_is_told_of_the_ore_it_can_see_not_what_is_shut_in_the_rock(wor
     sim.world.ore = lambda x, y, z: ORE_OF["iron_ore"] if (x, y, z) in (shown, hidden) else None
     ores = sim.observe(a)["ores"]
     assert ores == [{"dx": 1, "dy": 0, "z": 5, "ore": "iron_ore"}], ores
+
+
+def test_a_screen_is_told_the_ore_that_shows_and_never_what_is_shut_in_the_rock(world):
+    """views.py ores (by tile, {z: item}), and a tile event's `ores` when a cell is dug: the ore that shows round it now
+    (a cell dug bares the ones beside it). Never a cell with rock on every side: a page cannot be read for the veins."""
+    from nexel_worlds.views import Views
+
+    class Screen(Views):
+        def __init__(self, sim):
+            self.sim = sim
+
+    sim, a = world
+    for i in range(1, 5):
+        for j in (-1, 0, 1):
+            sim.set_tile(a.x + i, a.y + j, level=5)                           # stone east of you, five high, four wide
+    face, deep, behind = (a.x + 1, a.y, 3), (a.x + 2, a.y, 3), (a.x + 3, a.y, 3)
+    sim.world.ore = lambda x, y, z: ORE_OF["iron_ore"] if (x, y, z) in (face, deep, behind) else None
+    got = Screen(sim).region(a.x - 2, a.y - 2, 8, 5).get("ores", {})
+    assert got == {str(2 * 8 + 3): {"3": "iron_ore"}}, got                    # the west face's cell (it looks onto your tile), not the two inside
+    said = []
+    sim.listeners.append(lambda ev: said.append(ev) if ev.get("type") == "tile" and "ores" in ev else None)
+    sim.set_cell(*face, False)                                                # dug: the one behind it shows now
+    assert said and said[-1]["ores"]["1,0"] == {"3": "iron_ore"} and said[-1]["ores"]["0,0"] == {}, said[-1]["ores"]
