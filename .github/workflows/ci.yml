@@ -5,6 +5,7 @@ name: CI
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
   push:
     branches: [main]
 
@@ -73,6 +74,9 @@ jobs:
   # other. The tests that need the built sounds (not in git: tools/build_audio.py) skip here.
   e2e-plan:
     name: Browser tests to run
+    # While they are optional (#47), a pull request runs them only with the label `e2e` (the fixes for #47): the twenty
+    # runners are shared, and the browser jobs of every pull request held the quick checks queued behind them.
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'e2e')
     runs-on: ubuntu-latest
     outputs:
       shards: ${{ steps.plan.outputs.shards }}
