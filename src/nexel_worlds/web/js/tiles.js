@@ -36,6 +36,9 @@ function putMat(b, i, m0) {
   if (z !== undefined) (b.stone || (b.stone = new Int16Array(B * B).fill(NO_STONE)))[i] = +z;
   if (m === "s" || m === "d") (b.mat || (b.mat = {}))[i] = m; else if (b.mat) delete b.mat[i];
 }
+// The ore that shows in a tile's column (views.py ores, a tile event's `ores`: sim/underground.py shown_ores): {z: item}, where any
+function putOres(b, i, m) { if (m && Object.keys(m).length) (b.ores || (b.ores = {}))[i] = m; else if (b.ores) delete b.ores[i]; }
+function oresAt(x, y, m) { const b = blockOf(x, y); if (b) putOres(b, (y - b.by * B) * B + (x - b.bx * B), m); }
 const stonesOf = (d, from) => { const s = new Int16Array(B * B); for (let j = 0; j < B; j++) for (let i = 0; i < B; i++) s[j * B + i] = d.stones[j].charCodeAt(i) - from; return s; };
 function setTile(x, y, comb, gnd, who = null, col = null, mat = null) {    // (col: its column of cells, when sent: cells.js; mat: what it is made of, when sent: putMat)
   const bx = Math.floor(x / B), by = Math.floor(y / B), b = blocks.get(bkey(bx, by));
@@ -82,11 +85,13 @@ function onRegion(d) {
       setTile(bx * B + i % B, by * B + (i / B | 0), comb[i], gnd[i], null, c, (d.mats && d.mats[i]) || "");
     }
     if (d.stones) old.stone = stonesOf(d, from);
+    old.ores = null; for (const i in d.ores || {}) putOres(old, i, d.ores[i]);
     Floors.load(old, d); Flow.load(old, d);
     old.at = performance.now(); return;
   }
   const b = {bx, by, comb, gnd, lv, col, mat: null, stone: d.stones ? stonesOf(d, from) : null, objs: new Map(), drawn: false, canvas: null, at: performance.now()};   // (no stones: the first screen's island, stoneAt guesses)
   for (const i in d.mats || {}) putMat(b, i, d.mats[i]);
+  for (const i in d.ores || {}) putOres(b, i, d.ores[i]);
   Floors.load(b, d); Flow.load(b, d);               // (what is built over its land: floors.js; water that runs: flow.js)
   comb.forEach((c, i) => { if (isObject(c)) b.objs.set(i, c); });
   blocks.set(k, b);

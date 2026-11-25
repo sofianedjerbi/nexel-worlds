@@ -103,14 +103,11 @@ class Observation:
         }
 
     def ores_seen(self, a: Agent, r: int = 4, below: int = 3, above: int = 4) -> list[dict]:
-        """The ore in the rock round you that shows (a cell of it with air on a side: a cave's wall, a cliff, a hole you
-        dug), the nearest first: where it is (dx, dy, its cell z) and what it is (tiles.py ORES). What is shut in the
-        rock is not seen."""
+        """The ore in the rock round you that shows (underground.py shown_ores: a cell of it with air on a side), the
+        nearest first: where it is (dx, dy, its cell z) and what it is (ores.py ORES). What is shut in the rock is not seen."""
         h, out = self.height(a), []
         for y in range(a.y - r, a.y + r + 1):
             for x in range(a.x - r, a.x + r + 1):
-                for z in range(h - below, h + above + 1):
-                    if self.placed.kind(x, y, z) is None and (o := self.world.made_of(x, y, z)) in T.ORE_OF and self.open_cell(x, y, z):
-                        out.append({"dx": x - a.x, "dy": y - a.y, "z": z, "ore": o})
+                out += [{"dx": x - a.x, "dy": y - a.y, "z": z, "ore": o} for z, o in self.shown_ores(x, y).items() if h - below <= z <= h + above]
         out.sort(key=lambda e: abs(e["dx"]) + abs(e["dy"]) + abs(e["z"] - h))
         return out[:10]

@@ -21,6 +21,7 @@ const Voxels = (() => {
     built: (x, y) => matAt(x, y) === "s",                       // (a stone block put there: its sides laid courses; the land's own stone a cliff, voxpaint.js)
     rock: VoxPaint.rocky,                                      // (is a tile's block stone, where its top is high enough: a mass of it, voxpaint.js)
     paintFront: VoxPaint.front,
+    ore: oreAt,                                                // (the ore a cell is, where it shows: nuggets on its faces, ore_paint.js)
   };
   // (engine: can the land be drawn at all: WebGL 2, hd.js; forget: clear water turned on or off, waterbed.js)
   const engine = {ready: () => !!VoxGL.start(), forget() {}, touch() {}};

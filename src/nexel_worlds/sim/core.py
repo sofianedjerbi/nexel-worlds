@@ -133,9 +133,9 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
     def set_cell(self, x, y, z, solid: bool, by: Agent | None = None, cause=None):
         """Fill or empty one cell of the land (digging, building up)."""
         self.world.set_cell(x, y, z, solid)
-        self.set_tile(x, y, by=by, cause=cause)
+        self.set_tile(x, y, by=by, cause=cause, ores=True)          # (ores: the ore that shows round it now, underground.py ores_near)
 
-    def set_tile(self, x, y, ground=None, block=None, by: Agent | None = None, cause=None, level=None, roof=None, head=None):
+    def set_tile(self, x, y, ground=None, block=None, by: Agent | None = None, cause=None, level=None, roof=None, head=None, ores=False):
         if level is not None or roof is not None or head is not None:
             self.raze(x, y)                                # (the land laid out anew: what was built over it goes, and the water on it)
             self.water.clear(x, y)
@@ -145,7 +145,7 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
         info = {"x": x, "y": y, "ground": g, "block": b}
         if by is not None and by.action is not None:
             by.action.tiles.append(info)
-        self.emit("tile", x, y, ground=g, block=b, by=by.name if by else None, cause=cause, col=(runs := self.land_runs(x, y)), mat=self.mat(x, y, runs))
+        self.emit("tile", x, y, ground=g, block=b, by=by.name if by else None, cause=cause, col=(runs := self.land_runs(x, y)), mat=self.mat(x, y, runs), **({"ores": self.ores_near(x, y)} if ores or level is not None else {}))
 
     def add_items(self, x, y, items: dict):
         if not items:

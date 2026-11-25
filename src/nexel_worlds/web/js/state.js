@@ -189,6 +189,7 @@ function onEvent(e) {
   const t = performance.now() / 1000;
   if (e.type === "tile") {
     const g = CHAR[e.ground], blk = e.block === "none" ? g : CHAR[e.block], old = combAt(e.x, e.y);
+    for (const k in e.ores || {}) { const [dx, dy] = k.split(",").map(Number); oresAt(e.x + dx, e.y + dy, e.ores[k]); }   // (a cell dug or filled: the ore that shows round it now)
     if (g && blk) setTile(e.x, e.y, blk, g, e.by, e.col === undefined ? null : colIn(e.col), e.mat === undefined ? null : e.mat);
     if (old && blk) tileSound(old, blk, e);
     return;
