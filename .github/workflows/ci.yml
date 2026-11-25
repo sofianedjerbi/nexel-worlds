@@ -69,9 +69,10 @@ jobs:
 
   # The browser tests (tests/e2e): the game in real Chrome against a fresh server, here and never on the shared Mac.
   # A pull request runs the ones its changes ask for (tools/affected.py: the tests naming what it changed); main runs
-  # them all, and all of them must pass. The files are dealt out to runners, about three files each (at most 16), one
-  # test at a time on each: there is no GPU here, Chrome draws the land on the CPU, and two tests at once starve each
-  # other. The tests that need the built sounds (not in git: tools/build_audio.py) skip here.
+  # them all, and all of them must pass. The files are dealt out to runners by how long each takes (tools/e2e_shards.py,
+  # tests/e2e/durations.json: about five minutes of tests a runner, at most 16), one test at a time on each: there is
+  # no GPU here, Chrome draws the land on the CPU, and two tests at once starve each other. The tests that need the
+  # built sounds (not in git: tools/build_audio.py) skip here.
   e2e-plan:
     name: Browser tests to run
     # While they are optional (#47), a pull request runs them only with the label `e2e` (the fixes for #47): the twenty
@@ -92,16 +93,14 @@ jobs:
           if [ "$EVENT" = pull_request ]; then
             changed=$(git diff --name-only "$BASE"...HEAD)
             files=$(python3 tools/affected.py $changed | grep '^tests/e2e/' || true)
+            # a change to how the browser tests are dealt out is checked on all of them: its measure is the full run
+            if echo "$changed" | grep -qxE '\.github/workflows/ci\.yml|tools/e2e_shards\.py|tests/e2e/durations\.json'; then
+              files=$(ls tests/e2e/test_*.py)
+            fi
           else
             files=$(ls tests/e2e/test_*.py)
           fi
-          python3 - "$files" >> "$GITHUB_OUTPUT" <<'PY'
-          import json, math, sys
-          files = sorted(f for f in sys.argv[1].split() if f)
-          n = min(16, math.ceil(len(files) / 3))
-          shards = [" ".join(files[i::n]) for i in range(n)]
-          print("shards=" + json.dumps(shards))
-          PY
+          echo "shards=$(python3 tools/e2e_shards.py plan $files)" >> "$GITHUB_OUTPUT"
           echo "browser test files: $(echo $files | wc -w)" >> "$GITHUB_STEP_SUMMARY"
 
   e2e:
@@ -135,7 +134,10 @@ jobs:
           FILES: ${{ matrix.files }}
           E2E_CHROME_ARGS: --use-angle=vulkan --enable-features=Vulkan --ignore-gpu-blocklist
           E2E_SHOTS: ${{ runner.temp }}/shots
-        run: uv run pytest -m e2e -n 0 -q --durations=10 $FILES
+        # -v: each test's end is a line of the log, with its time (a test that hangs is the one after the last line);
+        # --durations=0: every test's time, what tools/e2e_shards.py measure reads into tests/e2e/durations.json;
+        # --timeout: a test that hangs fails in five minutes with where it was, not at the job's 45
+        run: uv run pytest -m e2e -n 0 -v --durations=0 --timeout=300 $FILES
       # each failing test's last picture (tests/e2e/pages.py), one artifact a runner
       - if: failure()
         uses: actions/upload-artifact@v7.0.2
