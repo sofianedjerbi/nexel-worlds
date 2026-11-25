@@ -131,7 +131,7 @@ def build():
     taken.update((x, y) for x, y, *_ in sum(FIXED.values(), []))           # and where people stand, and the gate's way in
     taken.update([(38, 37), (39, 37), (36, 37)])
     scatter("tree", 26, (20, 13, 76, 20)); scatter("tree", 12, (18, 28, 28, 46)); scatter("tree", 14, (62, 45, 78, 52)); scatter("tree", 8, (36, 44, 56, 51))
-    scatter("fruit_tree", 4, (46, 20, 58, 22), 0); scatter("berry_bush", 7, (30, 28, 70, 50), 0); scatter("rock", 6, (20, 18, 36, 32), 0); scatter("ore", 2, (22, 26, 32, 32), 0)
+    scatter("fruit_tree", 4, (46, 20, 58, 22), 0); scatter("berry_bush", 7, (30, 28, 70, 50), 0); scatter("rock", 6, (20, 18, 36, 32), 0); scatter("rock", 2, (22, 26, 32, 32), 0)
     scatter("mushroom", 5, (18, 26, 30, 44), 0); scatter("thicket", 4, (64, 14, 76, 22), 0)
     taken.difference_update(reserve)
     scatter("flower", 46, (16, 12, 80, 52), 0)
@@ -185,7 +185,7 @@ def build():
         found = sorted(((x, y) for y in range(H) for x in range(W) if world.block(x, y) == kind), key=lambda q: abs(q[0] - near[0]) + abs(q[1] - near[1]) * 1.5)
         return [s for s in (stand(*q, "tree" in kind) for q in found) if s][:most]
     used.update((x, y) for x, y, *_ in sum(FIXED.values(), []))
-    places = {**FIXED, "trees": spots("tree", 12), "rocks": spots("rock", 5) + spots("ore", 2), "bushes": spots("berry_bush", 7),
+    places = {**FIXED, "trees": spots("tree", 12), "rocks": spots("rock", 7), "bushes": spots("berry_bush", 7),
               "fruit": spots("fruit_tree", 4), "flowers": spots("flower", 18)}
     for kind, found in places.items():
         assert found and all((x, y) in reach for x, y, *_ in found), (kind, found)

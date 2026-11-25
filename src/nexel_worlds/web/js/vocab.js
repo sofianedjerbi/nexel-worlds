@@ -19,6 +19,13 @@ function setRules(r) {
 }
 setRules(RULES);
 const tileOf = (c) => RULES.tiles[c] || {};                 // what the world says of a tile's char: solid, burns, tool, needs, quick, upstairs, holds
+// A tool's kind and tier (ores.py TOOLS: a wood, a stone, an iron, a titanium axe or pickaxe): what the world asks of
+// a tool is its kind, any tier; a dig is done with the best of a kind in your pack
+const toolKind = (item) => (item && RULES.tools[item] ? RULES.tools[item][0] : item);
+const toolArt = (item) => item && item.replace(/^(?:wood|iron|titanium)_(?=(?:axe|pickaxe|sword)$)/, "");   // (the picture it is held and swung as: its kind's, any tier: hold_art.js)
+const bestTool = (kind) => { const inv = meObs ? meObs.self.inventory : {}; let best = null;
+  for (const [t, [k, i]] of Object.entries(RULES.tools)) if (k === kind && inv[t] > 0 && (!best || i > RULES.tools[best][1])) best = t;
+  return best; };
 const placeable = (item) => !!(PLACEABLE_BLOCK[item] || FILLS[item] || RULES.sown[item]);     // in hand, it goes on the ground
 // structures bigger than a tile (tiles.py FOOTPRINT): stored on the bottom-left tile, the rest is Z/z
 function footprint(c, x, y, px, py) {     // placing at (x, y) from (px, py): the anchor and every covered tile

@@ -50,7 +50,8 @@ def test_the_recipe_you_are_on_says_what_it_takes_and_what_you_have(game):
     game.press("c", 400)
     assert game.js("$('craft').style.display") == "block" and game.js("craftTab") == "Basics"
     assert game.js(KIND, "Tools") == "Tools"
-    game.press("ArrowDown", 150)
+    for _ in range(3):                                                                 # (wood's axe and pickaxe, stone's axe: tools go by tier)
+        game.press("ArrowDown", 150)
     assert game.js("craftFocus") == "pickaxe" and game.js("document.querySelector('#craftdetail .cname').textContent") == "Pickaxe"
     assert game.js("document.querySelector('#craftdetail .cblurb').textContent") == game.js("BLURB.pickaxe") != ""
     assert game.js(NEEDS) == [["Wood", "0/2", True], ["Stone", "0/3", True], ["Fiber", "0/1", True], ["Workbench", "far", True]]
@@ -65,11 +66,11 @@ def test_the_recipe_you_are_on_says_what_it_takes_and_what_you_have(game):
 
 
 def test_the_recipe_book_shows_five_names_of_one_kind_and_one_recipe(game):
-    """Five kinds, a bookmark each; five names at a time, of the kind you are on (it was sixty pictures at once, then
+    """Six kinds, a bookmark each; five names at a time, of the kind you are on (it was sixty pictures at once, then
     twelve cards); the switch keeps only what you can make; the button makes the one you are on."""
     game.give(wood=4)
     game.press("c", 400)
-    assert game.js("[...document.querySelectorAll('.ctab')].map((e) => e.dataset.kind)") == ["Basics", "Tools", "Build", "Home", "Wear"]
+    assert game.js("[...document.querySelectorAll('.ctab')].map((e) => e.dataset.kind)") == ["Basics", "Tools", "Build", "Home", "Metal", "Wear"]
     assert game.js(LIST) == ["workbench", "campfire", "torch", "rope", "plank"] and game.js("craftFocus") == "workbench"
     assert game.js("$('craftmore').textContent") == "Basics · 1 of 2" and game.js("document.querySelectorAll('#craftdetail .chead').length") == 1
     assert "workbench" in game.js(LIT) and "campfire" not in game.js(LIT)
@@ -77,7 +78,7 @@ def test_the_recipe_book_shows_five_names_of_one_kind_and_one_recipe(game):
     assert game.js(LIST) == game.js(LIT) and "workbench" in game.js(LIST) and game.js("$('craftonly').classList.contains('on')")
     game.js("$('craftonly').click()")
     game.press("Tab", 200)                                                             # tools: you can't make them yet
-    assert game.js("craftTab") == "Tools" and game.js("craftFocus") == "axe" and game.js(LIT) == []
+    assert game.js("craftTab") == "Tools" and game.js("craftFocus") == "wood_axe" and game.js(LIT) == []
     assert game.js(BUTTON + ".classList.contains('off')")
     assert game.js(KIND, "Basics") == "Basics" and game.js("craftFocus") == "workbench"
     game.js(BUTTON + ".click()")

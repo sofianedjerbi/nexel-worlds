@@ -94,6 +94,7 @@ async function act(tool, args, quiet) {
   }
   if (!r.ok && !["interrupted", "offline", "too_soon"].includes(r.error) && !quiet) toast(`${label(tool)}: ${r.detail || r.error}`, true);
   if (r.ok) {
+    if (r.result.lost) toast(r.result.lost[0].toUpperCase() + r.result.lost.slice(1), true);   // (ore broken with too low a pickaxe: it crumbled, sim/underground.py lost)
     const c = r.result.changed || {};
     const gained = Object.fromEntries(Object.entries(c.inventory || {}).filter(([, v]) => v > 0));
     const p = ents.get("agent" + myId);

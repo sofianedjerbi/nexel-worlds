@@ -69,6 +69,7 @@ class Observation:
             if abs(x - a.x) <= R and abs(y - a.y) <= R and "text" in m:
                 signs.append({"dx": x - a.x, "dy": y - a.y, "kind": self.world.block(x, y), "text": m["text"]})
         items.sort(key=lambda e: abs(e["dx"]) + abs(e["dy"]))
+        ores = self.ores_seen(a)
         events = a.events
         if consume_events:
             a.events = []
@@ -90,5 +91,19 @@ class Observation:
             "entities": out_ents[:20],
             "items": items[:15],
             "signs": signs[:10],
+            **({"ores": ores} if ores else {}),
             "events": events,
         }
+
+    def ores_seen(self, a: Agent, r: int = 4, below: int = 3, above: int = 4) -> list[dict]:
+        """The ore in the rock round you that shows (a cell of it with air on a side: a cave's wall, a cliff, a hole you
+        dug), the nearest first: where it is (dx, dy, its cell z) and what it is (tiles.py ORES). What is shut in the
+        rock is not seen."""
+        h, out = self.height(a), []
+        for y in range(a.y - r, a.y + r + 1):
+            for x in range(a.x - r, a.x + r + 1):
+                for z in range(h - below, h + above + 1):
+                    if self.placed.kind(x, y, z) is None and (o := self.world.made_of(x, y, z)) in T.ORE_OF and self.open_cell(x, y, z):
+                        out.append({"dx": x - a.x, "dy": y - a.y, "z": z, "ore": o})
+        out.sort(key=lambda e: abs(e["dx"]) + abs(e["dy"]) + abs(e["z"] - h))
+        return out[:10]

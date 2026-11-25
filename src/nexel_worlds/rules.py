@@ -54,7 +54,7 @@ def rules_table() -> dict:
         "sown": sown,
         "fills": {item: {char(g): char(to) for g, to in fill.items()} for item, fill in T.FILLERS.items()},
         "land_blocks": list(LAND_BLOCKS),
-        "food": T.FOOD, "feed": T.FEED, "weapons": T.WEAPONS, "crops": T.CROPS,
+        "food": T.FOOD, "feed": T.FEED, "weapons": T.WEAPONS, "tools": {k: list(v) for k, v in T.TOOLS.items()}, "crops": T.CROPS,
         "wear": T.WEAR, "slots": list(SLOTS),
         "hp_max": C.HP_MAX, "food_max": C.FOOD_MAX, "sprint_food": C.SPRINT_FOOD, "can_size": C.CAN_SIZE,
         "pace": C.PACE, "swim_pace": C.SWIM_PACE, "eat_pace": C.EAT_PACE, "flee_stride": C.FLEE_STRIDE, "spring_s": C.SPRING_S,

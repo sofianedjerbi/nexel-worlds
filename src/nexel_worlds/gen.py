@@ -156,10 +156,10 @@ def gen_tile(seed: int, x: int, y: int, level: int = 0) -> tuple[int, int]:
     cand4, roll4 = _picked(seed, x, y, 4, 13)
     cand11, roll11 = _picked(seed, x, y, 11, 23)
     grove = fbm(seed, x, y, 48, 4)
-    if kind == "mountain":            # stone: boulders and ore here and there, nothing grows
+    if kind == "mountain":            # stone: boulders here and there, nothing grows (ore is in the land's stone: stone.py ore)
         cand5, roll5 = _picked(seed, x, y, 5, 83)
         if cand5 and roll5 < 0.45 and fbm(seed, x, y, 12, 84) > 0.45:
-            return G["grass"], B["ore"] if roll5 < 0.15 else B["rock"]
+            return G["grass"], B["rock"]
         return G["grass"], B["none"]
     if kind == "swamp":               # pools, thickets, mushrooms
         if fbm(seed, x, y, 9, 41) > 0.6:
@@ -177,8 +177,8 @@ def gen_tile(seed: int, x: int, y: int, level: int = 0) -> tuple[int, int]:
         return G["grass"], B["none"]
     if kind == "dry":                 # bare earth with patches of grass, stones, the odd lone tree
         ground = G["dirt"] if fbm(seed, x, y, 20, 2) > 0.5 else G["grass"]
-        if cand4 and roll4 < 0.22:
-            return ground, B["rock"] if roll4 < 0.16 else B["ore"]
+        if cand4 and roll4 < 0.16:
+            return ground, B["rock"]
         if cand11 and roll11 < 0.2:
             return ground, B["tree"] if roll11 < 0.12 else B["berry_bush"]
         return ground, B["none"]
@@ -191,7 +191,7 @@ def gen_tile(seed: int, x: int, y: int, level: int = 0) -> tuple[int, int]:
     if kind == "highlands" and cand3 and roll3 < 0.08:
         return ground, B["rock"]
     if fbm(seed, x, y, 34, 5) > 0.76 and cand and roll < 0.6:
-        return ground, (B["ore"] if _hash(seed, x, y, 19) < 0.18 else B["rock"])
+        return ground, B["rock"]
     if ground == G["grass"] and fbm(seed, x, y, 14, 6) > 0.66 and _hash(seed, x, y, 31) < 0.2:
         return ground, B["flower"]
     if cand11:

@@ -152,7 +152,7 @@ const Build = (() => {
   }
   async function build(j) {                           // -> why it could not be done (nothing: it is done)
     if (!j.take && !(meObs.self.inventory[j.item] > 0)) return `No ${label(j.item)} left`;
-    const at = myPos(); if (j.dig && !j.up && at && at.x === j.x && at.y === j.y && myZ(at.x, at.y) === j.z) { const r = await act("dig_down", meObs.self.inventory.pickaxe ? {with: "pickaxe"} : {}, true); return r && r.ok ? null : (r && (r.detail || r.error)) || "It could not be done"; }   // (the block you stand on: from on it, you come down with it)
+    const at = myPos(); if (j.dig && !j.up && at && at.x === j.x && at.y === j.y && myZ(at.x, at.y) === j.z) { const r = await act("dig_down", bestTool("pickaxe") ? {with: bestTool("pickaxe")} : {}, true); return r && r.ok ? null : (r && (r.detail || r.error)) || "It could not be done"; }   // (the block you stand on: from on it, you come down with it)
     for (let i = 0; j.tunnel && !j.tried && i < 24 && !open(j.x, j.y, j.z); i++) await new Promise((done) => setTimeout(done, 25));   // (the hole dug before it may be on your screen a moment after it is dug)
     if (j.tunnel && !open(j.x, j.y, j.z)) return "It could not be reached";     // (what was to open it is gone: it could not be done)
     const here = () => { const s = myPos(); return {...s, z: myZ(s.x, s.y)}; };
@@ -181,7 +181,7 @@ const Build = (() => {
     }
     if (!S.plans.has(key(j, j.z))) return null;       // (taken back meanwhile)
     const was = Floors.thingAt(j.x, j.y, j.z), inv = meObs.self.inventory;
-    const tool = j.dig ? (inv.pickaxe ? "pickaxe" : null) : (j.take || j.swap) && TOOL_FOR[was] && inv[TOOL_FOR[was]] ? TOOL_FOR[was] : null;   // (a hole: the pickaxe if you have one)
+    const tool = j.dig ? bestTool("pickaxe") : (j.take || j.swap) && TOOL_FOR[was] ? bestTool(TOOL_FOR[was]) || (inv[TOOL_FOR[was]] ? TOOL_FOR[was] : null) : null;   // (a hole: your best pickaxe if you have one; a thing: your best tool of its kind, vocab.js)
     const went = (r) => (r && r.ok ? null : (r && (r.detail || r.error)) || "It could not be done");
     const z = FLOORS || j.dig ? {z: j.z} : {}, dig = () => { actTarget = {x: j.x, y: j.y}; return act(FLOORS || !j.up ? "dig" : "unroof", {dir: "N", ...z, ...(tool ? {with: tool} : {})}, true); };
     if (j.swap && SWAP[j.item].includes(was)) {        // what is in its place comes down first (and back into your pack)

@@ -86,13 +86,13 @@ function drawBody(p, sx, sy, S, t, now) {
       // full 8-frame tool swings: wind-up, strike (frame 4, with the arc), follow-through
       const [tx, ty] = action.at || [Math.round(p.tx) + p.fx, Math.round(p.ty) + p.fy], target = combAt(tx, ty);   // the tile worked on
       // the sheet's swings show a tool: only use them when one is in hand; bare hands reach out and back
-      const held = action.with && SWING_ROW[action.with];
+      const held = action.with && SWING_ROW[toolArt(action.with)];
       anim = held || "idle";
       const fps = tool === "attack" ? 20 : 13, n = Math.floor(k * fps);
       frame = n % 8;
       if (!held) lunge = Math.round(Math.sin(Math.min(1, frame / 6) * Math.PI) * 3) * z;
       // a sword cuts and a spear is thrust (swing_art.js), where the sheet's swing is a chop: the body stands and steps in
-      if (tool === "attack" && SwingArt.KINDS.includes(action.with)) { blow = [action.with, frame]; anim = "idle"; lunge = SwingArt.STEP[action.with][frame] * z; }
+      if (tool === "attack" && SwingArt.KINDS.includes(toolArt(action.with))) { blow = [toolArt(action.with), frame]; anim = "idle"; lunge = SwingArt.STEP[toolArt(action.with)][frame] * z; }
       const swing = Math.floor(n / 8);
       if (frame >= 4 && p.lastSwing !== swing) {     // the strike lands: debris and a shake on the target
         p.lastSwing = swing;

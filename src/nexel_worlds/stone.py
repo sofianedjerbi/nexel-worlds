@@ -5,6 +5,10 @@ web/js cells.js stoneAt). World's (world.py)."""
 
 from .cells import col_top
 from .chunks import CHUNK, ROUND, stone_at
+from .gen import _hash
+from .tiles import ORES
+
+VEIN = 4                              # a vein's box: VEIN cells a side; about half its cells are ore (tiles.py ORES share)
 
 
 class Stone:
@@ -16,8 +20,21 @@ class Stone:
         self.chunk(x >> 5, y >> 5).stone[(y & 31) * CHUNK + (x & 31)] = stone_at(self.top(x, y), min(self.top(x + dx, y + dy) for dx, dy in ROUND))
 
     def made_of(self, x: int, y: int, z: int) -> str:
-        """A cell of the land where nobody put a block (landblocks.py): what a dig gives, what a screen paints."""
-        return "stone_block" if z <= self.stone(x, y) else "dirt"
+        """A cell of the land where nobody put a block (landblocks.py): what a dig gives, what a screen paints: its
+        ore (an item: coal, iron_ore...), else stone or earth."""
+        if z > self.stone(x, y):
+            return "dirt"
+        o = self.ore(x, y, z)
+        return o.item if o else "stone_block"
+
+    def ore(self, x: int, y: int, z: int):
+        """The ore the stone cell (x, y, z) is, of the generator's (tiles.py ORES), or None: in its heights, a vein's box
+        holds one (one in `share`), and about half the box's cells are it. From the seed alone: nothing is kept."""
+        for k, o in enumerate(ORES):
+            if o.bottom <= z <= o.top and _hash(self.seed, x // VEIN, y // VEIN, z // VEIN * 8 + k + 40000) < o.share \
+                    and _hash(self.seed, x, y, z * 8 + k + 90000) < .5:
+                return o
+        return None
 
     def lay(self, c, top_of):
         """A chunk just generated: its stone by its own tops and the land round it (top_of(x, y): the generator's)."""

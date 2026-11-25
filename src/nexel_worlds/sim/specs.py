@@ -28,17 +28,22 @@ TOOL_SPECS = {
     "walk": {"args": {**DIR_ARG, "run": "bool (optional)"}, "desc": "keep walking in a direction until blocked or stopped (a step up blocks it: jump)"},
     "stop": {"args": {}, "desc": "stop the current action"},   # (a player's screen also says walk's `from`, stop's `at`: Movement.follow)
     "move_to": {"args": {"x": "int", "y": "int", "run": "bool (optional)", "z": "int (optional): a height there, a floor built over a room"}, "desc": "walk to absolute tile (pathfinding, <=64 tiles)"},
-    "dig_down": {"args": {"with": "pickaxe"}, "desc": "dig down where you stand (by hand, or faster with a pickaxe in hand). The block "
+    "dig_down": {"args": {"with": "a pickaxe of any tier: wood_pickaxe, pickaxe (stone), iron_pickaxe, titanium_pickaxe"}, "desc": "dig down where you stand (by hand, or faster with a pickaxe in hand). The block "
                  "under your feet goes into your pack (a block of the land: dirt, or stone_block) and you come down with it, on a hill or into a pit below sea level (down to "
                  "-512); over a hollow you fall in (a fall of more than 3 layers hurts: 5 hp a layer). You can jump "
                  "onto ground one layer higher (jump); higher than that is a wall: dig toward it with a pickaxe to take out "
                  "the block in front of you (a tunnel). Caves are empty space under the hills (in_cave in your stats)"},
-    "dig": {"args": {"dir": "N|E|S|W|up", "with": "tool in hand (optional: axe, pickaxe, hoe; default bare hands)",
+    "dig": {"args": {"dir": "N|E|S|W|up", "with": "tool in hand (optional: an axe or pickaxe of any tier, hoe; default bare hands)",
                      "z": "int (optional): the height of something built over the ground, or of the block of land to dig (in front of you: from your z to your z + 2)"},
             "desc": "dig the adjacent block (tree, rock, bush, wall...) or till the ground (needs a hoe); with z on bare ground, the ground there comes down a layer (a hole: faster with a pickaxe). "
                     "A block of the land you dig is that block in your pack, not a material: dirt (earth: the two layers at sea level) or stone_block (higher and deeper); "
                     "place puts it back as land; craft stone turns 1 stone_block into 2 stone, what tools and walls are made of. By hand, "
-                    "wood takes 4x and stone 6x as long as with an axe / pickaxe; ore needs a pickaxe. A built block in front of you (a step, "
+                    "wood takes 4x and stone 6x as long as with an axe / pickaxe. Tools come in tiers: wood (wood_axe, wood_pickaxe: no workbench), "
+                    "stone (axe, pickaxe), iron (iron_axe, iron_pickaxe), titanium (titanium_axe, titanium_pickaxe); a higher tier digs faster. "
+                    "The stone deep in the land holds ores in veins (observe lists the ore you can see: a cave wall, a hole's side): coal (2 to -80, any pickaxe), "
+                    "copper (-2 to -100) and iron (-4 to -220) need a stone pickaxe, gold (-30 to -320) and titanium (-60 to -512) an iron one. "
+                    "Smelt at a campfire, one coal each: iron_ore -> iron_ingot (iron tools, sword, armour), copper_ore -> copper_ingot (wire), "
+                    "titanium_ore x2 -> titanium_ingot (titanium tools and sword), gold_ore -> 3 gold_coin (money). A built block in front of you (a step, "
                     "the floor you stand level with) comes back into your pack, what stands on it first. "
                     "Out of a hole, or up through the land, cut a step: dig dir=up (the block over your head, if there is one), dig the block in front at z = your z + 2 "
                     "(your head's height), then jump that way: you land on the block left under it. Again for each layer"},

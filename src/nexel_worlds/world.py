@@ -153,10 +153,14 @@ class World(Stone):
     def _tidy(self, c: Chunk):
         """Older worlds spread berry bushes at random until meadows filled up. Nobody can plant a bush, so a
         bush where the generator never put one came from that: clear it. Lone thickets (hedge balls) aren't
-        generated any more and nobody can make one: clear those too."""
-        bush, thicket = B["berry_bush"], B["thicket"]
+        generated any more and nobody can make one: clear those too. And the boulders of ore on the hills: ore is in the
+        land's stone now (stone.py ore), and those are the plain boulders they were ("remove those weird ores balls")."""
+        bush, thicket, ore = B["berry_bush"], B["thicket"], B["ore"]
         for i, blk in enumerate(c.block):
-            if blk == thicket:
+            if blk == ore:
+                c.block[i] = B["rock"]
+                c.dirty = True
+            elif blk == thicket:
                 c.block[i] = B["none"]
                 c.dirty = True
             elif blk == bush:
