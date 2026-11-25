@@ -116,6 +116,9 @@ jobs:
     timeout-minutes: 45
     strategy:
       fail-fast: false
+      # a pull request takes 4 of the 20 runners at most, main its 16: with every pull request's jobs at once, main's
+      # full run waited behind ~110 jobs (#47)
+      max-parallel: ${{ github.event_name == 'pull_request' && 4 || 16 }}
       matrix:
         files: ${{ fromJSON(needs.e2e-plan.outputs.shards) }}
     steps:
