@@ -134,7 +134,15 @@ jobs:
         env:
           FILES: ${{ matrix.files }}
           E2E_CHROME_ARGS: --use-angle=vulkan --enable-features=Vulkan --ignore-gpu-blocklist
+          E2E_SHOTS: ${{ runner.temp }}/shots
         run: uv run pytest -m e2e -n 0 -q --durations=10 $FILES
+      # each failing test's last picture (tests/e2e/pages.py), one artifact a runner
+      - if: failure()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: e2e-shots-${{ strategy.job-index }}
+          path: ${{ runner.temp }}/shots
+          if-no-files-found: ignore
 
   commits:
     name: Conventional Commits
