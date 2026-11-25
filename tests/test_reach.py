@@ -95,3 +95,8 @@ def test_reach_rule_is_pure_and_the_world_uses_it():
     assert reach_of("melee", "spear") == REACH["melee"] + LEAD + LONG["spear"]
     assert reach_of("melee", who="mossback") == REACH["melee"] + LEAD + 1
     assert in_reach(3, 0, 0, 2.5) and not in_reach(3, 1, 0, 2.5) and not in_reach(2, 0, 8, 2)
+
+
+def test_an_untouchable_creature_refuses_the_blow_by_its_table_flag():
+    from nexel_worlds.sim.entities import CREATURES
+    assert [k for k, c in CREATURES.items() if c.get("untouchable")] == ["wisp"]

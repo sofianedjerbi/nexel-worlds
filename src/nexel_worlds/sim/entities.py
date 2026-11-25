@@ -133,7 +133,8 @@ CREATURES = {
     "tusker": {"hp": 8, "drops": (("meat", .8, 1, 2), ("leather_vest", .05, 1, 1)), "char": "D", "damage": 3},
     "pincer": {"hp": 3, "drops": (("meat", .5, 1, 1), ("shell_plate", .05, 1, 1)), "char": "I", "damage": 1},
     "strawman": {"hp": 10, "drops": (("hay", 1, 1, 2), ("straw_hat", .1, 1, 1)), "char": "S", "damage": 2},
-    "wisp": {"hp": 1, "drops": (), "char": "i"},
+    # untouchable: a light, a hand goes through it (sim/combat.py refuses the blow)
+    "wisp": {"hp": 1, "drops": (), "char": "i", "untouchable": True},
     "gustling": {"hp": 3, "drops": (("seed", .5, 1, 2), ("leaf_charm", .05, 1, 1)), "char": "j"},   # (and what it stole: its `loot`)
     "grumblestump": {"hp": 14, "drops": (("wood", .9, 2, 4), ("spore_charm", .05, 1, 1)), "char": "N", "damage": 4},
     "snapbloom": {"hp": 6, "drops": (("seed", .6, 1, 2), ("flower_charm", .05, 1, 1)), "char": "d", "damage": 2},

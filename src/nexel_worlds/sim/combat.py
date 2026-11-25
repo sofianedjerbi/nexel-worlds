@@ -3,7 +3,7 @@
 from .. import tiles as T
 from ..tiles import DIRS
 from .constants import ATTACK_COOLDOWN, FARM, FLEE_SECONDS, FOOD_MAX, HP_MAX, SAT_START, sec
-from .entities import ActionError, Agent, Creature, roll_drops
+from .entities import CREATURES, ActionError, Agent, Creature, roll_drops
 from .progress import XP_KILL
 
 
@@ -35,7 +35,7 @@ class Combat:
         t = self._find_target(args.get("target"))
         if t is a:
             raise ActionError("bad_target", "you cannot attack yourself")
-        if isinstance(t, Creature) and t.kind == "wisp":
+        if isinstance(t, Creature) and CREATURES[t.kind].get("untouchable"):
             raise ActionError("bad_target", "your hand goes through it")
         weapon = self.held(a, args)
         reaches = lambda: self.within(a, "melee", t.x, t.y, self.height(t), weapon, getattr(t, "kind", None))
