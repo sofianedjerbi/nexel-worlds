@@ -39,13 +39,19 @@ function rpc(op, extra) {
     const id = ++aid; pending[id] = res; agentWs.send(JSON.stringify({id, op, ...extra}));
   });
 }
-let refreshing = false;
+let refreshing = false, hurtAt = 0;
+// What a fall cost you, on your hearts as you land (leap.js land): they were redrawn by the next look the poll got back, up to a second after the "-1" over your head.
+// A look asked for before that landing is older than it: it does not put the hearts back (refresh)
+function hurtNow(n) {
+  if (!meObs || !(n > 0)) return;
+  meObs.self.hp = Math.max(0, meObs.self.hp - n); hurtAt = performance.now(); drawVitals(meObs.self);
+}
 async function refresh() {
   if (!me || refreshing) return;
-  refreshing = true;
+  refreshing = true; const t0 = performance.now();
   const r = await rpc("observe", {});
   refreshing = false;
-  if (!r.ok) return;
+  if (!r.ok || t0 < hurtAt) return;
   meObs = r.obs; const s = meObs.self;
   const p = ents.get("agent" + myId);                          // far from where the server has you (another level,
   // (the tile you stopped on, its time gone: no longer a guess. It is dropped as a tick has you (walk.js myTick), but moved

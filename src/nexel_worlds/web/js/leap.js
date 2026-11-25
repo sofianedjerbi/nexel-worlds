@@ -178,14 +178,14 @@ const Leap = (() => {
     st.leapAt = past || bump ? null : {x: p.tx, y: p.ty, z};
     if (myAt) myAt.z = z;
     if (z0 - z >= FALL.from) {                // (what it costs shown as you land, by the world's own rule: sim/movement.py fell. Waiting for its `fall` event showed it most of a second after)
-      const n = (z0 - z - RULES.fall_safe) * RULES.fall_hp; if (n > 0) { st.hurt = n; st.told = now; }   // (a server without fall_hp in its rules: NaN, its event says it)
+      const n = (z0 - z - RULES.fall_safe) * RULES.fall_hp; if (n > 0) { st.hurt = n; st.told = now; hurtNow(n); }   // (a server without fall_hp in its rules: NaN, its event says it)
       landed(p, z0 - z, now, true, st); st.bounce = null; }   // (down from high: a fall's landing, jump.js: its dust, its thud; what it cost when the world says, state.js. Not its bounce: the body 12 px up the screen in a frame and back)
     else { jumpDust(p, 4, z < z0 ? 1.3 : 1); sfx(z < z0 ? "thud" : "step", p.tx, p.ty); }
     if (path.length) {
       const [x, y, n] = mark(p.tx, p.ty);
       if (!past) pred = {x, y, until: now + 3000};   // (walking on at once: no stop to wait for. A stop there read as turned back: `cut`, the flight dropped)
-      rpc("act", {tool: "leap", args: {land: z, n, run}});
-    } else rpc("act", {tool: "jump", args: {}});
+      rpc("act", {tool: "leap", args: {land: z, n, run}}).then(() => refresh());   // (the world's own count as soon as it has the fall: hurtNow guessed it)
+    } else rpc("act", {tool: "jump", args: {}}).then(() => refresh());
     if (past) { p.tx += h[0]; p.ty += h[1]; syncWalk(); }   // (on into the next tile, as the walk is: the tile behind you read as a step down to it)
     else if (bump) { if (can(p)) start(p, now, {w: h, run}, true); else st.leapAt = {x: p.tx, y: p.ty, z}; }
   }
