@@ -3,6 +3,8 @@
 Run with `uv run pytest -m e2e` (needs Google Chrome). Every test fails on any page error.
 """
 
+import os
+import shlex
 import socket
 import subprocess
 import sys
@@ -118,14 +120,34 @@ def server(tmp_path_factory):
     proc.wait(10)
 
 
+# What draws the land: E2E_CHROME_ARGS picks it (ci.yml: on runners with no GPU Chrome draws on the CPU, and the renderer
+# it uses for that sets how slow every frame is); the run's last line names the one it got
+RENDERER = []
+
+
+def webgl_renderer(b) -> str:
+    page = b.new_page()
+    try:
+        return page.evaluate("""() => { const gl = document.createElement('canvas').getContext('webgl2'); if (!gl) return 'no WebGL2';
+          const d = gl.getExtension('WEBGL_debug_renderer_info'); return d ? gl.getParameter(d.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER); }""")
+    finally:
+        page.close()
+
+
+def pytest_terminal_summary(terminalreporter):
+    if RENDERER:
+        terminalreporter.write_line(f"WebGL renderer: {RENDERER[0]} (E2E_CHROME_ARGS={os.environ.get('E2E_CHROME_ARGS', '')!r})")
+
+
 @pytest.fixture(scope="session")
 def browser():
     pw = pytest.importorskip("playwright.sync_api").sync_playwright().start()
     try:
-        b = pw.chromium.launch(channel="chrome", headless=True)
+        b = pw.chromium.launch(channel="chrome", headless=True, args=shlex.split(os.environ.get("E2E_CHROME_ARGS", "")))
     except Exception as e:  # noqa: BLE001 - no Chrome here: skip the suite rather than fail it
         pw.stop()
         pytest.skip(f"Chrome is needed for the end-to-end suite: {e}")
+    RENDERER.append(webgl_renderer(b))
     yield Pages(b)                                        # (its pages on the tests' clock, counted and shut: pages.py)
     b.close()
     pw.stop()

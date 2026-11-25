@@ -125,9 +125,15 @@ jobs:
           enable-cache: true
           cache-dependency-glob: uv.lock
       - run: uv sync --locked
+      # Chrome draws the land with Mesa's lavapipe (Vulkan on the CPU, LLVM) and not its own SwiftShader: 3 to 6 times
+      # faster here (#47: loading, edits and hd_keepup took 137-240 s, 570-811 s on SwiftShader; edits passed only on it).
+      # Mesa's GL driver through ANGLE (--use-angle=gl-egl) did not take: Chrome fell back to SwiftShader. The run's last
+      # line names the renderer it got (tests/e2e/conftest.py).
+      - run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends mesa-vulkan-drivers
       - name: The game in Chrome (the runner's own Google Chrome)
         env:
           FILES: ${{ matrix.files }}
+          E2E_CHROME_ARGS: --use-angle=vulkan --enable-features=Vulkan --ignore-gpu-blocklist
         run: uv run pytest -m e2e -n 0 -q --durations=10 $FILES
 
   commits:
