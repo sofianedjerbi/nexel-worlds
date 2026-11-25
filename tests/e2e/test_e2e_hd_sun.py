@@ -130,9 +130,11 @@ def test_a_shadow_keeps_its_px_while_the_land_is_made_again(browser, server):
             g.rpc("dev_teleport", x=x + dx, y=y + dy, z=0)
             settled(g)
         g.js("""(() => { const p = myPos(), a = HdLook.screenOf(p.x + .5, p.y + .92, topAt(p.x, p.y)), k = devicePixelRatio, X = Math.round(a[0] * k), Y = Math.round(a[1] * k);
-          const mid = HdLook.read(X, Y, 1, 1).data; window.__sh = []; window.__st = []; window.__b0 = HdLook.builds; window.__busy = 0;
-          const f = () => { const d = HdLook.read(X - 24 * k, Y - 9 * k, 48 * k, 18 * k).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - mid[0]) + Math.abs(d[i + 1] - mid[1]) + Math.abs(d[i + 2] - mid[2]) < 12) n++;
-            window.__sh.push(n); window.__st.push([n, HdLook.why, HdLook.busy ? 1 : 0, HdLook.builds, HdThings.sheet.id, [...HdLook.read(X, Y, 1, 1).data.slice(0, 3)].join(), JSON.stringify(HdLook.work)]); if (HdLook.busy) window.__busy++; if (window.__sh.length < 150) requestAnimationFrame(f); };
+          window.__sh = []; window.__st = []; window.__b0 = HdLook.builds; window.__busy = 0;
+          // (the shadow's own colour this frame, under you: the night's light moves on, and one frame of a run its wash went
+          //  darker, 111,117,100 -> 76,62,92: matched to the first frame's colour, every px of the shadow was lost at once)
+          const f = () => { const d = HdLook.read(X - 24 * k, Y - 9 * k, 48 * k, 18 * k).data, c = (9 * k * 48 * k + 24 * k) * 4, mid = d.slice(c, c + 3); let n = 0; for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - mid[0]) + Math.abs(d[i + 1] - mid[1]) + Math.abs(d[i + 2] - mid[2]) < 12) n++;
+            window.__sh.push(n); window.__st.push([n, HdLook.why, HdLook.busy ? 1 : 0, HdLook.builds, HdThings.sheet.id, [...mid].join(), JSON.stringify(HdLook.work)]); if (HdLook.busy) window.__busy++; if (window.__sh.length < 150) requestAnimationFrame(f); };
           requestAnimationFrame(f); return 1; })()""")
         g.sleep(150)
         # (rocks, away from you, along a row 25 tiles long: the land's version changes, in more than one of its chunks. It was

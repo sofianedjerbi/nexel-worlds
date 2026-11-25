@@ -136,7 +136,14 @@ def test_sprinting_down_a_stepped_hill_the_eye_does_not_nod(game, way):
     game.rpc("dev_teleport", x=x, y=y, z=6); game.arrive(); game.rest()
     open_sky = game.js("HdLook.cam.pitch")
     game.js(PITCH)
-    game.hold(["Shift", {"N": "w", "S": "s", "E": "d", "W": "a"}[way]], 1400)
+    # (sprinting until you are past the sixth step, 13 tiles on: a frame over 0.1 s is cut there (render.js update), so
+    #  on the runners' CPU-drawn frames 1400 ms of the machine's time took you 10 tiles, a step short of the foot)
+    keys = ["Shift", {"N": "w", "S": "s", "E": "d", "W": "a"}[way]]
+    for k in keys:
+        game.page.keyboard.down(k)
+    game.wait(f"(() => {{ const p = myPos(); return (p.x - {x}) * {d[0]} + (p.y - {y}) * {d[1]} >= 13; }})()", timeout=15000)
+    for k in reversed(keys):
+        game.page.keyboard.up(k)
     game.rest()
     rec = game.js("(() => { __on = false; return __pt; })()")
     assert game.server()["z"] == 0, game.server()
