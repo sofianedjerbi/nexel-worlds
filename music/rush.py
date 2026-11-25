@@ -24,14 +24,21 @@ import master
 import menu
 import mixcheck
 import pieces
+import surge
 from directions import midi
 
 SUGAR = next(m for m in menu.LATER if m["id"] == "sugar")
 ACC = pieces.ACC
 MINOR = ["Cm9", "Gm7", "Abmaj9", "Gm7", "Cm9", "Gm7", "Fm9", "Abmaj9"]                # the break: the relative minor's own cycle, the kept voicings
 SECTIONS = [("rise", 8), ("fight", 16), ("fight+", 16), ("break", 8), ("build", 8), ("rage", 16)]
-SOUNDS = dict(choir="Pads/Synth Choir MW O-Ah", brass="Dan Maurer/Synths/Big Brass", sub="Basses/Sub 1", over="Damon Armani/Plucks/Brass Pluck 1")
-LEVELS = menu.LEVELS | {"choir": -23, "brass": -19, "sub": -19, "over": -24, "tom": -19, "crash": -24, "hat": -31, "open": -29}
+# Every added sound measured on the beat (surge.timing at 156 BPM, ms to half its peak): Main Brass 2, Brass N4 -1,
+# Sub 3 0. The first choice for the brass (Big Brass) spoke 90 ms late, nearly a sixteenth (96 ms), and was heard as
+# off the beat: "the deeper tone under the lead sounds off-rythm and ugly". ON_TIME refuses such a sound before rendering.
+SOUNDS = dict(choir="Pads/Synth Choir MW O-Ah", brass="Damon Armani/Plucks/Main Brass", sub="Basses/Sub 3", over="Damon Armani/Plucks/Brass N4")
+# The doubles sit under the lead, not beside it: the octave below 8 dB down, the octave above 10 dB down.
+LEVELS = menu.LEVELS | {"choir": -23, "brass": -23, "sub": -20, "over": -25, "tom": -19, "crash": -24, "hat": -31, "open": -29}
+ON_TIME = 15                                                    # ms: the most a rhythmic part may take to speak
+SLOW_OK = ("pad", "choir")                                      # held chords may swell in
 
 
 def arrange(st):
@@ -47,7 +54,7 @@ def arrange(st):
         kind, notes = s["tune"][i % 32]
         for (st_, ln), note in zip(shapes[kind], notes.split()):
             for part, up, v in parts:
-                p[part].append((s0 + st_, ln * (0.9 if part == "brass" else 1), midi(note) + up, v * vel * ACC[st_ % 16]))
+                p[part].append((s0 + st_, ln, midi(note) + up, v * vel * ACC[st_ % 16]))
         return kind
 
     for name, n in SECTIONS:
@@ -87,8 +94,12 @@ def arrange(st):
                 p["bass"] += [(s0 + a, ln, midi(root) + up, vel) for a, ln, up, vel in s["bass"]]
             elif name == "break":
                 p["bass"] += [(s0, 14, midi(root), 96)]
-            if name in ("rise", "fight+", "break", "rage", "build"):
-                p["sub"] += [(s0, 15.5, midi(root) - 12, 100)]
+            # the sub: an octave under the bass, on the bass's own root notes and with its rhythm, so it moves with the
+            # kick instead of holding through it; in the rise and the break, where the bass holds, it holds too
+            if name in ("fight+", "rage", "build"):
+                p["sub"] += [(s0 + a, ln, midi(root) - 12, vel) for a, ln, up, vel in s["bass"] if up == 0]
+            elif name in ("rise", "break"):
+                p["sub"] += [(s0, 14, midi(root) - 12, 96)]
             # drums
             if name == "rise":
                 if b < 4:
@@ -139,11 +150,21 @@ def render(out):
     st = pieces.BASE | dict(id="rush", bpm=s["bpm"], sync=True, levels=LEVELS, lead=s["lead"], chords=s["chords"], pad=s["pad"],
                             bass_sound=s["bass_sound"], kit=s["kit"] | SOUNDS | {"answer": s["second"]})
     score, steps, under = arrange(st)
+    sounds = pieces.KIT | st["kit"] | {"lead": st["lead"], "chords": st["chords"], "pad": st["pad"], "bass": st["bass_sound"]}
+    for part, notes in score.items():
+        if part in SLOW_OK:
+            continue
+        note = int(np.median([m for _, _, m, _ in notes]))
+        t = surge.timing(sounds[part], s["bpm"], note)
+        echoes = [e for e in t["echoes"] if e[1] * 15 / s["bpm"] > .13]   # a repeat after the 120 ms test note ends (a bump inside it is its body)
+        if t["late_ms"] > ON_TIME or echoes:
+            raise SystemExit(f"the {part} ({sounds[part]}) is not on the beat: {t}")
     bad = pieces.clashes(score, under)
     if bad:
         raise SystemExit(f"notes clash with their chord: {bad[:12]}")
     parts = mixcheck.stems(st, arrange)
-    mixcheck.check(parts)
+    wrong = mixcheck.check(parts)
+    print("out of the kept pieces' range:", wrong or "nothing")
     y, _ = master.master(mixcheck.bus(parts), "day")
     with wave.open(str(out), "wb") as w:
         w.setnchannels(2), w.setsampwidth(2), w.setframerate(pieces.SR)
