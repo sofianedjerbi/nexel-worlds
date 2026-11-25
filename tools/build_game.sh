@@ -21,8 +21,8 @@ OUT=${1:-dist}
 AUDIO="uv run --extra audio python"
 SURGE="uv run --no-project --python 3.11 --with dawdreamer --with numpy python"   # (DawDreamer hosts Surge XT: Python 3.11)
 # a render that fails can hang on its way out (Surge's threads keep the process alive): where GNU timeout is (Linux, CI),
-# each render job is given 40 minutes, so a failure fails instead of waiting for the job's own limit
-LIMIT=$(command -v timeout >/dev/null 2>&1 && echo "timeout 2400" || true)
+# each render job is given an hour, so a failure fails instead of waiting for the job's own limit
+LIMIT=$(command -v timeout >/dev/null 2>&1 && echo "timeout 3600" || true)
 
 # The music is rendered again only when what makes it has changed: a stamp of the music's sources (its scripts and its
 # data, music/*.py and *.json, less sfx*: the sound effects are made every time, in seconds) is kept beside the renders; the same stamp and every track there: the renders are kept.
@@ -41,13 +41,12 @@ else
   rm -f $RENDERS/.stamp
   $AUDIO music/fetch_samples.py
   $AUDIO music/sampler.py
-  # the pieces the game plays (master.py reads all of its list: far shore night D too), at once, then the rest
-  $LIMIT $SURGE music/pieces.py cute1 shore mc1 shore_night_c shore_night_d mossback2 & a=$!
-  $LIMIT $SURGE music/bright.py & b=$!
-  $LIMIT $SURGE music/slowtide.py high full & c=$!
-  wait $a                                      # each waited for by name, each its own line: a bare `wait`, or a chain
-  wait $b                                      # of them joined by &&, would let a failed render pass under set -e
-  wait $c
+  # the pieces the game plays (master.py reads all of its list: far shore night D too), one job after the other: each
+  # loads dozens of Surge instances (slowtide.py its own pool of them), and three at once on a 4-core runner crawled
+  # past 40 minutes where each alone takes a few
+  $LIMIT $SURGE music/pieces.py cute1 shore mc1 shore_night_c shore_night_d mossback2
+  $LIMIT $SURGE music/bright.py
+  $LIMIT $SURGE music/slowtide.py high full
   $AUDIO music/master.py
   $SURGE music/refit.py
   echo "$STAMP" > $RENDERS/.stamp
