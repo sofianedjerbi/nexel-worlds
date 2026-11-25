@@ -64,8 +64,33 @@ jobs:
           enable-cache: true
           cache-dependency-glob: uv.lock
       - run: uv sync --locked
-      # tests/e2e plays the game in Chrome and needs the art pack (not public): not in CI
       - run: uv run pytest tests -q --ignore=tests/e2e
+
+  # The browser tests (tests/e2e): the game in real Chrome against a fresh server, here and not on the shared Mac,
+  # on every pull request and every push to main. Four runners, a quarter of the files each (every fourth, by name).
+  # The tests that need the built sounds (not in git: tools/build_audio.py) skip here.
+  e2e:
+    name: Browser tests (${{ matrix.shard }}/4)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.4.0
+        with:
+          python-version: "3.14"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked
+      - name: The game in Chrome (the runner's own Google Chrome)
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: |
+          files=$(ls tests/e2e/test_*.py | sort | awk -v s="$SHARD" 'NR % 4 == s % 4')
+          uv run pytest -m e2e -n 3 -q --durations=15 $files
 
   commits:
     name: Conventional Commits
