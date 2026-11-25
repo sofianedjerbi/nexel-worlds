@@ -4,10 +4,32 @@ import json
 import sqlite3
 
 from ..cells import HIGH, LOW
+from ..ores import RENAMED
 
 
 class Persistence:
     """Simulation mixin: saving the world: flushing agents, items, creatures and timers to SQLite; unloading idle chunks."""
+
+    def old_items(self):
+        """What an old save holds that is not so any more: eggs that will never hatch (gone), and items named otherwise
+        now (ores.py RENAMED: the generic ore and ingot are the iron ones), in every pack, pile and chest."""
+        for pos, pile in list(self.items.items()):
+            if set(pile) == {"egg"} and self.timers.get(pos, [0, ""])[1] != "hatch":
+                del self.items[pos]
+                self.dirty_items.add(pos)
+        def renamed(d: dict) -> bool:
+            old = [k for k in d if k in RENAMED]
+            for k in old:
+                d[RENAMED[k]] = d.get(RENAMED[k], 0) + d.pop(k)
+            return bool(old)
+        for a in self.agents.values():
+            renamed(a.inventory)                           # (every agent is written at each flush)
+        for pos, pile in self.items.items():
+            if renamed(pile):
+                self.dirty_items.add(pos)
+        for pos, m in self.world.meta.items():
+            if isinstance(m.get("items"), dict) and renamed(m["items"]):
+                self.world.dirty_meta.add(pos)
 
     def flush(self):
         db = self.store.db

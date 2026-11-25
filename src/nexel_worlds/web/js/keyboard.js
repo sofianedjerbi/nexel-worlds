@@ -110,9 +110,9 @@ function digAhead(q, hs, s) {
   const wall = landSolid(q.x, q.y, hs + 1), z = wall ? hs + 1 : settleNear(q.x, q.y, hs), top = z === topAt(q.x, q.y), g = combAt(q.x, q.y);
   const elsewhere = wall && floorAt(q.x, q.y) !== z;      // (what stands on it stands elsewhere: on the hill over your tunnel)
   if (z < hs - 2 || entityAt(q) || (top && !elsewhere && !(g && GROUND.has(g) && !":n".includes(g) && !wet(g)))) return null;
-  const pick = inHand() === "pickaxe";      // (its name: in a hole there is no hill; under the land the tunnel goes on)
+  const pick = toolKind(inHand()) === "pickaxe" ? inHand() : null;      // (its name: in a hole there is no hill; under the land the tunnel goes on)
   const text = !wall ? "Dig down" : s && topAt(s.x, s.y) > hs ? "Dig on" : s && inHole(s, q, hs) ? "Dig into the wall" : "Dig into the hill";
-  return {p: q, it: {text, flat: true, cell: z, low: !wall, run: () => act("dig", {dir: dirTo(q), z, ...(pick ? {with: "pickaxe"} : {})})}};
+  return {p: q, it: {text, flat: true, cell: z, low: !wall, run: () => act("dig", {dir: dirTo(q), z, ...(pick ? {with: pick} : {})})}};
 }
 // You stand in a hole: land at your body's height behind you too, or on both sides (a pit, a trench: not a hill's foot)
 function inHole(s, q, h) {

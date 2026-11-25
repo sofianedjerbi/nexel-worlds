@@ -6,8 +6,9 @@ const slotIcon = (n) => smallCanvas(n);          // what a slot shows: the small
 function openCraft() { $("craft").style.display = "block"; craftOpened(); }
 // item icons from the sheets: [image name, sx, sy]
 const ICONS = {   // [sheet, x, y, w, h]: the items sheet has seed packets in column 0, produce in column 1, materials in 2-3
-  wood: ["items", 32, 48], plank: ["items", 32, 64], stone: ["items", 32, 80], ingot: ["items", 48, 64], fiber: ["gen", "fiber"],
-  ore: ["gen", "ore"], path: ["cobble", 16, 16], dirt: ["hill1", 16, 32, 14, 14], stone_block: ["hill3", 16, 32, 14, 14], seed: ["items", 0, 128],
+  wood: ["items", 32, 48], plank: ["items", 32, 64], stone: ["items", 32, 80], iron_ingot: ["items", 48, 64], fiber: ["gen", "fiber"],
+  ...Object.fromEntries(["iron_ore", "coal", "copper_ore", "gold_ore", "titanium_ore", "copper_ingot", "titanium_ingot", "gold_coin", "wire",      // (the land's ores, their metals and gold's coins; the tiered tools: tools/pixel_art.py)
+    "wood_axe", "wood_pickaxe", "iron_axe", "iron_pickaxe", "titanium_axe", "titanium_pickaxe", "titanium_sword"].map((n) => [n, ["gen", n]])), path: ["cobble", 16, 16], dirt: ["hill1", 16, 32, 14, 14], stone_block: ["hill3", 16, 32, 14, 14], seed: ["items", 0, 128],
   axe: ["items", 32, 0], pickaxe: ["gen", "pickaxe"], hoe: ["items", 48, 0], watering_can: ["items", 32, 16], spear: ["gen", "spear"], sword: ["gen", "sword"],
   torch: ["gen", "torch"], rope: ["gen", "rope"], name_tag: ["gen", "name_tag"], ladder: ["gen", "ladder"], stairs: ["gen", "stairs"],
   berries: ["items", 32, 160], fruit: ["items", 32, 96], mushroom: ["nature", 16, 0], egg: ["items", 48, 176], milk: ["items", 64, 0],
@@ -52,7 +53,7 @@ function smallArt(img, x, y, w, h, size = 16) {     // (size: how many px it may
 // The tools without the white edge the pack's icons have round them (a sticker's: a ring of white px, and the hole in
 // the can's handle filled with it). A tool has no white of its own, so every near white px of it goes. In the bar,
 // the book, the inventory and the hand they are then as the sword and the spear always were: no ring.
-const BARE = new Set(["axe", "pickaxe", "hoe", "watering_can"]);
+const BARE = new Set(["axe", "pickaxe", "wood_pickaxe", "iron_pickaxe", "titanium_pickaxe", "hoe", "watering_can"]);
 function bare(c) {
   const g = c.getContext("2d"), im = g.getImageData(0, 0, 16, 16), d = im.data;
   for (let o = 0; o < d.length; o += 4) if (Math.min(d[o], d[o + 1], d[o + 2]) > 225) d[o + 3] = 0;

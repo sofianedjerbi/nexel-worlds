@@ -15,7 +15,7 @@ const DigUp = (() => {
   function aim() {
     const s = typeof myPos === "function" ? myPos() : null, q = s && facingTile(), w = s && WayShow.offer(), way = !!w;
     if (w && w.key === "up") { const n = WayShow.cur.now; return {x: n.x, y: n.y, z: n.z, text: w.text, way}; }      // (the way out is shown and its next block is R's: that one, whichever way you face)
-    if (!q || !meObs || Build.on || inHand() !== "pickaxe") return null;
+    if (!q || !meObs || Build.on || toolKind(inHand()) !== "pickaxe") return null;
     const h = myZ(s.x, s.y), roof = solidAt(s.x, s.y, h + 2), wall = solidAt(q.x, q.y, h + 2);
     if (!landSolid(q.x, q.y, h + 1) || (!roof && !wall)) return null;            // (no wall; or one you hop onto as it is)
     if (!(topAt(s.x, s.y) > h || inHole(s, q, h))) return null;
@@ -32,7 +32,7 @@ const DigUp = (() => {
     const c = WayShow.cur, n = c && c.now;
     if (!n || n.key !== key || Build.on || !meObs) return false;
     if (walking || myAction || pendingAct || going) return true;
-    const tool = meObs.self.inventory.pickaxe ? {with: "pickaxe"} : {};
+    const tool = bestTool("pickaxe") ? {with: bestTool("pickaxe")} : {};
     if (n.d) turn(n.d);
     send(n.down ? "dig_down" : "dig", n.down ? tool : {x: n.x, y: n.y, z: n.z, ...tool});
     return true;
@@ -41,7 +41,7 @@ const DigUp = (() => {
     if (route("up")) return;
     const c = aim();
     if (!c || walking || myAction || pendingAct || going) return;
-    WayShow.mine(); send("dig", {x: c.x, y: c.y, z: c.z, with: "pickaxe"});
+    WayShow.mine(); send("dig", {x: c.x, y: c.y, z: c.z, with: bestTool("pickaxe") || "pickaxe"});
   }
   return {aim, run, route};
 })();

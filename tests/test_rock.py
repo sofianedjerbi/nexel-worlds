@@ -38,9 +38,11 @@ def test_a_hill_is_earth_to_its_foot_a_stone_hill_stone_all_down_and_both_are_ke
     ground = min(w.top(x + 1 + dx, y + dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1) if (dx, dy) != (-1, 0))
     sim.set_tile(x, y, level=7)                              # laid out seven high: stone (a mountain's)
     sim.set_tile(x + 1, y, level=3)                          # three high: earth and grass to the meadow's foot
-    assert w.stone(x, y) == HIGH and [w.made_of(x, y, z) for z in (7, 1, -5)] == ["stone_block"] * 3
+    from nexel_worlds.tiles import ORE_OF
+    stony = {"stone_block", *ORE_OF}                         # (stone, or an ore in it: tiles.py ORES)
+    assert w.stone(x, y) == HIGH and all(w.made_of(x, y, z) in stony for z in (7, 1, -5))
     assert all(w.made_of(x + 1, y, z) == "dirt" for z in range(ground - EARTH + 1, 4))
-    assert w.made_of(x + 1, y, ground - EARTH) == "stone_block"
+    assert w.made_of(x + 1, y, ground - EARTH) in stony
     said = []
     sim.listeners.append(lambda ev: said.append(ev) if ev.get("type") == "tile" else None)
     for z in range(7, 1, -1):                                # dug down to 1

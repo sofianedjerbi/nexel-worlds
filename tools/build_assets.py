@@ -15,7 +15,7 @@ from pathlib import Path
 
 from derived_art import largest_shape, thin_fall_sheet, thin_stump
 from PIL import Image
-from pixel_art import GEN, P, art
+from pixel_art import gen_sheet
 
 OUT = Path(__file__).resolve().parent.parent / "src" / "nexel_worlds" / "web" / "assets"
 SPRITES = "Sprout Lands - Sprites - premium pack.zip"
@@ -107,8 +107,6 @@ def recolor(img: Image.Image, fn) -> Image.Image:
     return img
 
 
-P["x"] = (0, 0, 0, 70)  # soft shadow
-
 
 def build(sprites: Path, ui_zip: Path, out: Path = OUT):
     out.mkdir(parents=True, exist_ok=True)
@@ -165,10 +163,7 @@ def build(sprites: Path, ui_zip: Path, out: Path = OUT):
     thin_fall_sheet(out).save(out / "thin_fall.png")
     thin_stump(out).save(out / "stump_thin.png")
 
-    names = list(GEN)
-    sheet = Image.new("RGBA", (16 * len(names), 16))
-    for i, n in enumerate(names):
-        sheet.alpha_composite(art(GEN[n], P), (16 * i, 0))
+    sheet, names = gen_sheet()
     sheet.save(out / "gen.png")
     (out / "gen.txt").write_text("\n".join(names) + "\n")
 

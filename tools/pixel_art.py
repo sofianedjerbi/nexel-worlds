@@ -27,6 +27,7 @@ P = {k: hexc(v) for k, v in {
     # the pack's own item icons (its axe, its hoe): the white sticker edge, the head's four greys, the handle's three browns
     "1": "f3f4e7", "2": "818b83", "3": "c1c8b9", "4": "6b7470", "5": "9da89a", "6": "90625d", "7": "b68962", "8": "754c60",
 }.items()}
+P["x"] = (0, 0, 0, 70)  # soft shadow
 
 GEN = {
     "campfire0": [
@@ -62,8 +63,8 @@ GEN = {
         "    tTtTtTtT    ", "     tTtTtT     ", "      oWWo      ", "      tTtT      ", "     tT  tT     ", "    tT    tT    ",
         "                ", "                ", "                ", "                "],
     "ore": [
-        "                ", "                ", "                ", "      dddd      ", "    ddsSsddd    ", "   dsSnNssSsd   ",
-        "   dsnNNnsSsd   ", "  dssnnssnNsd   ", "  dSsssSnNnsd   ", "  dssSssnnssd   ", "   ddsssssdd    ", "     dddddd     ",
+        "                ", "                ", "                ", "      dddd      ", "    ddsSsddd    ", "   dsSaAssSsd   ",
+        "   dsaAAasSsd   ", "  dssaassaAsd   ", "  dSsssSaAasd   ", "  dssSssaassd   ", "   ddsssssdd    ", "     dddddd     ",
         "                ", "                ", "                ", "                "],
     "meat": [
         "                ", "                ", "                ", "       mmm      ", "     mmMMMm     ", "    mMMMMMMm    ",
@@ -150,3 +151,52 @@ GEN = {
         "   oeeeeeeeeeeo ", "  oeeoeeeeeeeeo ", " oeeo oecccceeo ", "  oeeoeeeeeeeeo ", "   oeeeeccceeeo ", "    oooooooooo  ",
         "                ", "                ", "                ", "                "],
 }
+
+# The land's ores (ores.py), as items and as the hill's boulder ("ore": iron): the boulder's rock, its specks (a: dark,
+# A: light) in each ore's colours. Ingots: the ingot's bar (h, H, S, d) in each metal's. The tiered tools: the pack's
+# pickaxe (its head's greys 2 to 5), the axe and the sword (h, H, S: the head, the blade) in each tier's.
+ORE_SPECKS = {"ore": ("b07a5a", "e0b896"), "iron_ore": ("b07a5a", "e0b896"), "coal": ("2a2a30", "55555f"),
+              "copper_ore": ("c4683a", "6fbf98"), "gold_ore": ("d9a441", "fff1a8"), "titanium_ore": ("7f9fc6", "e2f0ff")}
+METALS = {"copper_ingot": ("a8552e", "d9844f", "f2b27e", "7a3b20"), "titanium_ingot": ("8aa3bf", "c9dcef", "f2f8ff", "5d7690")}
+HEADS = {"wood": ("7a5236", "a0714a", "8a6040", "b88a5c"), "iron": ("8f9a9e", "dfe5e6", "b9c3c6", "cdd5d7"),
+         "titanium": ("6f8db3", "e6f2ff", "a9c6e6", "c9def4")}
+for _n, (_a, _b) in ORE_SPECKS.items():
+    GEN.setdefault(_n, GEN["ore"])
+PAL = {n: {"a": hexc(a), "A": hexc(b)} for n, (a, b) in ORE_SPECKS.items()}
+for _n, (h, H, S, d) in METALS.items():
+    GEN[_n] = GEN["ingot"]
+    PAL[_n] = {"h": hexc(h), "H": hexc(H), "S": hexc(S), "d": hexc(d)}
+for _t, (c4, c3, c2, c5) in HEADS.items():
+    GEN[f"{_t}_pickaxe"] = GEN["pickaxe"]
+    PAL[f"{_t}_pickaxe"] = {"4": hexc(c4), "3": hexc(c3), "2": hexc(c2), "5": hexc(c5)}
+    GEN[f"{_t}_axe"] = GEN["axe"]
+    PAL[f"{_t}_axe"] = {"h": hexc(c4), "H": hexc(c3)}
+GEN["titanium_sword"] = GEN["sword"]
+PAL["titanium_sword"] = {"H": hexc(HEADS["titanium"][0]), "S": hexc(HEADS["titanium"][1])}
+GEN["gold_coin"] = [
+    "                ", "                ", "                ", "      nnnn      ", "    nnNNNNnn    ", "   nNNYYNNNNn   ",
+    "   nNYNnnNNNn   ", "  nNNNnNNnNNNn  ", "  nNNNnnnNNNNn  ", "  nNNNNnNNnNNn  ", "   nNNnnnNNNn   ", "   nnNNNNNNnn   ",
+    "    nnnnnnnn    ", "     xxxxxx     ", "                ", "                "]
+GEN["wire"] = [
+    "                ", "                ", "                ", "      aaaa      ", "    aaAAAAaa    ", "   aA aaaa Aa   ",
+    "   a aAAAAa a   ", "   a a aa a a   ", "   a aA  Aa a   ", "   aA aaaa Aa   ", "    aaAAAAaa  A ", "      aaaa   A  ",
+    "                ", "                ", "                ", "                "]
+PAL["wire"] = {"a": hexc("a8552e"), "A": hexc("f2b27e")}
+
+
+def gen_sheet():
+    """The generated sprites in one strip, 16 px each, and their names in its order (web/assets gen.png, gen.txt)."""
+    names = list(GEN)
+    sheet = Image.new("RGBA", (16 * len(names), 16))
+    for i, n in enumerate(names):
+        sheet.alpha_composite(art(GEN[n], {**P, **PAL.get(n, {})}), (16 * i, 0))
+    return sheet, names
+
+
+if __name__ == "__main__":       # only the strip (the rest of the art needs the pack's zips: build_assets.py)
+    from pathlib import Path
+    out = Path(__file__).resolve().parent.parent / "src" / "nexel_worlds" / "web" / "assets"
+    sheet, names = gen_sheet()
+    sheet.save(out / "gen.png")
+    (out / "gen.txt").write_text("\n".join(names) + "\n")
+    print("wrote gen.png:", len(names), "sprites")

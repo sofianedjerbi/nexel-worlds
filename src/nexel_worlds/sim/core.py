@@ -85,10 +85,7 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
         self.thin_wild(store)                              # (spawning.py: once, when a world meets the rarer-mobs rules)
         self.fires: dict[tuple, int] = {tuple(k): v for k, v in store.get_meta("fires", [])}
         self.timers: dict[tuple, list] = {(x, y): [t, kind] for x, y, t, kind in store.get_meta("timers", [])}
-        for pos, pile in list(self.items.items()):   # eggs from old worlds that will never hatch: gone
-            if set(pile) == {"egg"} and self.timers.get(pos, [0, ""])[1] != "hatch":
-                del self.items[pos]
-                self.dirty_items.add(pos)
+        self.old_items()                                   # (an old save's: persistence.py)
         self.listeners: list = []  # callables(event) for spectators / logs
         self.event_log = open(event_log, "a") if event_log else None
         self.rng = random.Random()

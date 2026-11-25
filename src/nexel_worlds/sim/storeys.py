@@ -182,7 +182,7 @@ class Storeys:
             return (yield from self.take_stairs(a, x, y, z))
         if thing != "none":
             block = BLOCKS[B[thing]]
-            yield from self.wait(a, block.hardness / 20 * (T.BY_HAND[block.tool] if block.tool and tool != block.tool else 1))
+            yield from self.wait(a, block.hardness / 20 * (T.BY_HAND[block.tool] if block.tool and T.tool_kind(tool) != block.tool else T.tool_time(tool)))
             if self.floors.get(x, y, z) != cell:
                 raise ActionError("changed", "something changed there")
             for k, n in block.drops.items():

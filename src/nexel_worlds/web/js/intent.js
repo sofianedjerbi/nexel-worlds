@@ -145,7 +145,7 @@ function intent0(p, brk, t, c, g, flower, ent, s) {
   const sailing = !!(meObs && meObs.self.sailing);
   if (c === "V" && !brk && !sailing) return {text: "Board the boat", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
   if (sailing && !hasBlock && wet(g)) return {text: "Sail here", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
-  if (!hasBlock && wet(g) && inHand() === "pickaxe" && brk && g !== ")") return {text: "Dig deeper", run: (d) => act("dig", {dir: d, with: "pickaxe"})};
+  if (!hasBlock && wet(g) && toolKind(inHand()) === "pickaxe" && brk && g !== ")") return {text: "Dig deeper", run: (d) => act("dig", {dir: d, with: inHand()})};
   if (!sailing && !hasBlock && wet(g) && !placingItem()) return {text: "Swim here", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
   if (sailing && !hasBlock && WALKABLE_GROUND.has(g)) return {text: "Go ashore", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
   if (hasBlock) {
@@ -162,10 +162,10 @@ function intent0(p, brk, t, c, g, flower, ent, s) {
     const crop = cropSpecies(p.x, p.y);
     const text = c === "w" ? `Harvest ${crop}` : c === '"' ? `Uproot ${crop}` : c === ";" ? `Uproot ${crop} sprout` : HARVEST[c] || label(CH[c]);
     if (brk === GATHER.includes(c)) return {text: label(CH[c]), info: true, quiet: true};      // (E takes nothing apart; what is picked is E's, not X's)
-    const tool = TOOL_FOR[c], w = inHand();
+    const tool = TOOL_FOR[c], w = inHand(), k = toolKind(w);      // (k: what the tool in hand is, any tier of it: vocab.js)
     const needs = tileOf(c).needs, Name = label(CH[c]).replace(/^./, (l) => l.toUpperCase());      // (what cannot be dug by hand at all: ore)
-    if (needs && w !== needs) return {text: meObs && meObs.self.inventory[needs] ? `${Name}: hold your ${needs}` : `${Name}: needs a ${needs}`, ok: false};
-    const how = tool && w !== tool ? " (slow)" : "";
+    if (needs && k !== needs) return {text: bestTool(needs) ? `${Name}: hold your ${needs}` : `${Name}: needs a ${needs}`, ok: false};
+    const how = tool && k !== tool ? " (slow)" : "";
     return {text: text + how, gather: !brk, run: (d) => act("dig", w ? {dir: d, with: w} : {dir: d})};
   }
   if (wet(g)) return {text: label(CH[g]), info: true};

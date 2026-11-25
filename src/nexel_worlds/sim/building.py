@@ -43,12 +43,14 @@ class Building:
         block, ground = BLOCKS[b], GROUNDS[g]
         z = self.height(a) + 1                             # the cell in front of you, at your body's height
         bare = block.name == "none" or self.world.level(x, y) != z      # (what stands on the tile is not on this cell: up on the hill over your tunnel, a tree was chopped for the wall)
-        if bare and self.world.solid(x, y, z) and self.held(a, args) == "pickaxe":
-            yield from self.wait(a, 1.0)                   # into a wall: that cell goes (a step cut down, or a tunnel)
+        pick = self.pickaxe(a, args)
+        if bare and self.world.solid(x, y, z) and pick:
+            yield from self.wait(a, 1.0 * T.tool_time(pick))   # into a wall: that cell goes (a step cut down, or a tunnel)
             if not self.world.solid(x, y, z) or self.height(a) + 1 != z:
                 raise ActionError("changed", "something changed there")
-            got = self.take_land(a, x, y, z)               # (the block itself, earth or stone: underground.py)
-            return {"got": {got: 1}, "cell": [x, y, z]}
+            lost = self.lost(x, y, z, pick)                # (ore under too low a pickaxe crumbles: underground.py)
+            got = self.take_land(a, x, y, z, keep=not lost)   # (the block itself, earth or stone: underground.py)
+            return {"got": {} if lost else {got: 1}, **({"lost": lost} if lost else {}), "cell": [x, y, z]}
         self.reach(a, x, y, z=self.world.level(x, y))      # (anything else is on the tile's ground, its lowest: too high up, or down, is out of reach. It was the
                                                            #  ground there nearest your own height: a flower was picked from a stair 24 layers over it)
         if block.name != "none" and self.land_between(a, x, y, self.world.level(x, y)):
@@ -78,11 +80,12 @@ class Building:
         if block.hardness <= 0:
             raise ActionError("cannot_dig", f"{block.name} cannot be dug")
         tool = self.held(a, args)
-        if block.needs_tool and tool != block.needs_tool:
+        kind = T.tool_kind(tool)                            # (any tier of an axe, of a pickaxe: tiles.py TOOLS)
+        if block.needs_tool and kind != block.needs_tool:
             raise ActionError("need_tool", f"digging {block.name} needs a {block.needs_tool} in hand "
-                              f"(with: {block.needs_tool})" + ("" if a.count(block.needs_tool) else "; you have none"))
-        seconds = block.hardness / 20                       # with the right tool in hand
-        if block.tool and tool != block.tool:
+                              f"(with: {block.needs_tool})" + ("" if T.best_tool(a.inventory, block.needs_tool) else "; you have none"))
+        seconds = block.hardness / 20 * (T.tool_time(tool) if kind in (block.tool, block.needs_tool) else 1)   # with the right tool in hand, by its tier
+        if block.tool and kind != block.tool:
             seconds *= T.BY_HAND[block.tool]
         if block.quick:
             seconds = 0                                     # picking and plucking: instant, even on the run

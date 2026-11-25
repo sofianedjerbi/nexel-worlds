@@ -81,19 +81,6 @@ def test_chop_by_hand_and_with_an_axe(game):
     assert time.time() - t0 < by_hand / 2
 
 
-def test_rocks_and_ore(game):
-    game.stamp(1, 0, ["*"])
-    game.face(1, 0)
-    assert "pickaxe" in game.actions() or "pickaxe" in game.js("intent(facingTile(), true).text")
-    game.press("x", 400)
-    assert game.tile(1, 0) == "*"                            # ore can't be mined without a pickaxe in hand
-    game.give(pickaxe=1)
-    game.hold_item("pickaxe")
-    game.press("x", 0)
-    game.wait(f"combAt({game.pos()[0] + 1}, {game.pos()[1]}) === '.'", 8000)
-    assert game.inv("ore") == 1 and game.inv("stone") >= 1
-
-
 def test_bushes_and_fruit_trees_stay_and_bear_again(game):
     game.stamp(1, 0, ["b"])
     game.stamp(-1, 0, ["F"])

@@ -6,6 +6,7 @@ Durations (`hardness`, recipe `ticks`) are in tenths of a second.
 """
 
 from dataclasses import dataclass, field
+from .ores import ORE_OF, ORES, RENAMED, TOOL_HITS, TIER_TIME, TIERS, TOOLS, best_tool, tool_kind, tool_time  # noqa: F401  (tool tiers and the land's ores: ores.py)
 
 DIRS = {"N": (0, -1), "E": (1, 0), "S": (0, 1), "W": (-1, 0)}
 
@@ -60,7 +61,7 @@ BLOCKS = [
     Block("tree", "T", flammable=True, hardness=12, drops={"wood": 3}, tool="axe", wall=True),
     Block("berry_bush", "b", flammable=True, hardness=3, drops={"berries": 2, "seed": 1}),   # picking leaves it bare
     Block("rock", "M", hardness=18, drops={"stone": 2}, tool="pickaxe", wall=True),
-    Block("ore", "*", hardness=24, drops={"ore": 1, "stone": 1}, needs_tool="pickaxe", wall=True),
+    Block("ore", "*", hardness=24, drops={"iron_ore": 1, "stone": 1}, needs_tool="pickaxe", wall=True),   # retired: none is made, an old one is a rock again (world.py _tidy); ore is in the land's stone (ores.py)
     Block("thicket", "H", flammable=True, hardness=5, drops={"fiber": 2}, tool="axe", wall=True),
     Block("mushroom", "Q", solid=False, hardness=2, drops={"mushroom": 1}),
     Block("fence", "#", flammable=True, hardness=8, drops={"fence": 1}, tool="axe", wall=True),
@@ -188,7 +189,7 @@ FEED = {**{k: 1 for k in FOOD if k not in ("egg", "meat", "cooked_meat", "milk")
 # What a blow takes, in half hearts, from a person or a creature alike ("heart and demi heart should be the universal
 # health unit... default player hit damage should be 0.5 not 5 hearts"): bare hands half a heart, a sword three.
 # (They were 5 to 30 on a scale of the creatures' own, shown as "-5" over a cow.)
-WEAPONS = {"sword": 6, "spear": 4, "axe": 3, "pickaxe": 2}
+WEAPONS = {"titanium_sword": 8, "sword": 6, "spear": 4, **TOOL_HITS}     # (an axe or a pickaxe hits harder a tier up: ores.py)
 FIST_DAMAGE = 1
 # What a body reaches, in tiles: a circle round it with height counted, a layer half a tile (sim/bodies.py near; on a
 # screen: web/js/intent.js reaches). The one table, for the world's checks and a screen's offers (rules.py). use: dig,
@@ -201,6 +202,7 @@ LEAD = 1    # what you do is accepted this much further than a screen offers it:
 # things (axe) take 4x as long and stone things (pickaxe) 6x. Soft things (no tool) are quick by hand.
 BY_HAND = {"axe": 4, "pickaxe": 6}
 TILL_TOOL = "hoe"   # tilling ground needs a hoe in hand
+
 
 
 @dataclass(frozen=True)
@@ -230,21 +232,32 @@ RECIPES = {
         Recipe("torch", {"wood": 1, "fiber": 1}, {"torch": 1}, 2),
         Recipe("rope", {"fiber": 3}, {"rope": 1}, 3),
         Recipe("name_tag", {"plank": 1, "fiber": 1}, {"name_tag": 1}, 2),     # a name for an animal: used up on it (sim/animals.py)
+        Recipe("wood_axe", {"wood": 3, "fiber": 1}, {"wood_axe": 1}, 4),            # the first tools: no workbench
+        Recipe("wood_pickaxe", {"wood": 3, "fiber": 1}, {"wood_pickaxe": 1}, 4),
         Recipe("axe", {"wood": 2, "stone": 2, "fiber": 1}, {"axe": 1}, 6, "workbench"),
         Recipe("pickaxe", {"wood": 2, "stone": 3, "fiber": 1}, {"pickaxe": 1}, 6, "workbench"),
+        Recipe("iron_axe", {"wood": 2, "iron_ingot": 2}, {"iron_axe": 1}, 7, "workbench"),
+        Recipe("iron_pickaxe", {"wood": 2, "iron_ingot": 3}, {"iron_pickaxe": 1}, 7, "workbench"),
+        Recipe("titanium_axe", {"wood": 2, "titanium_ingot": 2}, {"titanium_axe": 1}, 8, "workbench"),
+        Recipe("titanium_pickaxe", {"wood": 2, "titanium_ingot": 3}, {"titanium_pickaxe": 1}, 8, "workbench"),
+        Recipe("titanium_sword", {"titanium_ingot": 2, "wood": 1}, {"titanium_sword": 1}, 9, "workbench"),
         Recipe("hoe", {"wood": 2, "stone": 1}, {"hoe": 1}, 5, "workbench"),
         Recipe("spear", {"wood": 2, "stone": 1, "fiber": 1}, {"spear": 1}, 5, "workbench"),
         Recipe("stone_wall", {"stone": 3}, {"stone_wall": 1}, 5, "workbench"),
         Recipe("chest", {"wood": 6}, {"chest": 1}, 6, "workbench"),
         Recipe("cooked_meat", {"meat": 1}, {"cooked_meat": 1}, 5, "campfire"),
         Recipe("bread", {"wheat": 3}, {"bread": 1}, 5, "campfire"),
-        Recipe("ingot", {"ore": 2}, {"ingot": 1}, 10, "campfire"),
-        Recipe("sword", {"ingot": 2, "wood": 1}, {"sword": 1}, 8, "workbench"),
+        Recipe("iron_ingot", {"iron_ore": 1, "coal": 1}, {"iron_ingot": 1}, 10, "campfire"),     # smelting: an ore and coal to burn
+        Recipe("copper_ingot", {"copper_ore": 1, "coal": 1}, {"copper_ingot": 1}, 8, "campfire"),
+        Recipe("titanium_ingot", {"titanium_ore": 2, "coal": 2}, {"titanium_ingot": 1}, 14, "campfire"),
+        Recipe("gold_coin", {"gold_ore": 1, "coal": 1}, {"gold_coin": 3}, 10, "campfire"),       # gold is money: minted, never a tool
+        Recipe("wire", {"copper_ingot": 1}, {"wire": 3}, 4, "workbench"),                      # copper's electrical parts
+        Recipe("sword", {"iron_ingot": 2, "wood": 1}, {"sword": 1}, 8, "workbench"),
         Recipe("watering_can", {"stone": 3, "wood": 1}, {"watering_can": 1}, 6, "workbench"),
         Recipe("bed", {"wood": 6, "fiber": 3}, {"bed": 1}, 8, "workbench"),
         Recipe("chair", {"wood": 2}, {"chair": 1}, 4, "workbench"),
         Recipe("table", {"wood": 4}, {"table": 1}, 5, "workbench"),
-        Recipe("clock", {"wood": 2, "ingot": 1}, {"clock": 1}, 6, "workbench"),
+        Recipe("clock", {"wood": 2, "iron_ingot": 1}, {"clock": 1}, 6, "workbench"),
         Recipe("rug", {"fiber": 4}, {"rug": 1}, 4),
         Recipe("plant", {"stone": 1, "flower": 1}, {"plant": 1}, 3),
         Recipe("gate", {"wood": 3}, {"gate": 1}, 4),

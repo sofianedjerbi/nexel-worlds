@@ -110,7 +110,7 @@ const Floors = (() => {
     if (it && PLACEABLE_BLOCK[it]) return on ? {text: "Something is there", ghost: it, ok: false, z} : tileOf(PLACEABLE_BLOCK[it]).upstairs ? place(z, `Place ${label(it)}`) : {text: "It needs the ground", ghost: it, ok: false, z};
     if (on === "B" && !shift) return {text: "Sleep", z, run: (d) => act("sleep", {dir: d})};
     if (on && !shift) return {text: label(CH[on]), info: true, quiet: true, z};      // (shift: X's verb, intent.js: E takes nothing down)
-    if (on) { const tool = TOOL_FOR[on], w = inHand(); return {text: (HARVEST[on] || "Take down " + label(CH[on])) + (tool && w !== tool ? " (slow)" : ""), z, run: (d) => act("dig", {dir: d, z, ...(w ? {with: w} : {})})}; }
+    if (on) { const tool = TOOL_FOR[on], w = inHand(); return {text: (HARVEST[on] || "Take down " + label(CH[on])) + (tool && toolKind(w) !== tool ? " (slow)" : ""), z, run: (d) => act("dig", {dir: d, z, ...(w ? {with: w} : {})})}; }
     if (shift) return {text: c[0] === "roof" ? "Take the roof block" : c[0] === "stairs" ? "Take up the step" : "Take up the planks", z, ground: true, run: (d) => act("dig", {dir: d, z})};
     return {text: "Walk here", walk: true, run: () => act("move_to", {x: p.x, y: p.y, z})};
   }
