@@ -1,11 +1,12 @@
-"""The drake: a boss rig for the high-energy track "Sugar rush" (E flat, 156 BPM, a kick on every beat), in three looks
-to choose from (roster/solflare.py, voltwing.py, nyxwing.py): comet (fire), storm (lightning), eclipse (stars).
+"""The drake: a boss rig for the high-energy track "Sugar rush" (E flat, 156 BPM, a kick on every beat), : Nyxwing, a piece
+of the night sky, in three prototypes to choose from: eclipse (gold runes, star wings, a corona behind it), moonveil
+(silver, crescent horns, nebula wings, a moon on its tail), abyss (black, magenta cracks, rim-lit wings, a black hole).
 
 A big dragon that never lands. Everything is timed to the song: a wing beat is one musical beat (385 ms), the idle
 hover two, each warning a beat and a half, and every strike lands on a beat.
 Every frame is computed from parts (far wing, tail, body with its back spines, neck, head and horns, legs, near
-wing), the wings from a shoulder angle and three fingers, so the flap is one number per frame. A theme only changes
-the paint (palette, scale pattern, wing membrane), the spines down its back and the tip of its tail.
+wing), the wings from a shoulder angle and three fingers, so the flap is one number per frame. A prototype only changes
+the paint (palette, markings, wing membrane), the horns, the spines down its back, the tip of its tail and the halo.
 Attacks (the warning first, held, then the strike):
   breath   it rears back and sparks gather at its jaws, then it breathes a cone four tiles ahead
   storm    it climbs and throws its wings wide, then spins and fires rings of bolts, one ring on each beat
@@ -18,23 +19,26 @@ import math
 from art import ground, over, part
 
 THEMES = {
-    "comet": dict(key="solflare", name="Solflare", spines="flame", tip="plume", wing="fire", scales="scales", pal={
-        "o": "5a2418", "w": "f6b84a", "W": "fff0b0", "v": "d9792e", "r": "e0702e", "R": "b5522a", "m": "fff0c8",
-        "M": "f2cf8e", "p": "ff9a3c", "P": "ffe08a", "n": "e0482e", "b": "9a3426", "c": "fff6e0", "C": "e8cf98",
-        "y": "fffbd0", "Y": "ffffff", "e": "5a1a10", "q": "7a1f1f", "t": "ff9a5a", "1": "ff4a2a", "2": "ff9d2e",
-        "3": "ffe066", "4": "fff6d0", "5": "ff6a3a", "x": "fff6d0aa", "g": "ffd16699"}),
-    "storm": dict(key="voltwing", name="Voltwing", spines="fins", tip="blade", wing="veins", scales="bolts", pal={
-        "o": "141833", "w": "3f4f9a", "W": "7f95e8", "v": "2a3570", "r": "6fe3ff", "R": "3aa6df", "m": "a9c0ff",
-        "M": "7a90e0", "p": "2f3a80", "P": "4656b0", "n": "1f2758", "b": "8ff3ff", "c": "e8ffff", "C": "7fe0ff",
-        "y": "fffb9a", "Y": "ffffff", "e": "0e1030", "q": "1a1f45", "t": "6fe3ff", "1": "8ff3ff", "2": "ffffff",
-        "3": "6fe3ff", "4": "fffb9a", "5": "b48cff", "x": "d8fbffaa", "g": "8ff3ff88"}),
-    "eclipse": dict(key="nyxwing", name="Nyxwing", spines="gold", tip="orb", wing="stars", scales="runes", pal={
+    "eclipse": dict(key="nyxwing", name="Nyxwing", proto="Eclipse", spines="gold", tip="orb", wing="stars", scales="runes", horns="crystal",
+                    halo=True, pal={
         "o": "1a0f2a", "w": "3d2a66", "W": "6a52a0", "v": "2a1c4a", "r": "ffcf5a", "R": "d9a63a", "m": "6b52a8",
-        "M": "4e3a86", "p": "3a2468", "P": "5a3c94", "n": "24163f", "b": "ffcf5a", "c": "ffe08a", "C": "e0a83a",
-        "y": "fff3c0", "Y": "ffffff", "e": "0b0614", "q": "12091f", "t": "c77dff", "1": "ffcf5a", "2": "fff3c0",
+        "M": "4e3a86", "p": "3a2468", "P": "5a3c94", "n": "24163f", "k": "8a64d8", "K": "fff3c0", "b": "ffcf5a", "c": "ffe08a",
+        "C": "e0a83a", "y": "fff3c0", "Y": "ffffff", "e": "0b0614", "q": "12091f", "t": "c77dff", "1": "ffcf5a", "2": "fff3c0",
         "3": "c77dff", "4": "7fb8ff", "5": "ff7ac8", "x": "fff3c0aa", "g": "ffcf5a88"}),
+    "moonveil": dict(key="nyxwing", name="Nyxwing", proto="Moonveil", spines="fins", tip="moon", wing="nebula", scales="dust", horns="crescent",
+                     halo=False, pal={
+        "o": "0d1a2a", "w": "8fb4d8", "W": "d8ecff", "v": "5a7fa8", "r": "f4faff", "R": "b0cce8", "m": "c9e4f0",
+        "M": "9cc2dc", "p": "4a3f8f", "P": "6fd0dc", "n": "1e1f4f", "k": "b77ad6", "K": "ffffff", "b": "d8ecff", "c": "f4f8ff",
+        "C": "a8c4e8", "y": "7ff0ff", "Y": "ffffff", "e": "08101c", "q": "1a1030", "t": "7ff0ff", "1": "7ff0ff", "2": "ffffff",
+        "3": "c79bff", "4": "9fd0ff", "5": "ff9fd8", "x": "e8f8ffaa", "g": "7ff0ff88"}),
+    "abyss": dict(key="nyxwing", name="Nyxwing", proto="Abyss", spines="fins", tip="hole", wing="rim", scales="bolts", horns="crown",
+                  halo=False, pal={
+        "o": "05030a", "w": "241a34", "W": "45345e", "v": "130d1e", "r": "ff3fb4", "R": "c02a8a", "m": "35223f",
+        "M": "24162c", "p": "160e24", "P": "2c1c44", "n": "0a0612", "k": "3fe8ff", "K": "c8faff", "b": "4a3866", "c": "ff6ad0",
+        "C": "b03a9a", "y": "3fe8ff", "Y": "ffffff", "e": "000000", "q": "2a0018", "t": "ff3fb4", "1": "ff3fb4", "2": "ffffff",
+        "3": "3fe8ff", "4": "b46aff", "5": "ff9ae0", "x": "ffd0f0aa", "g": "ff3fb488"}),
 }
-TH = THEMES["comet"]
+TH = THEMES["eclipse"]
 W, H = 128, 112
 ACCENT = "12345"
 
@@ -95,18 +99,49 @@ def crystal(c, x, y, ang, n, w=2.6):
 
 
 def spine(c, x, y, r, i, lit=False, phase=0.):
-    """One of the spines down its back, in the theme's kind: a tongue of flame, a fin of ice-blue glass, a gold thorn."""
+    """One of the spines down its back, in the prototype's kind: a fin of glass (its colour is the horns'), a gold thorn."""
     kind = TH["spines"]
-    if kind == "flame":
-        n = r * (3 + (.8 if lit else 0)) + 1.8 * math.sin(phase * 2.6 + i * 1.7)
-        a = math.radians(-100 + 8 * math.sin(phase * 1.9 + i))
-        seg(c, [(x, y), (x + n * math.cos(a), y + n * math.sin(a))], r * 1.05, .5, lambda t: "3" if t < .3 else "2" if t < .65 else "1")
-    elif kind == "fins":
+    if kind == "fins":
         crystal(c, x, y, -104 + i * 3, r * (2.4 + (.5 if lit else 0)), r * .62)
     else:
         crystal(c, x, y, -96 + i * 2, r * (1.9 + (.6 if lit else 0)), r * .5)
         if lit:
             put(c, x, y - r * 2.4, "Y")
+
+
+def horn(c, x, y, ang, n):
+    """A horn in the prototype's kind: a crystal shard, a crescent that sweeps back, or a crown of short thorns."""
+    kind = TH["horns"]
+    if kind == "crescent":
+        a, pts, (px, py) = math.radians(ang), [(x, y)], (x, y)
+        bend = .07 if ang < -90 else -.07
+        for i in range(int(n)):
+            a += bend
+            px, py = px + math.cos(a), py + math.sin(a)
+            pts.append((px, py))
+        seg(c, pts, 2.6, .5, lambda t: "c" if t < .55 else "C")
+    elif kind == "crown":
+        crystal(c, x, y, ang, n * .7, 2.2)
+        crystal(c, x, y, ang + 24, n * .45, 1.5)
+    else:
+        crystal(c, x, y, ang, n)
+
+
+def halo(g, cx, cy, phase):
+    """Eclipse only: a corona behind it, a ring of gold with flickering rays, painted where nothing else is."""
+    if not TH.get("halo"):
+        return g
+    c = [list(r) for r in g]
+    for i in range(220):
+        a = i * math.tau / 220
+        for r, ch in ((27, "C"), (28, "c"), (29, "c")):
+            put(c, cx + r * math.cos(a), cy + r * .92 * math.sin(a), ch, on=".")
+    for k in range(16):
+        a = k * math.tau / 16 + phase * .05
+        L = 5 + 3 * ((k * 5 + int(phase * 2)) % 3)
+        for d in range(L):
+            put(c, cx + (31 + d) * math.cos(a), cy + (31 + d) * .92 * math.sin(a), "1" if d < 2 else "g", on=".")
+    return ["".join(r) for r in c]
 
 
 def wing(sx, sy, arm, side=1, far=False, spread=1.0, glint=0):
@@ -133,18 +168,37 @@ def wing(sx, sy, arm, side=1, far=False, spread=1.0, glint=0):
             for x in range(W):
                 if c[y][x] == "p":
                     r = math.dist((x + .5, y + .5), (wx, wy)) / reach
-                    c[y][x] = "P" if r < .38 else "n" if r > .82 else "p"
-                    if TH["wing"] == "stars" and (x * 7 + y * 13 + glint) % 23 == 0:
-                        c[y][x] = "W" if (x + y) % 3 else "y"
-        if TH["wing"] == "veins":                                        # lightning cracks through the membrane
-            for k, (tx, ty) in enumerate(tips):
-                for i in range(1, 12):
-                    f = i / 12
-                    put(c, wx + (tx - wx) * f + (1.6 if (i + k + glint) % 2 else -1.6) * (ty - wy) / 30,
-                        wy + (ty - wy) * f - (1.6 if (i + k + glint) % 2 else -1.6) * (tx - wx) / 30, "r", on="pPn")
+                    kind = TH["wing"]
+                    if kind == "nebula":                                 # bands of colour, wrist to edge, and a few stars
+                        c[y][x] = "P" if r < .3 else "k" if r < .52 else "p" if r < .8 else "n"
+                        if (x * 11 + y * 5 + glint) % 47 == 0:
+                            c[y][x] = "K"
+                    elif kind == "rim":                                  # dark as a hole, lit along its edge
+                        c[y][x] = "P" if r < .3 else "k" if r > .86 else "p" if r < .6 else "n"
+                        if (x * 7 + y * 13 + glint) % 37 == 0 and r < .8:
+                            c[y][x] = "K"
+                    else:
+                        c[y][x] = "P" if r < .38 else "n" if r > .82 else "p"
+                        if (x * 7 + y * 13 + glint) % 23 == 0:
+                            c[y][x] = "W" if (x + y) % 3 else "y"
+        if TH["wing"] == "stars":                                        # two constellations across the membrane
+            for t0, t1 in ((tips[0], tips[1]), (tips[1], tips[2])):
+                stars = [(wx + (t0[0] - wx) * f + (t1[0] - t0[0]) * g_, wy + (t0[1] - wy) * f + (t1[1] - t0[1]) * g_)
+                         for f, g_ in ((.45, .1), (.62, .3), (.55, .55), (.75, .6))]
+                for (ax, ay), (bx, by) in zip(stars, stars[1:]):
+                    for i in range(1, 6):
+                        put(c, ax + (bx - ax) * i / 6, ay + (by - ay) * i / 6, "k", on="pPn")
+                for ax, ay in stars:
+                    put(c, ax, ay, "y", on="pPnk")
         for k, (tx, ty) in enumerate(tips):                              # glints on the membrane
-            if TH["wing"] != "veins":
+            if TH["wing"] == "stars":
                 put(c, wx + (tx - wx) * (.5 + .1 * ((k + glint) % 3)), wy + (ty - wy) * (.5 + .1 * ((k + glint) % 3)) + 2, "W", on="pPn")
+    if TH["wing"] == "rim" and not far:                                  # the rim glows on the bones too
+        seg(c, [(sx, sy), (wx, wy)], 2.4, 1.7, "b")
+        for tx, ty in tips:
+            seg(c, [(wx, wy), (tx, ty)], 1.2, .55, lambda t: "b" if t < .6 else "k")
+        put(c, wx - side * 1, wy - 2, "w"); put(c, wx - side * 2, wy - 2, "w")
+        return part(c)
     seg(c, [(sx, sy), (wx, wy)], 2.4, 1.7, "R" if far else "b")
     for tx, ty in tips:
         seg(c, [(wx, wy), (tx, ty)], 1.2, .55, "R" if far else "b")
@@ -162,6 +216,8 @@ def pattern(c, x0=0, x1=W, on="w"):
             if kind == "scales" and y % 3 == 2 and (x + 2 * ((y // 3) % 2)) % 4 in (0, 1):
                 c[y][x] = "r"
             elif kind == "bolts" and (x + abs(y % 8 - 4)) % 13 == 0:
+                c[y][x] = "r"
+            elif kind == "dust" and ((x * 11 + y * 7) % 29 == 0 or (x * 3 + y * 17) % 61 == 0):
                 c[y][x] = "r"
             elif kind == "runes" and ((x * 7 + y * 13) % 41 == 0 or (x * 5 + y * 3) % 53 == 0):
                 c[y][x] = "r"
@@ -182,7 +238,7 @@ def shade(c, on="wr"):
 
 
 def tail(c, base, ang, sway=0., phase=0., n=10, step=4.2, curl=1.0):
-    """The tail: long, tapering, and the theme's tip at the end (a plume of flame, a blade of lightning, an eclipse)."""
+    """The tail: long, tapering, and the prototype's tip at the end (an eclipse, a crescent moon, a black hole)."""
     pts, (x, y) = [base], base
     a = ang
     for i in range(n + 3):
@@ -192,20 +248,21 @@ def tail(c, base, ang, sway=0., phase=0., n=10, step=4.2, curl=1.0):
     seg(c, pts, 5.4, 2.8, "w")
     pattern(c)
     shade(c)
-    tip = TH["tip"]
-    if tip == "plume":
-        for k in range(5):
-            b = a + (k - 2) * .32 + .15 * math.sin(phase * 2.3 + k)
-            L = 14 + 3 * math.sin(phase * 3.1 + k * 1.3) - abs(k - 2) * 2.5
-            seg(c, [(x, y), (x + L * math.cos(b), y + L * math.sin(b))], 3.2, .5, lambda t: "3" if t < .3 else "2" if t < .65 else "1")
-    elif tip == "blade":
-        crystal(c, x, y, math.degrees(a), 13, 3.2)
-        for d in (-50, 50):
-            crystal(c, x, y, math.degrees(a) + d, 6, 1.8)
-    else:
-        oval(c, x + 2 * math.cos(a), y + 2 * math.sin(a), 5, 5, "c")
-        oval(c, x + 2 * math.cos(a) + .6, y + 2 * math.sin(a) - .6, 3.4, 3.4, "e")
-        put(c, x + 2 * math.cos(a) - 2.6, y + 2 * math.sin(a) - 2.6, "Y")
+    tip, ox, oy = TH["tip"], x + 2 * math.cos(a), y + 2 * math.sin(a)
+    if tip == "moon":                                                    # a crescent moon: a disc with a bite out of it
+        oval(c, ox, oy, 6, 6, "c")
+        oval(c, ox + 2.6 * math.cos(a + 1.2), oy + 2.6 * math.sin(a + 1.2), 4.6, 4.6, ".")
+        put(c, ox - 3, oy - 3, "Y")
+    elif tip == "hole":                                                  # a black hole: a ring of light round nothing
+        oval(c, ox, oy, 8.5, 3, lambda px, py: "k" if (px + py) % 3 else "K")
+        oval(c, ox, oy, 4.4, 4.4, "c")
+        oval(c, ox, oy, 3.4, 3.4, "e")
+        for d in range(-6, 7):
+            put(c, ox + d, oy, "K" if abs(d) > 4 else "e")
+    else:                                                                # the eclipse: a dark moon over a gold sun
+        oval(c, ox, oy, 5, 5, "c")
+        oval(c, ox + .6, oy - .6, 3.4, 3.4, "e")
+        put(c, ox - 2.6, oy - 2.6, "Y")
     return pts
 
 
@@ -251,6 +308,15 @@ def effects(g, fx, mouth, cx, cy):
                     put(c, sx + d[0], sy + d[1], "2", on=".")
                 for d in ((2, 0), (-2, 0), (0, 2), (0, -2)):
                     put(c, sx + d[0], sy + d[1], "g", on=".")
+        if kind == "swirl":                                              # the spin: three arcs of light whirling round it
+            for arc in range(3):
+                a0 = k * math.pi / 4 + arc * math.tau / 3
+                for i in range(40):
+                    a = a0 + i * .022
+                    col = "W" if i > 34 else ACCENT[arc % 5] if i > 14 else "g"
+                    put(c, cx + 46 * math.cos(a), cy - 6 + 15 * math.sin(a), col, on=".")
+                    if i > 20:
+                        put(c, cx + 46 * math.cos(a), cy - 5 + 15 * math.sin(a), col, on=".")
         if kind == "trail":                                              # sparks left behind when it flies fast
             for i in range(9):
                 x = cx + 34 + i * 6 + (k * 3) % 6
@@ -302,7 +368,7 @@ def side(flap=0, alt=0, rear=0, lunge=0, jaw=0, glare=False, blink=False, spread
     g = over(g, part(c))
     c = canvas()                                                         # horns, behind the head
     for bx, by_, ang, n in ((hx + 2, hy - 6, -80, 17), (hx + 8, hy - 5, -50, 14), (hx + 12, hy - 1, -20, 10)):
-        crystal(c, bx, by_, ang, n)
+        horn(c, bx, by_, ang, n)
     g = over(g, part(c))
     c = canvas()                                                         # the head
     oval(c, hx + 2, hy, 11, 8.5, "w")
@@ -350,7 +416,7 @@ def side(flap=0, alt=0, rear=0, lunge=0, jaw=0, glare=False, blink=False, spread
     g = over(g, part(c))
     g = over(g, wing(64, by - 13, arm, 1, spread=spread, glint=flap))
     mouth = (hx - 21, hy + 4 + jaw * .5)
-    return ground(effects(g, fx, mouth, 62, by), 64, 52 - min(20, alt // 2))
+    return ground(halo(effects(g, fx, mouth, 62, by), 62, by - 14, phase), 64, 52 - min(20, alt // 2))
 
 
 def front(flap=0, alt=0, rear=0, lunge=0, jaw=0, glare=False, blink=False, spread=1., tail_ang=.25, sway=.12, phase=0.,
@@ -393,7 +459,7 @@ def front(flap=0, alt=0, rear=0, lunge=0, jaw=0, glare=False, blink=False, sprea
         c = canvas()
         for s in (-1, 1):
             for bx, ang, n in ((cx + s * 5, -90 + s * 22, 17), (cx + s * 9, -90 + s * 52, 14), (cx + s * 11, -90 + s * 80, 9)):
-                crystal(c, bx, hy - 7, ang, n)
+                horn(c, bx, hy - 7, ang, n)
         g = over(g, part(c))
         c = canvas()                                                     # the back of the head: plain, with its frills
         oval(c, cx, hy - 3, 11, 8.5, "w")
@@ -419,7 +485,7 @@ def front(flap=0, alt=0, rear=0, lunge=0, jaw=0, glare=False, blink=False, sprea
         c = canvas()                                                     # horns, then the face over them
         for s in (-1, 1):
             for bx, ang, n in ((cx + s * 5, -90 + s * 22, 19), (cx + s * 9, -90 + s * 52, 15), (cx + s * 11, -90 + s * 80, 10)):
-                crystal(c, bx, hy - 5, ang, n)
+                horn(c, bx, hy - 5, ang, n)
         g = over(g, part(c))
         c = canvas()
         oval(c, cx, hy, 12.5, 9.5, "w")
@@ -459,17 +525,21 @@ def front(flap=0, alt=0, rear=0, lunge=0, jaw=0, glare=False, blink=False, sprea
                     put(c, cx + s * i - .5, hy - 1 - i * .45, "o")
         g = over(g, part(c))
     mouth = (cx, hy + 13)
-    return ground(effects(g, fx, mouth, cx, by), cx, 40 - min(16, alt // 2))
+    return ground(halo(effects(g, fx, mouth, cx, by), cx, by - 14, phase), cx, 40 - min(16, alt // 2))
+
+
+def squeeze(g, k, cx=64):
+    """The frame narrowed about its centre to k of its width: the in-between of a turn."""
+    return ["".join(r[round(cx + (x - cx) / k)] if 0 <= round(cx + (x - cx) / k) < W else "." for x in range(W)) for r in g]
 
 
 def spin(i, **k):
-    """One frame of the spin, whatever row it is in: front, side, back, the other side."""
-    v = i % 4
-    if v == 1:
-        return side(**k)
-    if v == 3:
-        return [r[::-1] for r in side(**k)]
-    return front(back=v == 2, **k)
+    """One step of the spin, eight to a turn: front, turning, side, turning, back, turning, the other side, turning.
+    The in-betweens are the view before narrowed (a body turning edge-on), the whirl painted round it."""
+    v = i % 8
+    k["fx"] = tuple(k.get("fx", ())) + (("swirl", i),)
+    g = (lambda **q: front(**q), side, lambda **q: front(back=True, **q), lambda **q: [r[::-1] for r in side(**q)])[v // 2](**k)
+    return squeeze(g, .62) if v % 2 else g
 
 
 def frames(view):
@@ -488,8 +558,8 @@ def frames(view):
         storm=[F(alt=14, arm=-70 if view != "left" else -110, spread=1.2, glare=True, jaw=2, fx=(star((30, 20), (98, 22)),)),
                F(alt=18, arm=-75 if view != "left" else -115, spread=1.25, glare=True, jaw=3, fx=(star((24, 14), (104, 16), (64, 4)),)),
                F(alt=18, arm=-78 if view != "left" else -118, spread=1.3, glare=True, jaw=3, lit=True, fx=(star((20, 30), (108, 30), (64, 6)),))]
-              + [spin(i + {"down": 0, "left": 1, "up": 2}[view], flap=i * 2 % 8, alt=18, jaw=4, glare=True, lit=True, spread=1.2,
-                      fx=(star((20 + i * 11, 10 + i * 5 % 20), (110 - i * 9, 24)),)) for i in range(8)]
+              + [spin(i + {"down": 0, "left": 2, "up": 4}[view], flap=i % 8, alt=18, jaw=4, glare=True, lit=True, spread=1.2,
+                      fx=(star((20 + i % 8 * 11, 10 + i * 5 % 20), (110 - i % 8 * 9, 24)),)) for i in range(16)]
               + [F(flap=2, alt=14, jaw=1), F(flap=4, alt=11)],
         dive=[F(alt=10, arm=-100 if view == "left" else -62, rear=3, glare=True),
               F(alt=8, arm=-120 if view == "left" else -75, spread=.7, rear=4, glare=True, jaw=2),
@@ -514,25 +584,17 @@ def frames(view):
 
 TWINKLE = [((18, 30), (104, 50)), ((110, 22), (30, 60)), ((24, 48), (100, 18)), ((114, 40), (14, 22))]
 BEAT = 60000 / 156
+HOW = ("<b>Void breath</b>: starlight gathers at its jaws, then a cone of dark fire four tiles long. <b>Starfall</b>: it "
+       "climbs, wings wide, and spins out a ring of stars on each of three beats. <b>Eclipse</b>: it blots out the sky, its "
+       "shadow hunts you, and it falls on the beat in a ring of light. <b>Orbit</b>: its tail sweeps round in a ring. Below "
+       "half health, <b>totality</b>: its markings blaze and it attacks twice as often.")
 TEXT = {
-    "comet": ("a comet that grew wings: scales of gold, a mane of flame, wings like a sunset",
-              "<b>Flare</b>: sparks gather at its jaws, then a cone of fire four tiles long. <b>Ember storm</b>: it climbs, wings "
-              "wide, and spins out a ring of fireballs on each of three beats. <b>Meteor</b>: it leaves the sky, its shadow hunts "
-              "you, and it lands on the beat in a burst of embers. <b>Comet tail</b>: the burning tail whips round in a ring. "
-              "Below half health, <b>supernova</b>: its mane blazes and it attacks twice as often.",
-              "a sun scale, a comet feather, an ember heart"),
-    "storm": ("a thundercloud with a dragon inside: indigo scales veined with lightning, wings that crackle",
-              "<b>Arc</b>: sparks gather at its jaws, then a crackling beam four tiles long. <b>Static storm</b>: it climbs, "
-              "wings wide, and spins out a ring of sparks on each of three beats. <b>Thunderfall</b>: it vanishes into the "
-              "clouds, its shadow hunts you, and it strikes down on the beat like a bolt. <b>Blade lash</b>: the bladed tail "
-              "whips round in a ring of lightning. Below half health, <b>overcharge</b>: it glows white and attacks twice as often.",
-              "a storm scale, a charged fin, a bottled bolt"),
-    "eclipse": ("a piece of the night sky: violet-black scales with gold runes, wings full of stars, an eclipse on its tail",
-                "<b>Void breath</b>: starlight gathers at its jaws, then a cone of dark fire four tiles long. <b>Starfall</b>: it "
-                "climbs, wings wide, and spins out a ring of stars on each of three beats. <b>Eclipse</b>: it blots out the sky, "
-                "its shadow hunts you, and it falls on the beat in a ring of gold. <b>Orbit</b>: the eclipse on its tail sweeps "
-                "round in a ring. Below half health, <b>totality</b>: its runes blaze and it attacks twice as often.",
-                "a night scale, a fallen star, the eclipse stone"),
+    "eclipse": "a piece of the night sky at the moment of an eclipse: violet-black scales with gold runes, wings full of "
+               "constellations, a corona of gold behind it and an eclipse on its tail",
+    "moonveil": "the night at full moon: silver scales dusted with light, horns like crescents, wings like a nebula (teal, "
+                "orchid, indigo) and a crescent moon on its tail",
+    "abyss": "the dark between the stars: black scales cracked with magenta light, a crown of thorns, wings dark as holes "
+             "with a cyan rim, and a black hole on its tail",
 }
 
 
@@ -540,12 +602,12 @@ def enemy(theme):
     """The drake in one of its looks: the frames are computed with that theme's paint and parts."""
     global TH
     TH = THEMES[theme]
-    look, how, drops = TEXT[theme]
+    look, how, drops = TEXT[theme], HOW, "a night scale, a fallen star, the eclipse stone"
     return dict(
-        key=TH["key"], name=TH["name"], pal=TH["pal"], role=f"boss to Sugar rush, look {list(THEMES).index(theme) + 1}: {theme}",
+        key=TH["key"], name=TH["name"], pal=TH["pal"], role=f"boss to Sugar rush, prototype {list(THEMES).index(theme) + 1}: {TH['proto']}", proto=TH["proto"],
         cell=(128, 114), move="fly", theme=theme, look=look,
         ms=dict(idle=[96] * 8, walk=[48] * 8,
-                breath=[192, 192, 193, 96, 96, 96, 96, 96], storm=[192, 192, 193] + [96] * 8 + [96, 96],
+                breath=[192, 192, 193, 96, 96, 96, 96, 96], storm=[192, 192, 193] + [48] * 16 + [96, 96],
                 dive=[192, 192, 193, 96, 96, 96, 96, 96, 96], sweep=[192, 192, 193, 64, 64, 64, 96, 96],
                 rush=[96, 96, 193, 192, 192, 192]),
         where="the high plateau of a far island", when="wakes when the song starts",
