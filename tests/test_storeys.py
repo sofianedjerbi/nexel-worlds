@@ -158,3 +158,22 @@ def test_the_way_goes_up_the_steps_to_the_floor_asked_for(world):
     assert r["ok"] and (a.x, a.y, s.height(a)) == (x + 5, y - 1, 3) and r["steps"] == 7      # in by the door, up the steps, across the floor
     r = run(s, a, "move_to", {"x": x + 5, "y": y + 1})                            # ...and down again (no height asked: the nearest)
     assert r["ok"] and (a.x, a.y) == (x + 5, y + 1)
+
+
+def test_an_agent_sees_the_roof_it_laid(world):
+    """The observation's roofs: 1 where something is over the tile, as a screen draws the roof (sent only when any)."""
+    from helpers import run
+    from nexel_worlds.sim.constants import VIEW_R
+    sim, a = world
+    assert "roofs" not in sim.observe(a)
+    x, y = a.x - 1, a.y - 1
+    for dx in range(-1, 4):
+        for dy in range(-1, 4):
+            if dx in (-1, 3) or dy in (-1, 3):
+                sim.world.set(x + dx, y + dy, block="stone_wall")
+    a.add("roof", 30)
+    for dx in range(-1, 4):
+        for dy in range(-1, 4):
+            assert run(sim, a, "place", {"item": "roof", "x": x + dx, "y": y + dy})["ok"]
+    roofs = sim.observe(a)["roofs"]
+    assert roofs[VIEW_R][VIEW_R] == "1" and roofs[VIEW_R - 4][VIEW_R] == "0"

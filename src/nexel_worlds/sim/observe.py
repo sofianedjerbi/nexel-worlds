@@ -61,6 +61,12 @@ class Observation:
                    for y in range(a.y - R, a.y + R + 1)]
         if all(set(h) <= {"0"} for h in heights):
             heights = None
+        # roofs, same window: 1 where something is over the tile (a roof or a floor laid over it, or the land in a
+        # cave), 0 under the sky; only sent when any tile in view is covered. (A screen draws a roof; an agent sees it.)
+        roofs = ["".join("1" if self.world.roof(x, y) else "0" for x in range(a.x - R, a.x + R + 1))
+                 for y in range(a.y - R, a.y + R + 1)]
+        if all(set(r) <= {"0"} for r in roofs):
+            roofs = None
         items, signs = [], []
         for (x, y), pile in self.items.items():
             if abs(x - a.x) <= R and abs(y - a.y) <= R and pile:
@@ -86,6 +92,7 @@ class Observation:
                      "sheltered": self.sheltered(a.x, a.y)},
             "grid": grid,
             **({"heights": heights} if heights else {}),
+            **({"roofs": roofs} if roofs else {}),
             "legend": {ch: LEGEND[ch] for ch in sorted(used) if ch in LEGEND},
             "entities": out_ents[:20],
             "items": items[:15],
