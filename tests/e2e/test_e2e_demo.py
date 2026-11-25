@@ -54,8 +54,7 @@ def test_the_demo_plays_and_remembers_the_world(browser, site):
     page.click("#join")
     page.wait_for_function("meObs !== null", timeout=20000)
     tick = page.evaluate("rpc('ping').then(r => r.tick)")
-    page.wait_for_timeout(1000)
-    assert page.evaluate("rpc('ping').then(r => r.tick)") >= tick + 8      # the world ticks at 10 Hz in the tab
+    page.wait_for_function(f"rpc('ping').then(r => r.tick >= {tick + 8})", polling=250, timeout=20000)      # the world ticks in the tab (at 10 Hz on a free machine: a busy runner's tab made 4 in a second)
     page.evaluate("saveWorld()")                                    # what the 15 s autosave does
     page.reload()
     page.wait_for_function("typeof blocks !== 'undefined' && blocks.size > 0", timeout=90000)

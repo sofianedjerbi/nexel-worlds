@@ -200,6 +200,7 @@ def test_on_a_phone_a_held_with_the_stick_is_a_row_and_held_still_places_once(br
         send("touchStart", {2: a, 1: (90, 600)}); send("touchMove", {2: a, 1: (130, 600)})
         g.wait(f"Build.S.at.x >= {x} + 3", 3000)
         send("touchMove", {2: a})
+        g.wait("!Build.S.dir", 3000)                             # (the thumb's lift reaches the page with its next frame, not when it is sent)
         end = g.js("Build.S.at.x")
         send("touchEnd", {})
         g.wait(BUILT, 30000)
