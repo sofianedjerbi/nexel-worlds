@@ -103,9 +103,13 @@ def test_a_tunnel_one_level_under_the_meadow_opens_a_small_trench_not_the_whole_
         g.stamp(-9, -6, ["." * 19] * 13, levels=[(str(z) if 0 <= z <= 9 else "0") * 19] * 13); g.rest()
         z = g.js(f"topAt({x}, {y})")
         g.rpc("dev_col", tiles=[[x + i, y] for i in range(-3, 4)], col=[z - 3, z - 1, z])
-        g.sleep(800)
+        g.rest()                                                        # (the tunnel made: it was a sleep of 0.8 s, then 4 s for the window: on a renderer with no GPU, not enough)
         g.rpc("dev_teleport", x=x, y=y, z=z - 3)
-        g.wait(WIN % 7, timeout=4000)
+        g.arrive()
+        try:
+            g.wait(WIN % 7, timeout=8000)
+        except Exception as e:  # noqa: BLE001 - say what the window was: never opened, or not on the tunnel's seven tiles
+            raise AssertionError(g.js("({a: HdLook.win.a, n: HdLook.win.n, busy: HdLook.busy, level: HdLook.level[0]})")) from e
         g.rest()
         assert g.js("HdLook.win.n") < 20, g.js("HdLook.win.n")          # (the window's tiles: the tunnel)
         assert g.js("HdLook.catSeen()") > .8

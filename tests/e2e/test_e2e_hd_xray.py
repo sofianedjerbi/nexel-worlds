@@ -149,7 +149,7 @@ def test_down_a_passage_a_level_floor_has_no_band_a_step_up_its_riser_a_step_dow
     col = lambda dx, z: [g.js(PX, [x + dx + .5, y - 1 + .5 - i * .05, z]) for i in range(70)]
     level = [lum(c) for c in col(-4, 0)]
     med = sorted(level)[len(level) // 2]
-    assert min(level) > med * .8, (med, level)                                # level: no band across it
+    assert min(level) > med * .8, (med, [(i, round(v, 1)) for i, v in enumerate(level) if v <= med * .8])   # level: no band across it (the dark samples: i * .05 of a tile north of y - .5)
     up = col(0, 0)[30:54]                                                     # (the step's edge is at y - 3.5 .. y - 4: its riser over the lower floor)
     assert any(far(c, up[0]) > 40 for c in up), up                            # a step up: its riser, another tone than the floor
     down = [lum(g.js(PX, [x + 4.5, y - 3 + .01 + i * .015, 0])) for i in range(5)]

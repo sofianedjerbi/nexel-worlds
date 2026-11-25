@@ -17,7 +17,6 @@ def test_without_webgl_2_a_panel_says_the_game_cannot_be_drawn(browser, server):
     shown, text = page.evaluate(SHOWN)
     assert shown and text == "This browser can't draw the game (WebGL 2 is missing)", (shown, text)
     assert page.evaluate("getComputedStyle(document.getElementById('nogl')).borderImageSource").startswith("url(")   # (the game's own panel: its pixel frame)
-    page.screenshot(path="/Users/sdjerbi/.claude/jobs/fa29ccbd/tmp/place-nogl.png")
     assert not errors, errors
     page.close()
 

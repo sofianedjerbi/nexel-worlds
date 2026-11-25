@@ -5,12 +5,15 @@ slowed by Chrome (Emulation.setCPUThrottlingRate), as tools/phone_sim.py does.""
 
 from test_e2e_hd_sun import hd
 
-# each frame, for n frames: [the picture held (the last one kept), your x]
-FRAMES = """async (n) => { const o = []; for (let i = 0; i < n; i++) { await new Promise((r) => requestAnimationFrame(r)); o.push([HdLook.held, myPos().x]); } return o; }"""
-# the px of 64 px wide canvases read back (a body's sprite: hd.js ent) over n frames
-READS = """async (n) => { const P = CanvasRenderingContext2D.prototype, gi = P.getImageData; let k = 0;
-  P.getImageData = function (...a) { if (this.canvas.width === 64) k++; return gi.apply(this, a); };
-  try { for (let i = 0; i < n; i++) await new Promise((r) => requestAnimationFrame(r)); } finally { P.getImageData = gi; } return k; }"""
+# each frame till you are at x `to` (or 3000 frames): [the picture held (the last one kept), your x]. A distance, not a
+# count of frames: a sprint goes on in the game's time, and 90 frames of a renderer with no GPU were a sprint of 34 tiles
+UNTIL = """async (to) => { const o = []; while (myPos().x < to && o.length < 3000) { await new Promise((r) => requestAnimationFrame(r)); o.push([HdLook.held, myPos().x]); } return o; }"""
+# the px of 64 px wide canvases (a body's sprite: hd.js ent) read back over n frames, by picture (its size and what was drawn
+# on it, canvas._h): how many times each one was read. Not a count a frame: on a slow machine more of the walk's game time
+# passes in n frames and more pictures come; one read again is the fault (it was one a change of pose: 75 in 80 frames)
+READS = """async (n) => { const P = CanvasRenderingContext2D.prototype, gi = P.getImageData, k = {};
+  P.getImageData = function (...a) { const c = this.canvas; if (c.width === 64) { const id = c.width + 'x' + c.height + ':' + c._h; k[id] = (k[id] || 0) + 1; } return gi.apply(this, a); };
+  try { for (let i = 0; i < n; i++) await new Promise((r) => requestAnimationFrame(r)); } finally { P.getImageData = gi; } return Object.values(k); }"""
 
 
 def test_walking_on_a_slow_phone_the_picture_is_never_held(browser, server):
@@ -21,13 +24,13 @@ def test_walking_on_a_slow_phone_the_picture_is_never_held(browser, server):
     try:
         g.page.keyboard.down("Shift")
         g.page.keyboard.down("ArrowRight")
-        f = g.js(FRAMES, 90)
+        f = g.js(UNTIL, x0 + 8)
     finally:
         g.page.keyboard.up("ArrowRight")
         g.page.keyboard.up("Shift")
         cdp.send("Emulation.setCPUThrottlingRate", {"rate": 1})
     held = [x for h, x in f if h]
-    assert f[-1][1] - x0 >= 8 and not held, (f[-1][1] - x0, held)      # (it was held most of a sprint: the land made 9 tiles back)
+    assert f[-1][1] - x0 >= 8 and not held, (f[-1][1] - x0, held)      # (8 tiles of a sprint, never held: it was held most of one, the land made 9 tiles back)
 
 
 def test_a_step_makes_only_the_far_patches_at_the_edges(browser, server):
@@ -61,4 +64,4 @@ def test_a_walks_poses_are_read_once(browser, server):
         n = g.js(READS, 40)
     finally:
         g.page.keyboard.up("ArrowRight")
-    assert n <= 6, n                                                   # (a new pose now and then, read by each of its two readers; it was one a change of pose: 75 in 80 frames of a sprint)
+    assert not n or max(n) <= 2, n                                     # (each picture read once by each of its two readers; none: every pose known already)
