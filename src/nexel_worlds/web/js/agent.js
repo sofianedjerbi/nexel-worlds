@@ -36,7 +36,7 @@ function joinGame(name) {
 function rpc(op, extra) {
   return new Promise((res) => {
     if (!agentWs || agentWs.readyState !== 1) return res({ok: false, error: "offline"});
-    const id = ++aid; pending[id] = res; agentWs.send(JSON.stringify({id, op, ...extra}));
+    const id = ++aid; pending[id] = res; agentWs.send(JSON.stringify({...extra, id, op}));     // (the message's own id last: an op's own `id` took its place, and its answer went to nobody)
   });
 }
 let refreshing = false, hurtAt = 0;

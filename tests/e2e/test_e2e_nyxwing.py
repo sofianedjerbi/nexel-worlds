@@ -20,7 +20,7 @@ def test_nyxwing_comes_down_fights_and_breaks_into_stars(game):
     game.wait("[...ents.values()].some((q) => q.e && q.e.kind === 'nyxwing' && q.e.act === 'arrive')", 25000)
     assert game.js("IMG.nyxwing.width % WILD.nyxwing.cw === 0 && IMG.nyxwing.height === 4 * WILD.nyxwing.ch")   # its sheet, at the table's size
     boss = kind(game, "nyxwing")
-    assert game.rpc("dev_hit", id=boss["id"], n=50)["hp"] == boss["hp"]      # coming down, nothing touches it
+    assert game.rpc("dev_hit", creature=boss["id"], n=50)["hp"] == boss["hp"]      # coming down, nothing touches it
     later(game, 7000, "nyxwing_coming")                         # a speck out of the eclipse, nearer each beat
     game.wait("[...ents.values()].some((q) => q.e && q.e.kind === 'nyxwing' && q.e.act !== 'arrive')", 30000)
     shot(game, "nyxwing_landed")
@@ -29,7 +29,7 @@ def test_nyxwing_comes_down_fights_and_breaks_into_stars(game):
     later(game, 2500, "nyxwing_after")
     game.wait(f"[...ents.values()].some((q) => q.e && q.e.kind === 'nyxwing' && !{ATTACKS}.includes(q.e.act))", 20000)
     boss = kind(game, "nyxwing")
-    assert game.rpc("dev_hit", id=boss["id"], n=boss["hp"])["hp"] == 0
+    assert game.rpc("dev_hit", creature=boss["id"], n=boss["hp"])["hp"] == 0
     game.wait("![...ents.values()].some((q) => q.e && q.e.kind === 'nyxwing')", 10000)   # gone from the world
     later(game, 1200, "nyxwing_dying")                          # its body shaking, the eclipse opening over it
     later(game, 1800, "nyxwing_stars")                          # its pixels leaving it for the sky
