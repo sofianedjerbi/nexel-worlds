@@ -16,11 +16,13 @@ const SOUND = {
   firstMoment: [8, 20],   // seconds after the sound starts before the first piece
   gap: [50, 140],     // seconds of silence between two pieces (a random time in this range)
   afterFight: [20, 40],   // seconds after a fight before a piece may play again
-  length: {morning: 190, day: 210, night: 230},   // seconds a piece plays, looping as many whole times as come nearest
+  length: {morning: 190, day: 210, night: 230, adventure: 200},   // seconds a piece plays, looping as many whole times as come nearest
                       // (at least once): about 3:30 by day, 3:50 at night ("feel free to make it loop for 3-4 min"); the
                       // loop joins are exact, nothing is heard there. Morning's Slow tide (3:12) plays once
+  away: 96,           // tiles from your bed past which the day's moments are the adventure's (`play.adventure`, Trailblazer);
+                      // in a boat too. Not at night: the night keeps its own quiet pieces
   morning: .25,       // the day's first part (clock.phase from sunrise) is the morning: its own pieces (`play.morning`)
-  arrive: {morning: 10, day: 10, night: 14, boss: 2.5, menu: 6},   // seconds a piece takes to come in: from quiet and muffled (as if from far) to full.
+  arrive: {morning: 10, day: 10, night: 14, adventure: 10, boss: 2.5, menu: 6},   // seconds a piece takes to come in: from quiet and muffled (as if from far) to full.
                       // Long on purpose: "make the transition long enough to not be noticed by the player"
   ending: 12,         // seconds over which a piece recedes at its end (quieter and more muffled), and the boss's after a fight
   turn: [6, 12],      // seconds of silence when the hour turned during a piece (dusk, dawn): it closes on its chord, then the new hour's
@@ -93,7 +95,7 @@ async function warmSounds() {
 }
 
 // The music. By day and by night a piece plays now and then, with silence between (a moment): one of the pieces the
-// manifest lists for the hour (`play.morning`, `play.day`, `play.night`), never the one before, looped for about `length`, fading
+// manifest lists for the hour (`play.morning`, `play.day`, `play.night`; by day far from home `play.adventure`), never the one before, looped for about `length`, fading
 // on its last chord. While a fight is on, the boss's piece loops instead, and a moment in progress gives way.
 // A piece is streamed: the build cuts it into parts of a few seconds, lossless (tools/build_audio.py), played one after
 // the other to the sample, each fetched a little before its turn and let go once played. A part carries a little of its
@@ -160,10 +162,19 @@ function halt(tr, after) {                                 // stop it, `after` s
   tr.on = false; tr.run++;
   for (const src of tr.nodes.keys()) src.stop(audio.currentTime + after);
 }
+// Far from home: sailing, or further than SOUND.away tiles from your bed (no bed yet: only sailing). Coming home, or
+// setting out, during a piece works like the hour turning: it plays to the end of its pass and closes there.
+function farFromHome() {
+  const s = typeof meObs === "undefined" || !meObs ? null : meObs.self;
+  if (!s) return false;
+  if (s.sailing) return true;
+  return !!(s.spawn && typeof me !== "undefined" && me && Math.hypot(me.x - s.spawn[0], me.y - s.spawn[1]) > SOUND.away);
+}
 // A moment: is it time for a piece, and which. (Called every second, and whenever something changes.)
 function moments() {
   const m = sounds.manifest;
-  const hour = typeof clock === "undefined" ? "day" : clock.night ? "night" : (((clock.phase || 0) % 1) + 1) % 1 < SOUND.morning && m && m.play && (m.play.morning || []).length ? "morning" : "day";
+  const time = typeof clock === "undefined" ? "day" : clock.night ? "night" : (((clock.phase || 0) % 1) + 1) % 1 < SOUND.morning && m && m.play && (m.play.morning || []).length ? "morning" : "day";
+  const hour = time !== "night" && m && m.play && (m.play.adventure || []).length && farFromHome() ? "adventure" : time;
   // Night falls (or day breaks) on a piece of the other hour: it is not cut, it plays this pass to its end and closes
   // there on its last chord, receding; after a short silence the new hour's piece comes in from far.
   if (music.on && music.hour && music.hour !== hour && !music.turned) { music.turned = true; music.left = Math.min(music.left, 1); }

@@ -71,6 +71,11 @@ player, never in the file. Relative loudness lives in `SOUND` (music .64), not i
   anywhere, freestyling, AI-generated typically". Check both before rendering.
 - Establish the key: start on I, chord tones on every beat, a leading note and a cadence. No tune note a semitone or
   minor ninth above a sounding chord note (`pieces.clashes` refuses it).
+- No held tune note a major seventh above the chord's root (C# held over D: "some notes sound off"), and in a minor
+  key no bass lead-in from a semitone below (the engine's habit, made for Side street's jazz): `adventure.audit`.
+- A sound can be on time and still play the wrong note: screen its tuning too (strongest partials against the key's
+  harmonics: within ~12 cents, loudest partial at the octave). Basses/Plain rang a third up, Brass N4 a fifth up,
+  Fun Key and Snap 28-30 cents out: "just sounds like wrong notes".
 - **No arpeggios, no rolled chords, no stepwise runs up then down** ("it makes me SICK, sounds like pharmacy").
   No three even notes rising to a held one on a pure tone (door chime / notification).
 - A new theme = its own cell, key, meter, rhythm section and sounds. Re-dressing a cell, or swapping only the lead, is

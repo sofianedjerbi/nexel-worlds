@@ -9,6 +9,7 @@
 | far_shore_night_c | piece_shore_night_c (fixed_) | night | 66 BPM, no drums, Cybersoda Wurli over Film + Still pads, Sub 2 (candidate D, EP Middle, never picked) |
 | old_mossback | piece_mossback2 | boss | 160 BPM C minor, intro 4 + A A B A, Leads/Light (lead -19 dB), Anthemish 1 stabs, Bass 3 riff, TNMG kit, crashes, tom fills |
 | high_tide | menu_tide_high (slowtide.py "high") | menu | 104 BPM, kick every beat, two thin bars then the drop, 66 bars, 2:32 |
+| trailblazer | piece_trail (music/adventure.py) | adventure | 132 BPM E minor, by day while sailing or over 96 tiles from your bed; one cell (two eighths, a quarter, a held note) over Em9 Cmaj9 D6 Bsus, held Leads/Butter lead doubled by Fundament an octave down, Simplistic stabs (stab5), Jupiter-8 pad, Bass 2 drive in eighths with no chromatic lead-in, chase drums; intro 4 + A A B A of 8, 65.5 s |
 
 Kept for later, not in the game (`site/audio/keep_*.wav`, scores in `menu.LATER`): Sugar rush (156 BPM, "fits a
 high energy moment, not a menu"), Welcome mat, Porch light, Jam jar, Paper boat ("great ideas but they do not fit
@@ -51,3 +52,10 @@ main menu"). Door: `gate` = one wooden knock, `door_close` = a lower, fuller kno
   sparse noise grains = clicks.
 - A bite = millisecond fracture pulses through a mouth resonance sliding ~1500 -> 700 Hz (`_chomp`).
 - One sound per object family when building (post, planks, stone, furniture, soft, pot, fire, boat, floor, path, earth).
+- 2026-11-24/25 adventure (~/nexel/local/music/gaps.html): caves/sea/dusk/threat/win refused ("waiting screen music",
+  "freestyling", "no need"); asked "zelda-like wind waker ... keep the same feeling". Shanty/jig: "just sounds like wrong
+  notes" = sounds out of tune (Basses/Plain loudest a third up, Brass N4 a fifth up, Fun Key/Snap 28-30 cents): screen
+  tuning, not only timing. Then "off-rythm, repetitive" (held note on an off-beat; same four notes every bar); "main issue
+  was the instrument choice"; "sounds too much like side streets... i want a different feeling". Of three new feelings
+  "Trailblazer is good but some notes sound off": a held major seventh on the root (C# over D, F# over G) and the engine's
+  semitone-below bass lead-in (outside a minor key). Fixed, made longer: "go add it into the game".

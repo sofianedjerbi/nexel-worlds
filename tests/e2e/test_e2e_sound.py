@@ -153,6 +153,34 @@ def test_night_falling_on_a_day_piece_closes_it_and_brings_the_nights(game):
     assert not game.errors
 
 
+
+def test_far_from_home_by_day_the_adventure_piece_plays_and_the_night_keeps_its_own(game):
+    """Sailing, or further than SOUND.away tiles from your bed (no bed yet: only sailing), a day's moment is the
+    adventure's piece (play.adventure: Trailblazer). At night the night's pieces play wherever you are."""
+    if not game.js("!!sounds.manifest"):
+        game.wait("sounds.manifest", 20000)
+    if not game.js("!!sounds.manifest.tracks && (sounds.manifest.play.adventure || []).length > 0"):
+        pytest.skip("no music rendered")
+    assert game.js("""(() => { const o = meObs, p = me; try {
+        const at = (self, x, y) => { meObs = {self}; me = {x, y}; return farFromHome(); };
+        return [at({spawn: [0, 0]}, 10, 10), at({spawn: [0, 0]}, SOUND.away + 5, 0), at({sailing: true}, 0, 0), at({}, 500, 500)];
+      } finally { meObs = o; me = p; } })()""") == [False, True, True, False]
+    stop = "(() => { if (music.on) { muted = true; tune(.1); muted = false; } })()"
+    game.js(stop)
+    game.wait("!music.on && music.nodes.size === 0", 10000)
+    game.js("(() => { window.homeAway = farFromHome; farFromHome = () => true; clock.night = false; moment.next = 0; moments(); })()")
+    game.wait("music.on && music.nodes.size > 0", 20000)
+    assert game.js("[music.hour, music.key]") == ["adventure", "trailblazer"]
+    game.js(stop)
+    game.wait("!music.on && music.nodes.size === 0", 10000)
+    game.rpc("dev_time", phase=.8)
+    game.wait("clock.night", 8000)
+    game.js("(() => { moment.next = 0; moments(); })()")
+    game.wait("music.on && music.nodes.size > 0", 20000)
+    assert game.js("music.hour") == "night"
+    game.js("farFromHome = window.homeAway")
+    assert not game.errors
+
 def test_the_first_screen_has_its_own_piece_that_comes_in_slowly_and_recedes_in_the_world(browser, server):
     """"Make that the home screen song", "with just a gradient at the beginning to avoid it popping out of nowhere":
     the first screen's piece starts at the first key (a browser plays nothing before one), rises from nothing, keeps

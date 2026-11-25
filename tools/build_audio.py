@@ -94,7 +94,7 @@ def write_wav(path: Path, st: np.ndarray, rate: int):
 # with silence between; the boss's loops while its fight is on. Far shore night C is the one of two candidates wired in.
 # "slow tide feels better as a morning song": the morning (the day's first part) has it alone; Bright A: Dream joins the day.
 TRACKS = {"slow_tide": "morning", "side_street_day": "day", "far_shore_day": "day", "bright_dream": "day",
-          "side_street_night": "night", "far_shore_night_c": "night", "old_mossback": "boss",
+          "side_street_night": "night", "far_shore_night_c": "night", "trailblazer": "adventure", "old_mossback": "boss",
           "high_tide": "menu"}                     # the first screen's (music/slowtide.py writes it, already mastered)
 SOURCE = {"high_tide": "menu_tide_high", "slow_tide": "menu_tide_full"}   # (both masters of slowtide.py: its "high" and its "full",
                                                                           #  the 80-a-minute take first written as menu_slow_tide)
@@ -158,7 +158,7 @@ def build(out: Path = OUT) -> dict:
             files.append(f)
         sounds[name] = {"files": files, "category": m["cat"], "pitch": bool(m["vary"])}   # tuned sounds are never re-pitched
     tracks = {name: t for name in TRACKS if (t := build_music(out, final(name), name))}
-    play = {role: [n for n in tracks if TRACKS[n] == role] for role in ("morning", "day", "night")} | {role: next((n for n in tracks if TRACKS[n] == role), None) for role in ("boss", "menu")}
+    play = {role: [n for n in tracks if TRACKS[n] == role] for role in ("morning", "day", "night", "adventure")} | {role: next((n for n in tracks if TRACKS[n] == role), None) for role in ("boss", "menu")}
     manifest = {"version": version(), "rate": RATE, "sounds": sounds, "place": blocks, "ground": grounds, "tracks": tracks, "play": play}
     (out / "sfx.json").write_text(json.dumps(manifest, indent=1))
     size = sum((out / f).stat().st_size for s in sounds.values() for f in s["files"]) / 1e6
