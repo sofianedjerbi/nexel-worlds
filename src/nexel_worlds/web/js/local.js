@@ -53,6 +53,20 @@ addEventListener("DOMContentLoaded", () => bootShow(bootAt));       // (said bef
 // Asked for once the world has come: everything it keeps is then in the browser's own store, nothing is fetched twice.
 // A newer build: the worker takes over as soon as it has it all, and a page still at the first screen starts again
 // on it by itself (a page in the world plays on: its next load is the new build).
+// A page the browser kept from before a publish (GitHub Pages lets it keep one ten minutes, and nothing here can say
+// otherwise): the build's mark, asked of the site itself, names another build: the page is loaded again, once, and a
+// reload asks the site whether the page changed. (A page from the service worker is not: the worker has its own way.)
+function freshPage() {
+  const sw = navigator.serviceWorker;
+  if (!window.BUILD || (sw && sw.controller)) return;
+  fetch("build.txt", {cache: "no-store"}).then((r) => (r.ok ? r.text() : "")).then((v) => {
+    v = v.trim();
+    if (!v || v === window.BUILD || sessionStorage.getItem("nexel-fresh") === v) return;
+    sessionStorage.setItem("nexel-fresh", v);
+    location.reload();
+  }).catch(() => {});
+}
+freshPage();
 function keepForNextTime() {
   const sw = navigator.serviceWorker;
   if (!sw || !window.SW_FILE) return;

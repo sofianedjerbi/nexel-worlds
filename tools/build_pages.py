@@ -108,7 +108,8 @@ def offline(out: Path, v: str):
     (out / "sw.js").write_text(sw)
     hook = "<script>\n// The demo build"
     assert page.count(hook) == 1, "the page no longer begins with local.js"
-    (out / "index.html").write_text(page.replace(hook, '<script>\nwindow.SW_FILE = "sw.js";\n// The demo build'))
+    (out / "index.html").write_text(page.replace(hook, f'<script>\nwindow.SW_FILE = "sw.js"; window.BUILD = "{v}";\n// The demo build'))
+    (out / "build.txt").write_text(v)          # (the build's mark, asked of the site at every load: local.js, freshPage)
 
 
 def stamp(out: Path) -> str:
