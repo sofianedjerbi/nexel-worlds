@@ -137,6 +137,8 @@ def webgl_renderer(b) -> str:
 def pytest_terminal_summary(terminalreporter):
     if RENDERER:
         terminalreporter.write_line(f"WebGL renderer: {RENDERER[0]} (E2E_CHROME_ARGS={os.environ.get('E2E_CHROME_ARGS', '')!r})")
+    if MACHINE:
+        terminalreporter.write_line(f"Pace: {MACHINE[1]} (a frame of the game: {MACHINE[0]:.0f} ms; E2E_PACE={os.environ.get('E2E_PACE', '4')})")
 
 
 @pytest.fixture(scope="session")
@@ -163,12 +165,37 @@ def open_game(browser, server, name=None, zoom=4) -> Game:
 
 
 _world_pace = {}         # a world's address -> the pace it was last given
+MACHINE = []             # [ms of the machine's time a frame of the game took, the pace fitted to it]
+
+# the frames' length on a page that plays (ms, of 40: the one a quarter are longer than)
+FRAMES = """() => new Promise((ok) => { const t = []; const f = (n) => { t.push(n); if (t.length <= 40) requestAnimationFrame(f);
+  else { const d = t.slice(1).map((v, i) => v - t[i]).sort((a, b) => a - b); ok(d[Math.floor(d.length * .75)]); } }; requestAnimationFrame(f); })"""
+
+
+@pytest.fixture(scope="session")
+def machine(browser, server):
+    """What a frame of the game costs this machine, measured once on a player's page at the game's own pace, and the
+    tests' pace fitted to it (clock.fit: on the runners, Chrome drawing on the CPU, it is about 1; on the Mac, 4)."""
+    if clock.PACE > 1:
+        page = browser._inner.new_page(viewport={"width": 1200, "height": 800})     # (not paced: its frames as they are)
+        try:
+            g = Game(page, server)
+            g.join(new_name("pace"))
+            ms = page.evaluate(FRAMES)
+        finally:
+            page.close()
+        was = clock.PACE
+        MACHINE.extend([ms, clock.fit(ms)])
+        if clock.coming == was:                           # (the first test's next page, asked for at the pace before)
+            clock.coming = clock.PACE
 
 
 @pytest.fixture(autouse=True)
 def pace(request):
     """The game's time runs clock.PACE times as fast in this test, in its world and on its pages (clock.py); a test
     marked `realtime` has it as it is."""
+    if "browser" in request.fixturenames:
+        request.getfixturevalue("machine")
     clock.now = pace_of(request.node)
     if "server" in request.fixturenames:
         url = request.getfixturevalue("server")
