@@ -45,7 +45,7 @@ fifteen frames to one of its seconds, four times as long to the server and back.
   A test that fails on the fast clock and passes with `E2E_PACE=1` is one of these: mark it, do not stretch it.
 - The pace is fitted to the machine (`clock.fit`, conftest.py `machine`): a frame of the game is 0.1 s of its time at
   the most (render.js), and a frame of a slow machine is `PACE` times as long to it. The run measures what a frame
-  costs on a player's page once, at the start, and keeps a frame under 70 ms of the game's time: 4 on the Mac, about 1
+  costs on a player's page once, at the start, sprinting over the land, and keeps a frame under 70 ms of the game's time: 4 on the Mac, about 1
   on the runners (Chrome drawing on the CPU). The run's last lines say the pace it got.
 - `E2E_PACE=1 pytest ...`: the whole run as it was. `E2E_AHEAD=0`: no page loaded ahead (below).
 - The day goes at the machine's pace on a page that plays (`clock.py` `DAY`): the hour moves on from the last
