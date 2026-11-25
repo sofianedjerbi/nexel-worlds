@@ -9,9 +9,12 @@ import pytest
 
 from conftest import Game, new_name
 
-# the share of the land's px that differ between the picture as it is and as it was (window.__was)
-DIFF = """(() => { const a = window.__was, b = HdLook.read(0, 0, cv.width, cv.height).data; let n = 0;
-  for (let i = 0; i < a.length; i += 4) if (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 24) n++; return n / (a.length / 4); })()"""
+# the share of the land's px that differ between the picture as it is and as it was (window.__was), from the lower of the two
+# pictures' sky lines down (window.__line, canvas px): the land, not the sky over it (the land made again from none put the far
+# land's edge, and the sky's line with it, a few px elsewhere: 1.1 to 1.8 % of a desk's px, three in four of them the sky's blue)
+LINE = "(() => Math.ceil(HdLook.sky(0).line * cv.width / innerWidth))()"
+DIFF = """(() => { const a = window.__was, b = HdLook.read(0, 0, cv.width, cv.height).data, y0 = Math.max(window.__line, Math.ceil(HdLook.sky(0).line * cv.width / innerWidth)) + 2; let n = 0;
+  for (let i = y0 * cv.width * 4; i < a.length; i += 4) if (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 24) n++; return n / (a.length / 4 - y0 * cv.width); })()"""
 # where they are, when they are too many: the share of each eighth of the screen from the top, and of them how many were blue (water)
 WHERE = """(() => { const a = window.__was, b = HdLook.read(0, 0, cv.width, cv.height).data, W = cv.width, H = cv.height, band = new Array(8).fill(0); let blue = 0, n = 0;
   for (let i = 0; i < a.length; i += 4) if (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 24) { n++; band[Math.min(7, Math.floor((i / 4 / W) / H * 8))]++; if (a[i + 2] > a[i] + 20) blue++; }
@@ -51,7 +54,7 @@ def test_sprinting_about_every_face_keeps_its_own_paint(browser, server, screen)
     #  frame in the two pictures: 1 to 5 % of a phone's px, one run in twenty-five, more on a busy machine: every px of land the same)
     g.js("(() => { HdLook.landOnly = true; return 1; })()")
     g.frames(3)
-    g.js("(() => { window.__was = HdLook.read(0, 0, cv.width, cv.height).data; return 1; })()")
+    g.js(f"(() => {{ window.__was = HdLook.read(0, 0, cv.width, cv.height).data; window.__line = {LINE}; return 1; }})()")
     box0 = g.js("[HdLook.box, HdLook.work]")
     g.js("HdLook.forget()")                                        # the land made again, its paints from none
     g.rest()
