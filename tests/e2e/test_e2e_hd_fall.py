@@ -9,7 +9,7 @@ from test_e2e_hd_sun import hd
 # a px of the land's top at (x, y, z), a tile's fraction in: the sum of r, g, b
 PX = """([x, y, z]) => { const p = HdLook.screenOf(x, y, z), k = devicePixelRatio, d = HdLook.read(Math.round(p[0] * k), Math.round(p[1] * k), 1, 1).data; return d[0] + d[1] + d[2]; }"""
 REC = """(() => { window.__r = []; window.__on = true; const f = () => { const p = ents.get('agent' + myId), fl = falling(p, performance.now());
-  __r.push([HdLook.level[0], HdLook.level[1], fl && fl.air ? 1 : 0]); if (__on) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; })()"""
+  __r.push([HdLook.level[0], HdLook.level[1], fl && fl.air ? 1 : 0, performance.now()]); if (__on) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; })()"""
 
 
 def cliff(g):
@@ -51,11 +51,13 @@ def test_off_a_cliff_the_eye_stays_while_you_fall_and_comes_down_with_no_jump(br
     g.wait("HdLook.level[1] === 0", timeout=4000)
     r = g.js("(() => { __on = false; return __r; })()")
     air = [v for v in r if v[2]]
-    assert len(air) > 8, len(air)                                       # it fell, over some frames
+    assert len(air) >= 3, len(air)                                      # it fell, over some frames (a desktop draws 9 or more of it, a renderer with no GPU 7)
     assert min(v[1] for v in air) >= 8.5, air                           # the eye stayed up while the body came down
-    steps = [abs(b[1] - a[1]) for a, b in zip(r, r[1:])]
-    assert max(steps) < 1.5, max(steps)                                 # (it was 9 levels in one frame: over 8 the eye went there at once)
-    assert sum(1 for s in steps if s > .05) >= 12                       # down to you over a dozen frames or more
+    # the eye's way a 60th of a second, and how long it took to come down: it eases in time, and a slow frame holds more of it
+    steps = [(abs(b[1] - a[1]) * 1000 / 60 / max(1000 / 60, b[3] - a[3]), a[3], b[3]) for a, b in zip(r, r[1:])]
+    assert max(s for s, _, _ in steps) < 1.5, max(steps)                # (it was 9 levels in one frame: over 8 the eye went there at once)
+    moving = [(t0, t1) for s, t0, t1 in steps if s > .05]
+    assert moving and moving[-1][1] - moving[0][0] >= 180, moving       # down to you over a fifth of a second or more (a dozen frames on a desktop)
 
 
 # frames that take `ms` each (a slow phone, a busy machine): the page spins that long in every frame; 0: no more

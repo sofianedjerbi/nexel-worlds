@@ -60,7 +60,8 @@ def test_down_a_covered_stair_the_window_is_open_on_every_frame_and_your_body_is
     r = walk(g, "ArrowRight", f"myPos().x >= {x + 18}")
     assert g.pos()[0] >= x + 18 and g.js("HdLook.level[0]") == -14
     under = [v for v in r if v[2]]
-    assert len(under) > 60, len(under)                                           # (the eight covered steps and the passage)
+    xs = [v[0] for v in under]
+    assert len(under) > 20 and max(xs) - min(xs) >= 8, (len(under), xs[:1] + xs[-1:])   # (the eight covered steps and the passage, walked under the land: a way, not a count of frames: a renderer with no GPU drew 50 frames of it, a desktop 60 and more)
     shut = [(round(v[0], 2), v[5], v[6]) for v in under if not v[3]]
     assert not shut, (len(shut), shut[:6])                                       # land over you: the window is open on your tile, that very frame
     part = [i for i, v in enumerate(r) if v[2] and v[7] < 1]
