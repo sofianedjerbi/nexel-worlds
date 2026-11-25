@@ -44,11 +44,11 @@ class Ore:
 
 
 ORES = [   # rarest first: where two veins meet, the rarer is the cell's
-    Ore("titanium", "titanium_ore", 2, -60, -512, 0.035),
-    Ore("gold", "gold_ore", 2, -30, -320, 0.04),
-    Ore("copper", "copper_ore", 1, -2, -100, 0.07),
-    Ore("iron", "iron_ore", 1, -4, -220, 0.08),
-    Ore("coal", "coal", 0, 2, -80, 0.10),
+    Ore("titanium", "titanium_ore", 2, -60, -512, 0.008),
+    Ore("gold", "gold_ore", 2, -30, -320, 0.008),
+    Ore("copper", "copper_ore", 1, -2, -100, 0.016),
+    Ore("iron", "iron_ore", 1, -4, -220, 0.02),
+    Ore("coal", "coal", 0, 2, -80, 0.028),
 ]
 ORE_OF = {o.item: o for o in ORES}
 # Items renamed when ores came: an old save's are its new ones (sim/core.py, at load)
