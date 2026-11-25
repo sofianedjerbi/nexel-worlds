@@ -55,3 +55,14 @@ def test_on_the_real_repo_known_files_ask_for_their_tests():
     assert "tests/e2e/test_e2e_hd_sun.py" in e2e and all(Path(t).name.startswith("test_e2e_hd") for t in e2e if "hd" in t)
     e2e, unit, _ = A.affected(["src/nexel_worlds/devtools.py"], ROOT)
     assert "tests/test_devtools.py" in unit and "tests/e2e/test_e2e_world.py" in e2e
+
+
+def test_the_sound_pipeline_asks_for_every_test_that_plays_sound(tmp_path):
+    """The sounds made again (tools/build_audio.py, music/**, the CI workflow that builds them): the tests that play
+    sound are those audio.js asks for, also when audio.js itself did not change (#47: a sound test did not run)."""
+    r = repo(tmp_path, {"src/nexel_worlds/web/js/audio.js": "const bossTrack = {};\nfunction bossMusic(on) {}\n",
+                        "tests/e2e/test_e2e_sound.py": 'def test_a(g):\n    g.wait("bossTrack.on")\n',
+                        "tests/e2e/test_e2e_walk.py": "def test_b(g):\n    pass\n"})
+    for f in ("tools/build_audio.py", "music/adventure.py", "music/sfx_map.json", ".github/workflows/ci.yml"):
+        assert A.affected([f], r)[0] == ["tests/e2e/test_e2e_sound.py"], f
+    assert A.affected(["README.md"], r)[0] == []
