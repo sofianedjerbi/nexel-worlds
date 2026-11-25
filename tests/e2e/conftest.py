@@ -89,6 +89,15 @@ def pace_of(item) -> float:
     return 1.0 if item.get_closest_marker("realtime") else clock.PACE
 
 
+@pytest.hookimpl(wrapper=True)
+def pytest_runtest_makereport(item, call):
+    """The test's own result, kept on it for its fixtures' teardown (a failed test's pages are photographed: pages.py)."""
+    rep = yield
+    if rep.when == "call":
+        item.rep_call = rep
+    return rep
+
+
 def pytest_runtest_protocol(item, nextitem):
     """What the test after this one will play on, for the page that is loaded ahead (pages.py)."""
     clock.coming = pace_of(nextitem) if nextitem is not None and "game" in getattr(nextitem, "fixturenames", ()) else None
@@ -204,7 +213,8 @@ def pace(request):
             _world_pace[url] = clock.now
     yield
     if "browser" in request.fixturenames:                 # (a page left open is a player left awake in the next test's world: pages.py)
-        request.getfixturevalue("browser").shut()
+        rep = getattr(request.node, "rep_call", None)
+        request.getfixturevalue("browser").shut(failed=bool(rep and rep.failed))
     clock.now = 1.0
 
 
