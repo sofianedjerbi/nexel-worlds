@@ -19,8 +19,12 @@ def shot(game, name):
 
 def test_bubbles_are_pixels_pile_up_and_come_down(game):
     game.clear_area(6)
+    # (they stay while the test reads them: pushed a few seconds old, so as to be written whole, they had a second of
+    # the machine's time left on the tests' clock, less than the reading takes on a slow runner. A fourth one going at
+    # once is BUBBLE.most, not their life)
+    game.js("BUBBLE.life = 1e6")
     game.js(f"({SAY})('hi!', 3)")
-    game.sleep(300)
+    game.wait(f"{MINE}.length === 1", 10000)
     one = game.js(MINE)[0]
     edge = game.js(f"""(() => {{ const d = (x, y) => [...ctx.getImageData(x, y, 1, 1).data].slice(0, 3).join(), x = {one['x']}, y = {one['y']}, w = {one['w']}, h = {one['h']};
       const top = new Set(); for (let i = 2; i < w - 2; i++) top.add(d(x + i, y)); for (let i = 2; i < w - 2; i++) top.add(d(x + i, y + 1));
@@ -37,7 +41,7 @@ def test_bubbles_are_pixels_pile_up_and_come_down(game):
     shot(game, "one")
     long = "I found a cave full of iron past the river, bring a pickaxe and some torches when you come"
     game.js(f"({SAY})({long!r}, 4); ({SAY})('ok, coming', 4, true)")
-    game.sleep(400)
+    game.wait(f"{MINE}.length === 3", 10000)
     a, b, c = game.js(MINE)
     assert [a["text"], c["text"]] == ["hi!", "ok, coming"]
     assert 2 <= len(b["rows"]) <= 7 and " ".join(b["rows"]) == long and b["w"] <= 400 + 16, b   # wrapped whole, no wider than a bubble
@@ -45,7 +49,7 @@ def test_bubbles_are_pixels_pile_up_and_come_down(game):
     assert a["y"] - (b["y"] + b["h"]) == 2 and b["y"] - (c["y"] + c["h"]) == 2   # one gap between them
     shot(game, "three")
     game.js(f"({SAY})('wait for me', 4)")                                        # a fourth: the oldest goes at once
-    game.sleep(500)
+    game.wait(f"(() => {{ const m = {MINE}; return m.length === 3 && m[0].text !== 'hi!' && m[0].y + m[0].h === {a['y'] + a['h']}; }})()", 10000)   # (it comes down over frames)
     now = game.js(MINE)
     assert [m["text"] for m in now] == [long, "ok, coming", "wait for me"]
     assert now[0]["y"] + now[0]["h"] == a["y"] + a["h"], (now[0], a)             # and the pile has come down onto its place
@@ -53,7 +57,7 @@ def test_bubbles_are_pixels_pile_up_and_come_down(game):
     shot(game, "after_one_went")
     game.js("bubbles.length = 0")
     game.js(f"({SAY})({'a' * 200!r}, 11)")                                       # one endless word: broken into rows
-    game.sleep(300)
+    game.wait(f"{MINE}.length === 1", 10000)
     rows = game.js(MINE)[0]["rows"]
     assert len(rows) == 7 and "".join(rows) == "a" * 200, rows                  # all of the longest line a chat takes, nothing cut
     shot(game, "endless")
@@ -111,7 +115,7 @@ def test_what_is_typed_in_capitals_is_shouted(game):
         game.page.keyboard.press("Enter")
         game.wait(f"bubbles.some((b) => b.text === {line!r})", 5000)
         assert game.js(f"bubbles.find((b) => b.text === {line!r}).shout") is shout
-        game.sleep(300)
+        game.wait("window.__said.length >= 3", 5000)                            # (its first syllables played)
         said = game.js("window.__said")
         assert len(said) >= 3 and (max(said) > .1) is shout, said               # a shout's syllables are held longer (as long as the recording lasts)
     assert game.js("window.__shaped") == 1                                      # only the shout went through the breaking curve

@@ -16,8 +16,7 @@ def test_the_grumblestump_is_a_stump_by_day_and_slams_at_night(game):
     game.rpc("dev_time", phase=.85)
     game.wait(WINDUP.format("grumblestump"), 8000)             # night: it came, and its arms are going up
     shot(game, "stump_arms_up")
-    game.sleep(1300)
-    assert game.server()["hp"] < 20                           # we stood in the ring when they came down
+    game.wait("meObs.self.hp < 20", 15000)                     # we stood in the ring when they came down
     shot(game, "stump_slam")
     assert not game.errors
 
@@ -27,11 +26,10 @@ def test_the_snapbloom_rears_back_then_bites(game):
     game.rpc("dev_needs", hp=20, hunger=17)
     game.rpc("dev_time", phase=.3)
     game.spawn("snapbloom", 1, 0)
-    game.wait(WINDUP.format("snapbloom"), 4000)
+    game.wait(WINDUP.format("snapbloom"), 10000)
     shot(game, "bloom_rears")
-    assert game.server()["hp"] == 20                           # the warning hurts nobody
-    game.sleep(1300)
-    assert game.server()["hp"] < 20
+    # (that the warning itself hurts nobody is the sim's: tests/test_stump.py. Read here, the page saw the windup after the bite on a slow runner)
+    game.wait("meObs.self.hp < 20", 15000)                     # and then it bites
     assert not game.errors
 
 
@@ -47,11 +45,11 @@ def test_a_hob_set_down_burns_a_grumblestump_and_it_runs(game):
     hob = kind(game, "hob")
     assert hob and game.inv("hob") == 0                        # lit: a creature now, beside us
     game.spawn("grumblestump", 3, 0)
-    game.wait(WINDUP.format("hob"), 4000)                     # it saw it: it hunches, its fire draws in
+    game.wait(WINDUP.format("hob"), 10000)                     # it saw it: it hunches, its fire draws in
     shot(game, "hob_hunch")
     game.sleep(500)
     shot(game, "hob_burst")
-    game.wait("[...ents.values()].some((q) => q.e && q.e.kind === 'grumblestump' && q.e.hp < 14)", 3000)
+    game.wait("[...ents.values()].some((q) => q.e && q.e.kind === 'grumblestump' && q.e.hp < 14)", 15000)
     assert not game.errors
 
 
@@ -65,22 +63,21 @@ def test_each_creature_makes_its_own_sounds(game):
     game.rpc("dev_time", phase=.3)
     game.js(HEAR)
     game.spawn("tusker", 4, 0)
-    game.wait(WINDUP.format("tusker"), 3000)
-    game.sleep(2200)                                           # it charges us down
+    game.wait("window.__heard.includes('tusker_ram')", 15000)   # it warns, then charges us down
     game.spawn("snapbloom", 0, 1)
-    game.wait(WINDUP.format("snapbloom"), 4000)
-    game.sleep(1300)
+    game.wait("window.__heard.includes('snapbloom_bite')", 15000)
     heard = game.js("window.__heard")
     assert {"tusker_warn", "tusker_ram", "snapbloom_warn", "snapbloom_bite"} <= set(heard), heard
     assert "punch" not in heard
+    # (the tusker and the snapbloom sent away: the tusker still about set the hob off from three tiles, out of its burst's two)
+    game.rpc("dev_creatures", clear=40)
     game.rpc("dev_time", phase=.85)
     game.give(hob=1)
     game.hold_item("hob")
     game.face(-1, 0)
     game.press("e", wait=1200)
     game.spawn("grumblestump", -3, 0)
-    game.wait("window.__heard.includes('hob_burst')", 5000)
+    game.wait("window.__heard.includes('grumblestump_hurt')", 20000)      # what it burnt cried out (with the burst: world_decor.js)
     heard = game.js("window.__heard")
     assert {"hob_lit", "hob_warn", "hob_burst"} <= set(heard), heard
-    assert any(n in heard for n in ("grumblestump_hurt", "tusker_hurt")), heard     # what it burnt cried out (the tusker, if still near)
     assert not game.errors

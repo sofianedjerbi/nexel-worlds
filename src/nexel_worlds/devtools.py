@@ -60,8 +60,8 @@ def dev_op(sim, agent, op: str, msg: dict) -> dict:
             sim.creatures[c.id] = c
             spawned = c.id
         return {"spawned": spawned}
-    if op == "dev_hit":                          # a blow of n on creature `id`, as if you had struck it (its shell, its sky: combat.py)
-        c = sim.creatures.get(int(msg.get("id", -1)))
+    if op == "dev_hit":                          # a blow of n on `creature` (its id), as if you had struck it (its shell, its sky: combat.py)
+        c = sim.creatures.get(int(msg.get("creature", -1)))     # (not "id": that is the message's own, its answer's address)
         if c is not None:
             sim.damage(c, sim.shell(c, int(msg.get("n", 10))), "dev", by=agent)
         return {"hp": c.hp if c is not None and c.id in sim.creatures else 0}
