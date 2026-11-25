@@ -67,16 +67,17 @@ jobs:
       - run: uv run pytest tests -q --ignore=tests/e2e
 
   # The browser tests (tests/e2e): the game in real Chrome against a fresh server, here and not on the shared Mac,
-  # on every pull request and every push to main. Four runners, a quarter of the files each (every fourth, by name).
+  # on every pull request and every push to main. Twenty runners, a twentieth of the files each (every twentieth, by
+  # name), one test at a time: no GPU here, Chrome draws the land on the CPU, and two tests at once starve each other.
   # The tests that need the built sounds (not in git: tools/build_audio.py) skip here.
   e2e:
-    name: Browser tests (${{ matrix.shard }}/4)
+    name: Browser tests (${{ matrix.shard }}/20)
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.4.0
@@ -89,8 +90,8 @@ jobs:
         env:
           SHARD: ${{ matrix.shard }}
         run: |
-          files=$(ls tests/e2e/test_*.py | sort | awk -v s="$SHARD" 'NR % 4 == s % 4')
-          uv run pytest -m e2e -n 3 -q --durations=15 $files
+          files=$(ls tests/e2e/test_*.py | sort | awk -v s="$SHARD" 'NR % 20 == s % 20')
+          uv run pytest -m e2e -n 0 -q --durations=10 $files
 
   commits:
     name: Conventional Commits
