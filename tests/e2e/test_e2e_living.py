@@ -38,15 +38,15 @@ def test_eating_your_hands_are_full(game):
     game.js("(() => { window.__keys = []; addEventListener('keydown', (e) => __keys.push([e.key, eating()]), true); return 1; })()")
     game.press("e", 0)
     game.wait("myAside && myAside.tool === 'eat'")
+    assert game.rpc("act", tool="dig", args={"dir": "E"}).get("error") == "hands_full"   # (the server's own rule, asked past the page: first, in the meal's 0.9 s)
     game.js("selectItem(null)")
     game.page.keyboard.press("x")                             # (straight on, in the meal's 0.9 s: two presses that each waited
     game.page.keyboard.press("f")                             # for two frames of a slow machine came after it)
     game.frames(1)
     assert game.js("__keys.filter(([k]) => k === 'x' || k === 'f')") == [["x", True], ["f", True]]   # both pressed while eating
-    assert game.js("__asked") == ["eat"]                                              # nothing asked for but the meal
+    assert game.js("__asked") == ["eat", "dig"]                                       # nothing asked for but the meal (and the dig asked past the page)
     assert game.js("!ents.get('agent' + myId).swing && !myAction")                   # no punch shown
     assert game.inv("stone") == 0 and game.js(f"combAt({game.pos()[0] + 1}, {game.pos()[1]})") == "T"
-    assert game.rpc("act", tool="dig", args={"dir": "E"})["error"] == "hands_full"   # (the server's own rule, asked past the page)
     game.wait("!eating()", 4000)
     assert game.server()["hunger"] == 8 + 10                                        # ...and the meal was not stopped for any of it
     game.press("f", 400)
@@ -68,9 +68,8 @@ def test_you_eat_while_you_walk(game):
     game.page.keyboard.down("d")
     game.sleep(250)
     game.press("e", 0)
-    game.sleep(450)
+    game.wait("(() => { const e = ents.get('agent' + myId).e; return e.doing === 'walk' && e.eats === 'bread'; })()", 3000)   # as others are told (when the world has said it)
     assert game.js("walking !== null") and game.js("myAside && myAside.tool") == "eat"       # walking, and the bites showing
-    assert game.js("(() => { const e = ents.get('agent' + myId).e; return [e.doing, e.eats]; })()") == ["walk", "bread"]   # as others are told
     game.sleep(900)
     game.page.keyboard.up("d")
     rec = game.recording()
