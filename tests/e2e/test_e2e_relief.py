@@ -31,15 +31,16 @@ def test_the_camera_centres_on_you_as_drawn(game):
 def test_running_into_new_ground_never_stalls_a_frame(game):
     """New land is made in steps within a budget (voxels.js work): no frame waits on a whole block (sprinting froze the
     game for 70-130 ms). (How long a step is: test_e2e_land.py.)
-    A stall is the script's: its time in each frame (a frame on the CPU's drawing is 100 to 270 ms with new land in view
-    however little the script does: it can't tell a stall from a slow machine)."""
+    What is timed is the land's share of each frame (render.js: landMs, what it gives /perf). (On a runner, where Chrome
+    draws on the CPU, a frame with new land in view lasts 100 to 270 ms, its script 50 to 80, however little land is
+    made in it: neither can tell a stall from a slow machine.)"""
     ms = game.js(f"""new Promise((res) => {{
-      const f0 = window.frame, out = [];
-      window.frame = function (now) {{ const t = performance.now(); f0(now); out.push(performance.now() - t); if (out.length >= 150) {{ window.frame = f0; res(out); }} }};
+      const p0 = window.perfFrame, out = [];
+      window.perfFrame = function (now, js, land) {{ out.push(land); if (out.length >= 150) {{ window.perfFrame = p0; res(out); }} return p0(now, js, land); }};
       Voxels.engine.forget(() => false);                       // (the land round you to be made again too, as blocks)
       rpc('dev_teleport', {{x: -10, y: 190}}); }})""")
     ms = sorted(ms)
-    assert ms[-2] < 60, [round(v, 1) for v in ms[-5:]]          # (a whole block made in a frame: 70-130 ms; one frame of the collector's)
+    assert ms[-2] < 40, [round(v, 1) for v in ms[-5:]]          # (a whole block made in a frame: 70-130 ms; the budget is 3 to 12 a frame)
 
 
 def test_a_pit_below_sea_level_is_drawn_like_any_hole(game):
