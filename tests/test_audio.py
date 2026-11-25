@@ -44,9 +44,10 @@ def asked_for() -> dict[str, set[str]]:
         names = set()
         for m in re.finditer(r"\bsfx\(", text):
             names |= set(re.findall(r'"([a-z_~:]+|a gloom)"', first_arg(text, m.end() - 1)))
-        if path.name == "audio.js":       # the lookup tables: STRIKE, BREAK, STEP, VOICE, and the fallback in sfxPlaced
+        if path.name == "sound_of.js":    # the lookup tables: STRIKE, BREAK, STEP, VOICE, and the fallback in sfxPlaced
             for table in re.findall(r"const (?:STRIKE|BREAK|STEP|VOICE) = \{([^}]*)\}", text):
                 names |= set(re.findall(r':\s*"([a-z_]+)"', table))
+        if path.name == "audio.js":
             names |= set(re.findall(r"^\s*minGap: \{([^}]*)\}", text, re.M) and
                          re.findall(r"(\w+):", re.search(r"minGap: \{([^}]*)\}", text).group(1)))
         if names - NOT_SOUNDS:
