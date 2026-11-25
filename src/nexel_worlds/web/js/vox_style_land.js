@@ -23,16 +23,26 @@ const VoxStyleLand = (() => {
   const cat = (l) => { let n = 0; for (const a of l) n += a.length; const d = new Float32Array(n); n = 0; for (const a of l) { d.set(a, n); n += a.length; } return d; };
   // A WAY INTO THE LAND, SEEN FROM ANY SIDE: the eye looks north, so a cave's or a tunnel's mouth that opens north, east or west has its face hidden. Its shade is laid in the
   // paint of the tops round it (m, a top's mouth bits: 1 << d the ground in front of a mouth on its side d, 16 << d the land's top over a mouth that opens on side d; d 0 N, 1 E, 2 S, 3 W):
-  // dark toward the mouth over the whole tile, in whole art px, four steps of a 2x2 dither, its corners lighter (a south mouth's ground too, as its face shows). Made with the paint, never by the frame.
+  // a cool shade toward the mouth, 12 art px deep, in whole art px, four steps of a 2x2 dither, its corners lighter (a south mouth's ground too, as its face shows). Made with the paint, never by the frame.
   // (Of three tried, mockups "Cave mouths you can see from every side": the ground alone was hidden by the hill itself; a 6-px band on the top was too faint from the meadow)
-  const MD = [[0, -1], [1, 0], [0, 1], [-1, 0]], MK = [.38, .52, .68, .84];
+  // (it was four steps of 4 px, darkest .38, near black: "those black spots ... the execution is ugly"; of eight tried (~/nexel/local/mockups/mouth), the same
+  //  dither fainter: three steps of 3 px from .72; then "a little bit more beautiful and more obvious": a step more, from .58, a cool blue-grey shade, not a stain.
+  //  A mouth that opens north, its face hidden by its own hill, has instead a little arch on that edge: the shape of an opening, mockup G)
+  const MD = [[0, -1], [1, 0], [0, 1], [-1, 0]], MK = [.58, .7, .82, .93];
   function mouthShade(px, at, st, m) {
-    for (let j = 0; j < C; j++) for (let i = 0; i < C; i++) { let k = 1;
+    const north = (m & 16) || (m & 4);          // (a mouth that opens north: the top over it, the ground before it)
+    for (let j = 0; j < C; j++) for (let i = 0; i < C; i++) { let k = 1, ka = 1;
       for (let d = 0; d < 4; d++) { if (!(m >> d & 17)) continue;
-        const e = [j, 15 - i, 15 - j, i][d], a = d & 1 ? j : i, t = e + Math.max(0, Math.abs(a - 7.5) - 4.5), s = Math.floor(t / 4 + ((i >> 1) + (j >> 1) & 1) * .5);
+        const e = [j, 15 - i, 15 - j, i][d], a = d & 1 ? j : i;
+        if (d === 0 && m & 1 && !(m & 16)) continue;   // (before a mouth that opens south, its face seen: the shader's shadow, out of it, MOUTHS (vox_style_glsl.js); no paint)
+        const lo = m & 256 << 2 * d, hi = m & 512 << 2 * d;   // (the same mouth on the tile before / after along this edge: one mark over all of them, rounded only at its ends)
+        if ((d === 0 && m & 16) || (d === 2 && m & 4)) { const dx = Math.max(0, lo ? 0 : 7.5 - a, hi ? 0 : a - 7.5), r = (dx / 4.5) ** 2 + (e / 4) ** 2; ka = Math.min(ka, r < .55 ? .38 : r < 1 ? .62 : 1); continue; }
+        const t = e + Math.max(0, lo ? 0 : 3 - a, hi ? 0 : a - 12), s = Math.floor(t / 3 + ((i >> 1) + (j >> 1) & 1) * .5);
         if (s < 4) k = Math.min(k, MK[s]); }
-      if (k < 1) { const o = at + j * st + i, q = px[o], b = 1 - (1 - k) * .75;   // (a cool shade: its blue kept a little more)
-        px[o] = (q & 0xff000000) | Math.round((q >>> 16 & 255) * b) << 16 | Math.round((q >>> 8 & 255) * k) << 8 | Math.round((q & 255) * k); } }
+      if (k < 1) { const o = at + j * st + i, q = px[o], b = 1 - (1 - k) * .45, g = k + (1 - k) * .2;   // (a cool shade: blue kept most, green a little: blue-grey)
+        px[o] = (q & 0xff000000) | Math.round((q >>> 16 & 255) * b) << 16 | Math.round((q >>> 8 & 255) * g) << 8 | Math.round((q & 255) * k); }
+      if (north && ka < 1) { const o = at + j * st + i, q = px[o], b = 1 - (1 - ka) * .75;   // (the arch: an opening's dark half-oval on that edge, its rim lighter)
+        px[o] = (q & 0xff000000) | Math.round((q >>> 16 & 255) * b) << 16 | Math.round((q >>> 8 & 255) * ka) << 8 | Math.round((q & 255) * ka); } }
   }
   // a vertex's ten numbers onto a list: an array (a chunk being made) or a kept writer {f: Float32Array, n} (the frame's ghosts and shadows, vox_style.js), grown when full
   const emit = (dst, a, b, c, d, e, f, g, h, i, j) => { if (Array.isArray(dst)) { dst.push(a, b, c, d, e, f, g, h, i, j); return; } if (dst.n + N > dst.f.length) { const w = new Float32Array(dst.f.length * 2 + N); w.set(dst.f); dst.f = w; }
@@ -158,7 +168,12 @@ const VoxStyleLand = (() => {
       // a way in. A wall (no step in), a ledge of one tile over the ground (no way on from under it), water: none
       const inTo = (x0, y0, x, y, f) => { if (host.water && host.water(x, y)) return null; const g = floorOf(x0, y0, x, y, f); return g !== null && g % 1 === 0 && topOf(x, y) > g + 1 ? g : null; };
       const mouth = (ox, oy, f, mx, my) => { if (host.water && host.water(ox, oy)) return false; const g = inTo(ox, oy, mx, my, f); return g !== null && inTo(mx, my, 2 * mx - ox, 2 * my - oy, g) !== null; };
-      const mouths = (x, y, z) => { let m = 0; for (let d = 0; d < 4; d++) { const X = x + MD[d][0], Y = y + MD[d][1], t = topOf(X, Y); if (t > z + 1 && mouth(x, y, z, X, Y)) m |= 1 << d; else if (d !== 2 && t < z - 1 && !walled(X, Y, t) && mouth(X, Y, t, x, y)) m |= 16 << d; } return m; };   // (this top under the sky: in front of a mouth on side d, or over one that opens on side d; the eye sees a south one's face)
+      const mouths = (x, y, z) => { let m = 0; for (let d = 0; d < 4; d++) { const X = x + MD[d][0], Y = y + MD[d][1], t = topOf(X, Y); if (t > z + 1 && mouth(x, y, z, X, Y)) m |= 1 << d; else if (d === 0 && t < z - 1 && !walled(X, Y, t) && mouth(X, Y, t, x, y)) m |= 16 << d; } return m; };   // (this top under the sky: in front of a mouth on side d, or over one that opens north (its arch): an east or west one's mark is on the ground before it alone, "except for north facing entries, don't show the shadow above")
+      // a wide mouth: for each side d it is on, whether the tile before (256 << 2d: west, or north on an east or west side) and the one after (512 << 2d) along that edge have the same
+      // mouth, at the same height: its mark is one over all of them, not one a tile ("dont do one per tile, fuse them beautifully")
+      const runs = (x, y, z, m) => { if (!m) return 0; for (let d = 0; d < 4; d++) { const b = m & (17 << d); if (!b) continue;
+        const same = (X, Y) => topOf(X, Y) === z && !walled(X, Y, z) && (mouths(X, Y, z) & b) === b;
+        if (d & 1 ? same(x, y - 1) : same(x - 1, y)) m |= 256 << 2 * d; if (d & 1 ? same(x, y + 1) : same(x + 1, y)) m |= 512 << 2 * d; } return m; };
       // from a floor at f0 on (x0, y0): the floors of (x, y) over it (up to 8 levels) from which a step lands on f0: the way you came down by
       const upsOf = (x0, y0, x, y, f0) => { const c = real(x, y), l = []; if (c) for (let j = 0; j < c.length; j += 2) { const f = c[j]; if (f > f0 && f <= f0 + 8) { const g = floorOf(x, y, x0, y0, f); if (g !== null && Math.floor(g) === f0) l.push(f); } } return l; };
       // YOUR SPACE, three passes: 1 where you can WALK, there and back; 2 from there where you can only drop to and on from there; 3 the floors you could have dropped FROM, and on from those (the stair over the room you
@@ -221,7 +236,12 @@ const VoxStyleLand = (() => {
             if (f === 1 || solidIn(nx, ny, nz)) continue;
             const nc = real(nx, ny); let sky = (f === 0 ? z >= open : !nc || z > nc[nc.length - 1]) ? 1 : 0, s, kind = f === 0 ? 1 : 0, e = 0;
             if (f === 0) {
-              const mo = sky && !walled(x, y, z) ? mouths(x, y, z) : 0; s = topSlot(x, y, z, (px, at, st) => { topPaint(x, y, z, px, at, st); if (mo) mouthShade(px, at, st, mo); }, mo);   // (a mouth's shade is for the open ground before it: a shaft's floor at a passage's end took it, a dark blue band across a level way in the window)
+              const mo = sky && !walled(x, y, z) ? runs(x, y, z, mouths(x, y, z)) : 0; s = topSlot(x, y, z, (px, at, st) => { topPaint(x, y, z, px, at, st); if (mo) mouthShade(px, at, st, mo); }, mo);   // (a mouth's shade is for the open ground before it: a shaft's floor at a passage's end took it, a dark blue band across a level way in the window)
+              if (sky && walled(x, y, z)) e |= 32768;   // (a floor under the sky in a shaft, a trench, a pit: lit as the floors of your space are when you are under the land (the shader's sk); open ground, even at a cliff's foot, keeps the sun: "still weird color mismatch when entering a cave")
+              if (sky && mo & 1) e |= 262144 + (mo & 256 ? 2097152 : 0) + (mo & 512 ? 4194304 : 0);   // (and the same on the tile west, east of it: one spill along a wide mouth)   // (the ground before a mouth that opens south: the cave's shadow spills onto it, the shader's)
+              else if (!sky && topOf(x, y + 1) === z && mouth(x, y + 1, z, x, y)) e |= 131072;   // (the floor just inside a mouth that opens south: its shadow, deeper in)
+              else if (!sky && topOf(x, y + 2) === z && mouth(x, y + 2, z, x, y + 1)) e |= 524288;   // (and the one behind it: darker still)
+              else if (!sky && topOf(x, y + 3) === z && mouth(x, y + 3, z, x, y + 2) && inTo(x, y + 1, x, y, z) !== null) e |= 1048576;   // (and the one behind that: its darkest, as all the way in: no light band at the end of the shadow)
               { [[0, -1, 1], [1, 0, 2], [0, 1, 4], [-1, 0, 8]].forEach(([dx, dy, b]) => { if (!solidIn(x + dx, y + dy, z) && (sky || solidIn(x + dx, y + dy, z - 1))) e |= b; });   // (a lip: under a roof only at a step of one level, one you can take; a drop of two or more has none)
                 if (sky) [[0, -1, 64], [1, 0, 128], [-1, 0, 256], [0, 1, 2048]].forEach(([dx, dy, b]) => { if (!solidIn(x + dx, y + dy, z) && !solidIn(x + dx, y + dy, z - 1) && !solidIn(x + dx, y + dy, z - 2)) e |= b; });   // (a top under the sky: its edge over a drop of three levels or more, one that hurts: a dark rim, the shader's; a step has the light lip. One rule whatever made the drop: a cliff, a gorge, a trench dug)
                 if (!sky) [[0, -1, 64], [1, 0, 128], [-1, 0, 256]].forEach(([dx, dy, b]) => { if (!solidIn(x + dx, y + dy, z) && !solidIn(x + dx, y + dy, z - 1)) e |= b; });   // (a floor under a roof: its edge over a drop of two levels or more, north, east, west (its south one shows the wall's face): a thick dark rim: from above a wall that faces east or west is not seen at all)

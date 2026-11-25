@@ -90,7 +90,7 @@ def test_under_a_roof_an_xray_window_shows_your_floor_and_every_px_outside_it_is
     assert g.js("HdLook.lag") < 600, g.js("HdLook.lag")              # (the window is there within a quarter of a second or so of the land hiding you)
     assert g.js(f"[HdLook.winAt({x}, {y}), HdLook.winAt({x + 3}, {y + 2}), HdLook.winAt({x + 14}, {y - 2}), HdLook.winAt({x}, {y - 3})]") == [[z - 14, z - 11]] * 2 + [None] * 2   # (the window: your room's tiles, floor to ceiling; nothing beside it, nothing north of it)
     c = g.js(AT_, [x + 2.5, y + 1.5, z - 14])
-    assert c[0] > c[2] + 40 and sum(c) > 300, c                       # (your floor is seen: warm, bright)
+    assert c[2] <= c[0] + 3 and sum(c) > 300, c                       # (your floor is seen: its own colours, bright; never cold. It was warm, red 40 over blue)
     assert g.js("HdLook.catSeen()") > .8
 
 

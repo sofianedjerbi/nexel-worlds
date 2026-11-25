@@ -18,7 +18,7 @@ TILE = """([x, y, z]) => { const c = [[0, 0], [1, 0], [1, 1], [0, 1]].map(([a, b
 BRIGHT = """([x, y, z]) => { const a = HdLook.screenOf(x + .5, y + .6, z), k = devicePixelRatio, w = 14 * zoom * k, d = HdLook.read(Math.round(a[0] * k - w / 2), Math.round(a[1] * k - w), w, w).data; let m = 0;
   for (let i = 0; i < d.length; i += 4) m = Math.max(m, d[i] + d[i + 1] + d[i + 2]); return m; }"""
 lum = lambda c: c[0] + c[1] + c[2]
-warm = lambda c: c[0] > c[1] > c[2] and c[0] - c[2] > 25      # (the lantern's warm light: red over blue. 25: a floor deep under a meadow is stone, stone.py: warm, 34 over; earth's was 40 and more; cold light is blue over red)
+warm = lambda c: c[2] <= c[0] + 3 and .3 * c[0] + .59 * c[1] + .11 * c[2] > 110      # (your light: the floor's own colours, bright, never the cold grey-blue of a floor out of your way. It was the lantern's warm light, red 25 over blue: grey stone went olive, "keep the colors the same")
 
 
 def calm(g):
