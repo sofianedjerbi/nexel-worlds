@@ -102,10 +102,10 @@ def test_a_piece_ends_on_its_own_then_silence_and_night_has_its_own_pieces(game)
         pytest.skip("no music rendered")
     game.js("(() => { if (music.on) { muted = true; tune(.1); muted = false; } })()")          # (a moment left by another test)
     game.wait("!music.on && music.nodes.size === 0", 10000)
-    key = game.js("(() => { SOUND.passes.day = 1; clock.night = false; moment.next = 0; moments(); return music.key; })()")
+    key = game.js("(() => { SOUND.length.day = 1; clock.night = false; clock.phase = .5; moment.next = 0; moments(); return music.key; })()")
     assert game.js("sounds.manifest.play.day.includes(music.key)")
     game.wait("music.on && music.nodes.size > 0", 20000)
-    game.wait("!music.on", 60000)                              # one pass of a day piece: about 35 s
+    game.wait("!music.on", 90000)                              # one pass of a day piece: 35 to 55 s
     assert game.js("music.gain.gain.value") < 0.1              # it faded on its last chord
     wait = game.js("moment.next - performance.now()")
     assert 45000 < wait < 141000                               # SOUND.gap: silence before the next
