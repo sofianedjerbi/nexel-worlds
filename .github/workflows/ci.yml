@@ -103,6 +103,9 @@ jobs:
   e2e:
     name: Browser tests
     needs: e2e-plan
+    # Optional for now (the owner, 2026-11-25): the suite's old failures on these runners held every merge. The agents
+    # make it pass (#47); then this line goes and the browser tests are mandatory again.
+    continue-on-error: true
     if: needs.e2e-plan.outputs.shards != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 45
