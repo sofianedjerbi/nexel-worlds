@@ -24,38 +24,40 @@ jobs:
   build:
     name: Build the game from source
     runs-on: ubuntu-latest
-    timeout-minutes: 150                 # (a full render of the music, about 50 minutes, only when its sources change)
+    timeout-minutes: 150                 # (every render at once, about 50 minutes: only when code they all share changes)
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.4.0
         with:
           python-version: "3.14"
-      # the music's renders, kept under the stamp of what makes them (tools/build_game.sh): a push that does not touch the
-      # music's scripts or data plays the last renders again and skips the half hour of rendering
-      - name: The music's renders, if its sources have not changed
-        id: music
+      # the music's renders and their fingerprints (music/renders.py): the last ones kept are taken back, whatever changed
+      # since, and only the renders whose own entry or code changed are made again (a new piece: that piece alone)
+      - name: The music's renders, the last ones kept
         uses: actions/cache@v6.1.0
         with:
           path: music/site/audio
           key: music-${{ hashFiles('music/*.py', 'music/*.json', '!music/sfx*') }}
-      - name: The recorded instruments (600 MB, fetched once; only needed to render)
-        if: steps.music.outputs.cache-hit != 'true'
-        uses: actions/cache@v6.1.0
-        with:
-          path: music/samples
-          key: samples-${{ hashFiles('music/fetch_samples.py', 'music/sampler.py') }}
-      - name: Surge XT (the synth the music is played on; the same 1.3.4 as on the Mac), and 7z (only needed to render)
-        if: steps.music.outputs.cache-hit != 'true'
+          restore-keys: music-
+      - name: Which renders are stale
+        id: music
+        run: echo "stale=$(python3 music/renders.py stale)" | tee -a "$GITHUB_OUTPUT"
+      - name: Surge XT (the synth the music is played on; the same 1.3.4 as on the Mac), only when a render is stale
+        if: steps.music.outputs.stale != ''
         run: |
           curl -fsSL -o surge.deb https://github.com/surge-synthesizer/releases-xt/releases/download/1.3.4/surge-xt-linux-x64-1.3.4.deb
           sudo apt-get update -q
-          sudo apt-get install -y -q ./surge.deb p7zip-full
+          sudo apt-get install -y -q ./surge.deb
       - name: The game, from its sources
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
         run: sh tools/build_game.sh dist             # (no display: Surge plays headless; under xvfb its plugin dies on X errors)
       - uses: actions/upload-artifact@v7.0.2
         with:
           name: game
           path: dist
           retention-days: 90
+      # the website deploys it at once (its pages.yml), rather than at its next look for a new game: with a token that may
+      # start the website's workflows (WEBSITE_DEPLOY: a fine-grained token, nexel-website, Actions read and write)
+      - name: The website, told
+        env:
+          GH_TOKEN: ${{ secrets.WEBSITE_DEPLOY }}
+        if: env.GH_TOKEN != ''
+        run: gh workflow run pages.yml -R sofianedjerbi/nexel-website
