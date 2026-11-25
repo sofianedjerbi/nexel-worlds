@@ -125,8 +125,14 @@ const Leap = (() => {
     const [dx, dy] = DIRV[w.dir], v = RULES.pace[w.run && sprinting() ? "sprint" : "walk"], a = ahead(p, dx, dy), need = v * T1() + .08;
     return !!a && a.d <= (a.stairs ? Math.max(need, Math.min(1, 2 * v * v / G())) : need);   // (up a flight: from as far as its planned jump goes, stairArc)
   }
-  // A frame in the air (render.js, in place of the walk)
+  // A frame in the air (render.js, in place of the walk). A long one (render.js: up to 0.1 s) in pieces of a 60th of a second at
+  // the most, as the jump was planned (hits, stairArc: 1/120 s a step): in one, the body went a tile on before it rose, against the
+  // step it was planned to clear (a runner drawing on the CPU, a frame every 100 ms: pinned up a flight of steps, walking)
   function frame(p, dt, now) {
+    const n = Math.max(1, Math.ceil(dt * 60 - .01));
+    for (let i = 0; i < n && L; i++) step(p, dt / n, now);
+  }
+  function step(p, dt, now) {
     if (!L) return;
     L.t += dt;
     const h = held(), cap = L.cap || RULES.pace[L.run ? "sprint" : "walk"];   // (a planned jump up a flight: steered at its own speed, not the walk's)
