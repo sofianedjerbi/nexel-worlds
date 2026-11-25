@@ -183,14 +183,24 @@ FRAMES = """() => new Promise((ok) => { const t = []; const f = (n) => { t.push(
 
 @pytest.fixture(scope="session")
 def machine(browser, server):
-    """What a frame of the game costs this machine, measured once on a player's page at the game's own pace, and the
-    tests' pace fitted to it (clock.fit: on the runners, Chrome drawing on the CPU, it is about 1; on the Mac, 4)."""
+    """What a frame of the game costs this machine, measured once on a player's page at the game's own pace, sprinting
+    over the land (the frames a test has), and the tests' pace fitted to it (clock.fit: on the runners, Chrome drawing
+    on the CPU, it is about 1; on the Mac, 4)."""
     if clock.PACE > 1:
         page = browser._inner.new_page(viewport={"width": 1200, "height": 800})     # (not paced: its frames as they are)
         try:
             g = Game(page, server)
             g.join(new_name("pace"))
-            ms = page.evaluate(FRAMES)
+            # (sprinting, the land made as it comes: what a test's frames cost. Standing in the meadow just woken, a runner
+            # measured 17 ms a frame and got pace 4, and its tests then walked at 1.3 tiles a second, frames of 0.1 s
+            # and more cut there: what costs a frame is the land being made and drawn as you go)
+            page.keyboard.down("Shift")
+            page.keyboard.down("d")
+            try:
+                ms = page.evaluate(FRAMES)
+            finally:
+                page.keyboard.up("d")
+                page.keyboard.up("Shift")
         finally:
             page.close()
         was = clock.PACE
