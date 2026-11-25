@@ -13,8 +13,10 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}   # (a run on main finishes: its full browser run is the measure, #47)
+  # a pull request: one run, the newest; main: one group a commit, so no run on main is cancelled or replaced (a run
+  # pending behind busy runners was replaced by the next merge's, and main had no full browser run for hours, #47)
+  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'push' && github.sha || 'pr' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   RUFF: ruff@0.17.6
