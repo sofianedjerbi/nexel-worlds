@@ -90,7 +90,7 @@ def test_a_fall_of_five_levels(game):
     game.stamp(-1, -1, ["." * 8] * 3, levels=["55500000"] * 3)
     game.rpc("dev_teleport", x=x, y=y, z=5); game.arrive()
     t = play(game, "fall", [[80, ["d"]], [20, [], ["d"]]])
-    assert "fall" in modes(t) and t[0][0] == 5 and t[-1][0] == 0, (modes(t), t[0], t[-1])
+    assert "jump" in modes(t) and t[0][0] == 5 and t[-1][0] == 0, (modes(t), t[0], t[-1])     # (walked off, the jump's own fall through the air: leap.js ledge; it was a fall of its own)
 
 
 def test_up_a_ladder(game):
