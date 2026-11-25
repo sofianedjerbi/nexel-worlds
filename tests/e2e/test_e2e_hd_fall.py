@@ -1,5 +1,5 @@
 """The HD look at a cliff and behind things (hd.js, vox_style_glsl.js, vox_style_land.js): the edge over a drop that
-hurts has a dark rim (a step has none); walking off it the eye stays while you fall and then comes down to you, no
+hurts is drawn as a step's, no dark rim; walking off it the eye stays while you fall and then comes down to you, no
 frame of it a jump; and what stands in front of you is one px in two round you, you behind it."""
 
 
@@ -22,7 +22,9 @@ def cliff(g):
 
 
 @pytest.mark.realtime
-def test_the_edge_over_a_drop_that_hurts_has_a_dark_rim_and_a_step_has_none(browser, server):
+def test_the_edge_over_a_drop_that_hurts_has_no_dark_rim_as_a_step_has_none(browser, server):
+    """It had a dark rim 2 px wide all along it, to tell a cliff from a step: "ugly dark borders on cliffs and above
+    holes". The edge is drawn as a step's, the cap's own outline; the faces under it show the drop."""
     g = hd(browser, server)
     g.js("setOpt('shader', 'off'); setOpt('clouds', 0); setOpt('shadows', 0)")
     x, y = cliff(g)
@@ -34,8 +36,7 @@ def test_the_edge_over_a_drop_that_hurts_has_a_dark_rim_and_a_step_has_none(brow
     #  is made at your feet's level). The rim is a px and a half wide there: read .93 in, inside it wherever the pin is)
     east, north = g.js(PX, [x + 1.93, y - .5, 9]), g.js(PX, [x + 1.5, y - .93, 9])
     step = g.js(PX, [x - .93, y - .5, 9])
-    assert east < mid * .5 and north < mid * .5, (mid, east, north)     # the cliff's rim: dark
-    assert step > mid * .7 and east < step * .65, (mid, step, east)     # the step's edge: the cap's own outline, no more (374 of 484; the rim 187)
+    assert step > mid * .7 and east > mid * .7 and north > mid * .7, (mid, step, east, north)   # the cliff's edge as the step's: the cap's own outline, no more (the rim was 187 of 484)
 
 
 @pytest.mark.realtime
