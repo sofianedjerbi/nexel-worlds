@@ -1564,6 +1564,40 @@ def _(c):
     return nyx(y + 0.6 * boom(n, 70, 35, 0.2))
 
 
+# Its death, in the same palette: it screams and breaks into stars, the stars stream back up into the sky, the sky closes.
+@sfx("drake_death", "Boss", "Nyxwing's death cry: the scream climbs, breaks and falls away under a chord sinking an octave (two beats and more)", 1, 0.8, kind="sky", change="new")
+def _(c):
+    dur = 3.4
+    n = N(dur)
+    t = tt(n)
+    x = t / dur
+    f0 = 2 * ROAR_HZ * (1 + 0.15 * np.sin(np.pi * np.clip(x / 0.2, 0, 1))) * (0.4 + 0.6 * (1 - np.clip((x - 0.25) / 0.75, 0, 1)) ** 1.5)
+    cry = nyx_throat(c, n, f0, np.clip(x / 0.05, 0, 1) * (1 - 0.7 * x), 0.6 + 0.3 * x) * np.clip(t / 0.01, 0, 1) * np.clip((dur - t) / 1.2, 0, 1)
+    high, low = braam(n, CHORD, attack=0.01, release=2.2), braam(n, ("Bb1", "Eb2", "Bb2"), attack=1.6, release=1.0, bright=0.7)
+    sink = np.clip((x - 0.15) / 0.5, 0, 1)                                                  # the chord falls away under it
+    y = cry + 0.6 * (high * (1 - sink) + low * sink) + 1.3 * boom(n, 80, 24, 1.0)
+    for at in (0.55, 1.0, 1.6):                                                             # its wings, failing
+        y += nyx_wings(c, n, at, 0.7 - 0.15 * at)
+    return nyx(y)
+
+
+@sfx("drake_dissolve", "Boss", "Nyxwing breaks into stars and they stream up into the sky (four beats, swelling to the end)", 1, 0.5, kind="sky", change="new")
+def _(c):
+    dur = 4 * BEAT_S
+    n = N(dur)
+    x = tt(n) / dur
+    shimmer = texture(c, n, 1500, 5500, 6, 30, 0.6) * (0.2 + 0.8 * x)
+    return nyx(0.8 * riser(c, n, 180, 5000) + 0.7 * braam(n, CHORD, attack=dur, release=0.01, bright=1.1) * x + 0.35 * shimmer
+               + 0.4 * nyx_throat(c, n, ROAR_HZ * (1 + 0.5 * x), 0.3 * (1 - x), 0.5) * (1 - x))
+
+
+@sfx("drake_vanish", "Boss", "the last star reaches the sky and the sky closes: a deep blow and the chord, resolved, dying away", 1, 0.6, kind="sky", change="new")
+def _(c):
+    n = N(3.0)
+    return nyx(1.3 * boom(n, 70, 26, 1.2) + 0.8 * braam(n, ("Eb2", "Bb2", "Eb3", "G3"), attack=0.02, release=2.8, bright=0.9)
+               + 0.5 * sweep(c, n, 3000, 200, 0.5) * np.exp(-tt(n) / 0.4))
+
+
 # ================================================================== creatures: each one's own warning, blow and cry
 # Picked by ear on the local creatures page (2026-11-25), out of three candidates a move. Each is reproduced sample-exactly:
 # its own seed (`seed`: the candidate it was) and its own level, one variant.
