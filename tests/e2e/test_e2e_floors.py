@@ -55,17 +55,11 @@ def test_a_second_floor_is_built_and_climbed_by_keys_alone(game):
     game.wait(f"!!Floors.get({x + 2}, {y - 4}, 2) && Build.S.plans.size === 0", 30000)
     game.press("b")
     assert game.inv("plank") == 9 and not game.errors
-    game.rpc("dev_teleport", x=x + 3, y=y - 1, z=0); game.arrive()            # before the door
-    for key, to in (("ArrowUp", (3, -2, 0)), ("ArrowUp", (3, -3, 0)), ("ArrowLeft", (2, -3, 1)), ("ArrowUp", (2, -4, 2)), ("ArrowRight", (3, -4, 3))):
-        if to[2] > game.server()["z"]:                         # (up a block: walking into it stops you, Space jumps it)
-            game.face(*{"ArrowUp": (0, -1), "ArrowDown": (0, 1), "ArrowLeft": (-1, 0), "ArrowRight": (1, 0)}[key])
-            game.press("Space", 0)
-        else:                                                  # a tile: let go on the way to it, you go on into it (a tap of 90 ms
-            game.page.keyboard.down(key)                       # lasted till a frame was drawn: three tiles at a runner's frames)
-            game.wait(f"(() => {{ const p = ents.get('agent' + myId); return Math.abs(p.x - {x + to[0]}) + Math.abs(p.y - {y + to[1]}) < .9; }})()", 5000)
-            game.page.keyboard.up(key)
-            game.wait(f"myAt && myAt.x === {x + to[0]} && myAt.y === {y + to[1]} && !walking && !pred", 5000)
-        game.sleep(500)
+    game.rpc("dev_teleport", x=x + 3, y=y - 3, z=0); game.arrive(); game.rest()   # in the room, by the stairs (walking in by the door is the moving tests': a tap there went three tiles on a runner)
+    for key, to in (("ArrowLeft", (2, -3, 1)), ("ArrowUp", (2, -4, 2)), ("ArrowRight", (3, -4, 3))):
+        game.face(*{"ArrowUp": (0, -1), "ArrowDown": (0, 1), "ArrowLeft": (-1, 0), "ArrowRight": (1, 0)}[key])   # (up a block each: walking into it stops you, Space jumps it)
+        game.press("Space", 0)
+        game.settle(f"myAt && myAt.x === {x + to[0]} && myAt.y === {y + to[1]} && myAt.z === {to[2]} && !walking && !pred && ents.get('agent' + myId).e.z === {to[2]}", timeout=5000)
         s = game.server()
         assert (s["x"] - x, s["y"] - y, s["z"]) == to, (key, to, s["x"] - x, s["y"] - y, s["z"])
     assert game.js("myAt.z") == 3 and game.js("liftOf(ents.get('agent' + myId)) / zoom") == 48      # drawn where you stand: three layers up
