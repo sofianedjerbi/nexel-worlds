@@ -45,5 +45,6 @@ def test_across_a_dip_the_eye_keeps_its_pitch_and_under_a_hill_it_tilts_once(bro
     assert sum(1 for a, b in zip(r, r[1:]) if a[4] != b[4]) == 1, [q[4] for q in r]           # (the cover comes once)
     d2 = [abs((c[3] - b[3]) - (b[3] - a[3])) for a, b, c in zip(r, r[1:], r[2:])]
     step = sorted(abs(b[3] - a[3]) for a, b in zip(r, r[1:]))[len(r) // 2]
-    assert max(d2) < max(8, 2 * step), (max(d2), step, [q[3] for q in r])                    # the land moves on smoothly through the tilt: no jolt from one frame to the next
+    j = d2.index(max(d2))
+    assert max(d2) < max(8, 2 * step), (max(d2), step, r[max(0, j - 3):j + 6])               # the land moves on smoothly through the tilt: no jolt from one frame to the next (the rows round the worst: [x, y, pitch, the tile's screen y, roof])
     assert not g.errors

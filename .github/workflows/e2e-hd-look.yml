@@ -40,4 +40,11 @@ jobs:
       - env:
           FILES: ${{ matrix.files }}
           E2E_CHROME_ARGS: --use-angle=vulkan --enable-features=Vulkan --ignore-gpu-blocklist
+          E2E_SHOTS: ${{ runner.temp }}/shots
         run: uv run pytest -m e2e -n 0 -q -rf --durations=0 $FILES
+      - if: failure()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: e2e-shots-${{ strategy.job-index }}
+          path: ${{ runner.temp }}/shots
+          if-no-files-found: ignore
