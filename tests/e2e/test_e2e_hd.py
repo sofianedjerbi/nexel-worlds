@@ -117,6 +117,28 @@ def test_the_night_is_darker_than_the_day_but_for_your_lamp(browser, server):
         g.page.close()
 
 
+def test_a_campfire_the_land_hides_lights_nothing_in_front_of_it(browser, server):
+    """A lamp's light is a picture laid over the land with no depth: a campfire behind a wall lit the wall's top and
+    the meadow in front of it, a round glow through the land (the owner: "moonlight shouldn't be visible through
+    blocks"). With a wall six levels high just south of it, the land in front is as dark as with no fire at all."""
+    g = hd(browser, server)
+    try:
+        x, y = g.pos()
+        g.hour(.9); near = [x + 6.5, y - 4.5, 0]                                   # (with no wall: the fire lights the meadow south of it)
+        g.stamp(4, -6, ["..^..", "....."], levels=["00000"] * 2); g.rest(); on = sum(g.js(AT, near))
+        g.stamp(4, -6, ["....."], levels=["00000"]); g.rest(); off = sum(g.js(AT, near))
+        assert on > off + 30, (on, off)
+        wall = ["....."] * 3, ["66666"] * 3
+        g.stamp(4, -6, ["..^..", *wall[0]], levels=["00000", *wall[1]]); g.rest()
+        pts = [[x + 6.5, y - 4.5, 6], [x + 5.5, y - 3.5, 6], [x + 7.5, y - 2.2, 0]]   # (the wall's top over the fire, and the meadow just south of the wall)
+        lit = [sum(g.js(AT, p)) for p in pts]
+        g.stamp(4, -6, ["....."], levels=["00000"]); g.rest()
+        dark = [sum(g.js(AT, p)) for p in pts]
+        assert all(a <= b + 12 for a, b in zip(lit, dark)), (lit, dark)
+    finally:
+        g.page.close()
+
+
 far = lambda a, b: sum(abs(p - q) for p, q in zip(a, b)) > 40
 # the colour of the screen `up` art px over a point of the land
 UP = """([x, y, z, up]) => { const p = HdLook.screenOf(x, y, z), k = cv.width / innerWidth;
