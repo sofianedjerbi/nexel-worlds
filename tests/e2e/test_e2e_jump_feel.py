@@ -62,7 +62,7 @@ def test_auto_jump_up_a_staircase_is_smooth_and_keeps_its_rhythm(game):
     offs = [r[0] for r, q in zip(rec, [None] + rec) if r[3] == "takeoff" and (q is None or q[3] != "takeoff")]
     assert len(offs) == 4, offs
     beats = [b - a for a, b in zip(offs, offs[1:])]
-    assert max(beats) - min(beats) <= 45 and min(beats) >= 250, beats       # (about the time a jump a layer up is in the air: leap.js)
+    assert max(beats) - min(beats) <= 45 and min(beats) >= 180, beats       # (a step at the walk's pace, 0.2 s a tile: up a flight each jump is planned, leap.js stairArc. It was a whole jump each step, 0.25 s and more, against the next step's face)
     tops = [max(r[2] for r in rec if a <= r[0] < a + 300) for a in offs]
     assert min(tops) >= 8, tops                                             # (over the line the eye follows: 20 over the floor it left, the line 8 up half way)
     assert not game.errors, game.errors
@@ -139,7 +139,7 @@ def test_off_a_pillar_the_land_still_goes_up_a_step_by_whole_px(game, how, up):
 
 # every frame: [your body's height over the ground as drawn (art px), its pose, in a fall (in the air)]
 FALLREC = """() => { window.__fr = []; window.__frOn = true; const f = () => { const p = ents.get('agent' + myId), now = performance.now(), j = jumping(p, now), fl = falling(p, now);
-  __fr.push([j ? Math.round(j.body) : 0, j && j.pose || '', !!(fl && fl.air)]); if (__frOn) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""
+  __fr.push([j ? Math.round(j.body) : 0, j && j.pose || '', !!(fl && fl.air) || Leap.on()]); if (__frOn) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""   # (in the air: a fall's, or the jump's: walking off a ledge is the jump's fall, leap.js dropDue)
 
 
 @pytest.mark.realtime
@@ -154,7 +154,7 @@ def test_jump_pressed_falling_into_a_hole_does_not_play_its_hop_once_down(game):
     game.rest()
     game.js(FALLREC)
     game.page.keyboard.down("d")
-    game.wait("(() => { const f = falling(ents.get('agent' + myId), performance.now()); return !!(f && f.air); })()", 4000)
+    game.wait("(() => { const f = falling(ents.get('agent' + myId), performance.now()); return !!(f && f.air) || !!(Leap.state && Leap.state.z < -.3); })()", 4000)   # (on the way down: walked off the edge, the jump's fall)
     game.page.keyboard.press("Space")
     game.page.keyboard.up("d")
     game.sleep(900)
@@ -187,7 +187,7 @@ def test_sprint_jumping_over_a_wide_hole_or_water_the_body_flies_the_arc(game, o
     else:
         game.stamp(3, -2, ["~~~"] * 5)
     game.rest()
-    game.js(AIR)
+    game.js("setOpt('shake', 0)"); game.js(AIR)   # (a fall into the hole hurts: its shake is the hurt's, not the jump's; set back below)
     game.page.keyboard.down("Shift"); game.page.keyboard.down("d")
     game.wait(f"ents.get('agent' + myId).x >= {x + 1.6}", 4000)
     game.page.keyboard.press("Space")
@@ -196,6 +196,7 @@ def test_sprint_jumping_over_a_wide_hole_or_water_the_body_flies_the_arc(game, o
     game.page.keyboard.up("d"); game.page.keyboard.up("Shift")
     game.sleep(700)
     r = game.js("(() => { __arOn = false; return __ar; })()")
+    game.js("setOpt('shake', 1)")
     assert any(v[0] for v in r) and not [v for v in r if v[0] and v[1]], [v for v in r if v[0] and v[1]][:4]       # (in the air: never swimming)
     ys = [v[2] for v in r if v[2] is not None]
     jolts = [(i, a, b) for i, (a, b) in enumerate(zip(ys, ys[1:])) if abs(b - a) > 8]

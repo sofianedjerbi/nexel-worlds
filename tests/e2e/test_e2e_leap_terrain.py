@@ -1,0 +1,130 @@
+"""Jumping over the land as it is: up a step and a flight of them, up a hill with the jump key, off a high ledge (web/js/
+leap.js: stairArc, hits, dropDue; the eye, cam). The jump itself: test_e2e_leap.py."""
+
+import pytest
+
+from test_e2e_leap import agree, frames
+
+pytestmark = pytest.mark.e2e
+
+
+@pytest.mark.realtime
+@pytest.mark.parametrize("run", [False, True])
+def test_a_jump_that_comes_down_against_a_step_goes_on_up_it(game, run):
+    """"when sprinting + jumping the player is getting hit by the block AFTER jumping and it loses all his velocity"
+    ("even when not sprinting"): the jump key pressed too far before a step comes down against its edge. With
+    auto-jump you go on up it at once at the speed you had: never back along the way (you were put back to the
+    tile's middle, then walked on from a standstill), up on it, the world there too."""
+    game.clear_area(14)
+    game.stamp(6, -1, ["." * 9] * 3, levels=["111111111"] * 3)
+    x, _ = game.pos()
+    game.face(1, 0)
+    game.rest()
+    keys = ["Shift", "d"] if run else ["d"]
+
+    def act():
+        for k in keys:
+            game.page.keyboard.down(k)
+        game.wait(f"ents.get('agent' + myId).x >= {x + (2.2 if run else 4.0)}", 3000)   # (a jump that comes down short of the step's top)
+        game.page.keyboard.press("Space")
+        game.sleep(900)
+        for k in reversed(keys):
+            game.page.keyboard.up(k)
+    rec = frames(game, act)
+    back = [(a[:5], b[:5]) for a, b in zip(rec, rec[1:]) if b[1] < a[1] - 1e-3]
+    assert not back, back
+    assert game.server()["z"] == 1 and game.server()["x"] > x + 6, (game.server(), x)
+    agree(game)
+    assert not game.errors, game.errors
+
+
+@pytest.mark.realtime
+@pytest.mark.parametrize("run", [False, True])
+def test_up_a_flight_of_steps_every_jump_clears_the_next_edge(game, run):
+    """"when climbing (walking stairs up) it is bad because i hit the block above when automatically jumping": up eight
+    steps a layer each, a tile deep, walking or running, the auto-jump's arcs (leap.js stairArc) never meet a step's face
+    (the whole jump came down past the next edge: pinned against it six frames a step, 40 frames in all, 2.2 s up a
+    flight that takes 1.6), you get to the top in under 2 s, and the world agrees."""
+    game.clear_area(12)
+    x, y = game.pos()
+    for i in range(1, 12):
+        game.rpc("dev_col", tiles=[[x + i, y]], col=[min(i, 8)])           # (and the top, three tiles of it: a run goes on a little after you let go)
+    game.rest()
+    game.face(1, 0)
+    game.js("""() => { window.__hit = 0; if (!window.__hitHook) { window.__hitHook = true; const f = Leap.frame;
+      Leap.frame = (p, dt, now) => { const a = Leap.state && {...Leap.state}; f(p, dt, now); const b = Leap.state;
+        if (a && b && a.vx > 0 && b.x <= a.x + 1e-4) __hit++; }; } return 1; }""")
+    keys = ["Shift", "d"] if run else ["d"]
+    t0 = game.js("performance.now()")
+    for k in keys:
+        game.page.keyboard.down(k)
+    game.wait(f"myPos().x >= {x + 8} || performance.now() - {t0} > 5000", 7000)
+    took = game.js(f"performance.now() - {t0}")
+    for k in reversed(keys):
+        game.page.keyboard.up(k)
+    game.rest()
+    assert game.js("__hit") == 0 and took < 2000, (game.js("__hit"), took)
+    assert game.server()["z"] >= 8, game.server()
+    agree(game)
+    assert not game.errors, game.errors
+
+
+@pytest.mark.realtime
+@pytest.mark.parametrize("how", ["jump", "walk"])
+def test_off_a_high_ledge_the_fall_is_smooth_on_the_screen(game, how):
+    """"weird issues when jumping from high heights": off a ledge six high, running with the jump key or walking off it,
+    you come down as a thrown thing does, and on the screen no frame moves your feet or the land by more than 6 art px
+    (walking off, the eye was put on the ground under the edge at once, the body 13 px up the screen a frame, then 26
+    back; after a jump the eye came down a px a frame, the land scrolling a second after you were down). The world agrees."""
+    game.clear_area(14)
+    x, y = game.pos()
+    game.rpc("dev_col", tiles=[[x + i, y + j] for i in range(-3, 1) for j in (-1, 0, 1)], col=[6])
+    game.rpc("dev_teleport", x=x - 2, y=y, z=6); game.arrive(); game.face(1, 0); game.rest()
+    game.js("setOpt('shake', 0)")                                       # (six levels hurt: the hurt's shake is not the jump's)
+
+    def act():
+        game.page.keyboard.down("Shift"); game.page.keyboard.down("d")
+        if how == "jump":
+            game.wait(f"myPos().x >= {x - .3}", 3000); game.page.keyboard.press("Space")
+        game.sleep(1000)
+        game.page.keyboard.up("d"); game.page.keyboard.up("Shift")
+    try:
+        rec = frames(game, act, z0=0)
+    finally:
+        game.js("setOpt('shake', 1)")
+    air = ("takeoff", "rise", "apex", "fall", "touch", "land", "settle")   # (and the landing's squash and settle: the body's own drawing)
+    jolts = [(a[:10], b[:10]) for a, b in zip(rec, rec[1:]) if abs(b[9] - a[9]) > 6 or (abs(b[8] - a[8]) > 6 and not {a[4], b[4]} & set(air))]   # (the land never; your feet on the ground never: in the air they go as fast as you fall, 7 px a frame at the end of six levels)
+    assert not jolts, [(round(a[0]), a[4], round(a[5], 2), round(b[5], 2), a[8], b[8], round(a[9], 1), round(b[9], 1)) for a, b in jolts[:5]]
+    assert game.server()["z"] == 0, game.server()
+    agree(game)
+    assert not game.errors, game.errors
+
+
+@pytest.mark.realtime
+@pytest.mark.parametrize("prof", ["hill", "stairs"])
+def test_running_uphill_with_the_jump_key_never_meets_a_step_s_face(game, prof):
+    """"sprinting uphill still do the same issue as before": running up a hill of uneven steps (or a flight a tile deep)
+    with the jump key pressed all the way, every jump is played ahead before it leaves (leap.js hits) and goes no faster
+    than comes down before the next rise or over it: never held against a step's face (18 frames up the hill, 15 up
+    the flight), and the world agrees at the top."""
+    game.clear_area(14)
+    x, y = game.pos()
+    prof = [0, 1, 1, 2, 2, 2, 3, 4, 4, 5, 5, 6, 7, 7, 7] if prof == "hill" else [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13]
+    for i, h in enumerate(prof[1:], 1):
+        game.rpc("dev_col", tiles=[[x + i, y - 1], [x + i, y], [x + i, y + 1]], col=[h])
+    game.rest(); game.face(1, 0)
+    game.js("""() => { window.__hit = 0; if (!window.__hitHook) { window.__hitHook = true; const f = Leap.frame;
+      Leap.frame = (p, dt, now) => { const a = Leap.state && {...Leap.state}; f(p, dt, now); const b = Leap.state;
+        if (a && b && Math.abs(a.vx) + Math.abs(a.vy) > 0 && Math.abs(b.x - a.x) + Math.abs(b.y - a.y) < 1e-4) __hit++; }; } return 1; }""")
+    t0 = game.js("performance.now()")
+    game.page.keyboard.down("Shift"); game.page.keyboard.down("d")
+    for _ in range(80):
+        if game.js(f"myPos().x >= {x + 13} || performance.now() - {t0} > 6000"):
+            break
+        game.page.keyboard.press("Space"); game.page.wait_for_timeout(80)
+    game.page.keyboard.up("d"); game.page.keyboard.up("Shift")
+    game.rest()
+    assert game.js("__hit") == 0, game.js("__hit")
+    assert game.server()["z"] == prof[-1], (game.server(), prof[-1])
+    agree(game)
+    assert not game.errors, game.errors

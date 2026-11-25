@@ -157,6 +157,13 @@ class Movement(Leaping):
         # (a player's held key, `push`, against a step a jump would take: it goes on pushing, as in Minecraft, and the
         # jump key's spring takes the step at once: a walk that ended there had the world a stride behind the screen)
         against = lambda: args.get("push") and self.can_go(a, a.x + dx, a.y + dy, jump=True)
+        # (`ledge`: a player's screen goes off a ledge as high as a fall through the air itself (web/js/leap.js dropDue) and says so
+        # (`stop` at its edge, then `leap`): the walk waits at the edge for it, a second at the most. It went off first, the world a
+        # stride ahead of the screen walking from a standstill, the walk ended by the fall: the screen's drop was not its own)
+        ledge, waited = bool(args.get("ledge")), 0
+        def at_ledge():
+            land = self.landing(a, a.x + dx, a.y + dy, j)
+            return ledge and waited < sec(1.0) and land is not None and self.height(a) - land >= FALL_SAFE
         while steps < 600:
             if not self.can_go(a, a.x + dx, a.y + dy, j):
                 if against():
@@ -168,6 +175,10 @@ class Movement(Leaping):
                 if against():
                     continue
                 return {"steps": steps, "stopped": "blocked", "blocked_by": self.why_not(a, a.x + dx, a.y + dy)}
+            if at_ledge():
+                waited += 1
+                yield
+                continue
             if j:
                 a.spring[(a.x + dx, a.y + dy)] = self.tick       # (Bodies.landing in move: the step is jumped)
             fall = self.move(a, a.x + dx, a.y + dy)
