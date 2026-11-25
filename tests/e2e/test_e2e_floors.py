@@ -60,8 +60,11 @@ def test_a_second_floor_is_built_and_climbed_by_keys_alone(game):
         if to[2] > game.server()["z"]:                         # (up a block: walking into it stops you, Space jumps it)
             game.face(*{"ArrowUp": (0, -1), "ArrowDown": (0, 1), "ArrowLeft": (-1, 0), "ArrowRight": (1, 0)}[key])
             game.press("Space", 0)
-        else:
-            game.hold([key], 90)                               # (a tap: a tile)
+        else:                                                  # a tile: let go on the way to it, you go on into it (a tap of 90 ms
+            game.page.keyboard.down(key)                       # lasted till a frame was drawn: three tiles at a runner's frames)
+            game.wait(f"(() => {{ const p = ents.get('agent' + myId); return Math.abs(p.x - {x + to[0]}) + Math.abs(p.y - {y + to[1]}) < .9; }})()", 5000)
+            game.page.keyboard.up(key)
+            game.wait(f"myAt && myAt.x === {x + to[0]} && myAt.y === {y + to[1]} && !walking && !pred", 5000)
         game.sleep(500)
         s = game.server()
         assert (s["x"] - x, s["y"] - y, s["z"]) == to, (key, to, s["x"] - x, s["y"] - y, s["z"])
