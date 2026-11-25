@@ -69,14 +69,15 @@ def test_each_creature_makes_its_own_sounds(game):
     heard = game.js("window.__heard")
     assert {"tusker_warn", "tusker_ram", "snapbloom_warn", "snapbloom_bite"} <= set(heard), heard
     assert "punch" not in heard
+    # (the tusker and the snapbloom sent away: the tusker still about set the hob off from three tiles, out of its burst's two)
+    game.rpc("dev_creatures", clear=40)
     game.rpc("dev_time", phase=.85)
     game.give(hob=1)
     game.hold_item("hob")
     game.face(-1, 0)
     game.press("e", wait=1200)
     game.spawn("grumblestump", -3, 0)
-    game.wait("window.__heard.includes('hob_burst')", 20000)
+    game.wait("window.__heard.includes('grumblestump_hurt')", 20000)      # what it burnt cried out (with the burst: world_decor.js)
     heard = game.js("window.__heard")
     assert {"hob_lit", "hob_warn", "hob_burst"} <= set(heard), heard
-    assert any(n in heard for n in ("grumblestump_hurt", "tusker_hurt")), heard     # what it burnt cried out (the tusker, if still near)
     assert not game.errors
