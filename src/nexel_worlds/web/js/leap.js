@@ -27,7 +27,7 @@ const Leap = (() => {
     const [x, y] = tileOf(p.x, p.y), t = tile(x, y), h = myZ(x, y);
     // (room over your head for the jump's top: under a roof, in a tunnel or a cave's stair, the old way. A jump there
     // hit the roof, its tiles not the world's: you were drawn on the land over it and put back where the world had you)
-    return !!p && !Build.on && !(p.e && p.e.sail) && !(t && wet(t[1])) && !Climb.climbOf(p) && (ledge || !BodyPlace.state(p).fall) && !eating() && !solidAt(x, y, h + 3) && !solidAt(x, y, h + 4);
+    return !!p && !Build.on && !(p.e && p.e.sail) && !(t && wet(t[1])) && !Climb.climbOf(p) && (ledge || !BodyPlace.state(p).fall) && !eating() && (ledge || (!solidAt(x, y, h + 3) && !solidAt(x, y, h + 4)));   // (off a ledge you do not rise: no room over your head wanted)
   }
   // Off the ground, with the walk's speed
   // (carry: {w, run}, on again at once from where you landed, against a step: no walk to take the speed from, land)
@@ -89,10 +89,18 @@ const Leap = (() => {
   // fall as a jump's (frame, cam): it was a fall of its own (jump.js fallOf), the eye put on the ground under the edge in a frame, the body 55 px up the screen at once,
   // "weird issues when jumping from high heights". This frame's walk (t s) takes you over the edge: -> true
   function dropDue(p, w, t) {
-    const [dx, dy] = DIRV[w.dir], s = dx || dy, x = Math.round(p.x), y = Math.round(p.y), h = myZ(x, y), nx = x + dx, ny = y + dy;
+    const [dx, dy] = DIRV[w.dir], s = dx || dy, x = Math.round(p.x), y = Math.round(p.y);
     const d = ((dx ? x : y) + .5 * s - (dx ? p.x : p.y)) * s, v = RULES.pace[w.run && sprinting() ? "sprint" : "walk"];
-    if (d < 0 || d > Math.max(.25, v * t + 1e-3) || !can(p, true) || solidAt(nx, ny, h + 1) || solidAt(nx, ny, h + 2)) return false;
-    const g = settleAt(nx, ny, h + 1e-6); return g <= h - FALL.from && !(tile(nx, ny) && wet(tile(nx, ny)[1]));   // (into water: the swim's own)
+    return d >= 0 && d <= Math.max(.25, v * t + 1e-3) && ledge(p, dx, dy);
+  }
+  // Is the next tile the way (dx, dy) a ledge the jump's fall takes you off? A fall's height or more down, with room to go over it (no overhang in
+  // front; a low roof over your head is none: you do not rise), into water too. The one answer: dropDue goes over it; jump.js jumpOf and fallOf leave it to it; the
+  // world's walk waits at its edge for it, by the same cells (sim/movement.py at_ledge). Each asked its own: off a ledge into water or in a low tunnel,
+  // nothing drew the fall (the body 23 px down the screen in a frame) and the world waited a second for a jump that never came.
+  function ledge(p, dx, dy) {
+    const x = Math.round(p.x), y = Math.round(p.y), h = myZ(x, y), nx = x + dx, ny = y + dy;
+    if (!can(p, true) || solidAt(nx, ny, h + 1) || solidAt(nx, ny, h + 2)) return false;
+    return settleAt(nx, ny, h + 1e-6) <= h - FALL.from;
   }
   // Would a jump from where p is, at v tiles/s the way w and vz levels/s up, meet the face of the land before it comes down? Played ahead as frame plays it (1/120 s a
   // step, the same stops). A run up a hill with the jump key: the whole jump at a run is four tiles long, and came down past the next rise, against its face (18 frames
@@ -169,7 +177,9 @@ const Leap = (() => {
     const bump = !past && h && autoJump() && solidAt(nx, ny, z + 1) && landAt(z, nx, ny, p.tx, p.ty) === z + 1 && leapable(p.tx, p.ty, z, nx, ny);
     st.leapAt = past || bump ? null : {x: p.tx, y: p.ty, z};
     if (myAt) myAt.z = z;
-    if (z0 - z >= FALL.from) { landed(p, z0 - z, now, true, st); st.bounce = null; }   // (down from high: a fall's landing, jump.js: its dust, its thud; what it cost when the world says, state.js. Not its bounce: the body 12 px up the screen in a frame and back)
+    if (z0 - z >= FALL.from) {                // (what it costs shown as you land, by the world's own rule: sim/movement.py fell. Waiting for its `fall` event showed it most of a second after)
+      const n = (z0 - z - RULES.fall_safe) * RULES.fall_hp; if (n > 0) { st.hurt = n; st.told = now; }   // (a server without fall_hp in its rules: NaN, its event says it)
+      landed(p, z0 - z, now, true, st); st.bounce = null; }   // (down from high: a fall's landing, jump.js: its dust, its thud; what it cost when the world says, state.js. Not its bounce: the body 12 px up the screen in a frame and back)
     else { jumpDust(p, 4, z < z0 ? 1.3 : 1); sfx(z < z0 ? "thud" : "step", p.tx, p.ty); }
     if (path.length) {
       const [x, y, n] = mark(p.tx, p.ty);
@@ -229,5 +239,5 @@ const Leap = (() => {
   const seen = () => Math.cos(HdLook.cam.pitch * Math.PI / 180);
   // hd_level.js: the level you stand at (the ground under you) and the one you are drawn from (the one you left)
   const level = () => (L ? [settleAt(L.tx, L.ty, L.z + 1e-6), L.z0] : null);
-  return {leapable, can, due, dropDue, start, ahead, frame, body, level, landedOn, after, cam, lift, seen, on: () => !!L, easing: () => C !== null, landing: (p) => !!(BodyPlace.peek(p) || {}).leapAt, gliding: () => { const p = ents.get("agent" + myId); return !!(p && landedOn(p) !== null); }, get state() { return L; }};
+  return {leapable, can, due, dropDue, ledge, start, ahead, frame, body, level, landedOn, after, cam, lift, seen, on: () => !!L, landing: (p) => !!(BodyPlace.peek(p) || {}).leapAt, gliding: () => { const p = ents.get("agent" + myId); return !!(p && landedOn(p) !== null); }, get state() { return L; }};
 })();

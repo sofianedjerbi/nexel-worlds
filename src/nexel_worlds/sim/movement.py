@@ -161,9 +161,14 @@ class Movement(Leaping):
         # (`stop` at its edge, then `leap`): the walk waits at the edge for it, a second at the most. It went off first, the world a
         # stride ahead of the screen walking from a standstill, the walk ended by the fall: the screen's drop was not its own)
         ledge, waited = bool(args.get("ledge")), 0
-        def at_ledge():
-            land = self.landing(a, a.x + dx, a.y + dy, j)
-            return ledge and waited < sec(1.0) and land is not None and self.height(a) - land >= FALL_SAFE
+        def at_ledge():                                  # (the screen's own answer: web/js/leap.js ledge, by the same cells. Where it walked on, the world waiting there was a second behind it)
+            if not ledge or waited >= sec(1.0) or a.sailing:
+                return False
+            w, h, x, y = self.world, self.height(a), a.x + dx, a.y + dy
+            if w.solid(x, y, h + 1) or w.solid(x, y, h + 2):
+                return False
+            land = self.landing(a, x, y, j)
+            return land is not None and h - land >= FALL_SAFE
         while steps < 600:
             if not self.can_go(a, a.x + dx, a.y + dy, j):
                 if against():

@@ -230,7 +230,9 @@ function onEvent(e) {
   }
   if (e.type === "fall") {                          // a fall that hurt: shown as they land (jump.js), or now if they are not seen falling
     const q = [...ents.values()].find((q) => q.e && q.e.kind === "agent" && q.e.name === e.name);
-    if (q) { BodyPlace.state(q).hurt = e.damage; setTimeout(() => fallHurts(q, performance.now(), e.name === me), 700); }   // (if nothing landed by then)
+    const st = q && BodyPlace.state(q);
+    if (st && performance.now() - (st.told || -1e9) < 2000) st.told = null;            // (your own landing showed it already, as you touched down: leap.js land)
+    else if (st) { st.hurt = e.damage; setTimeout(() => fallHurts(q, performance.now(), e.name === me), 700); }   // (shown as they land, jump.js landed; if nothing landed by then)
   }
   if (e.type === "death" && e.name === me) {
     sfx("die");

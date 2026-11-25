@@ -63,7 +63,7 @@ def rules_table() -> dict:
         "stone": {"from": STONE_FROM, "earth": EARTH},     # (what the land is made of: chunks.py, world.py made_of; web/js cells.js stoneAt)
         "climb": {"max": CLIMB, "rise": list(RISE), "s": C.CLIMB_S},
         "reach": T.REACH, "long": T.LONG, "wide": {k: v["wide"] for k, v in CREATURES.items() if "wide" in v}, "layer": C.LAYER,
-        "leap": {"g": LEAP_G, "top": LEAP_TOP}, "fall_safe": C.FALL_SAFE, "bite_high": BITE_HIGH,
+        "leap": {"g": LEAP_G, "top": LEAP_TOP}, "fall_safe": C.FALL_SAFE, "fall_hp": C.FALL_HP, "bite_high": BITE_HIGH,
         "level": list(LEVEL),
         "recipes": {k: {"inputs": r.inputs, "output": r.output, "station": r.station} for k, r in T.RECIPES.items()},
     }

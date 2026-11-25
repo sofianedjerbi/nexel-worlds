@@ -140,8 +140,8 @@ function walkOn(p, dt, now) {
     p[side] = walking.lane; walking.at = null;
     const a0 = s > 0 ? Math.floor(p[along] + 1e-6) : Math.ceil(p[along] - 1e-6);      // the tile you're leaving, and the next
     const fx = wx ? a0 : walking.lane, fy = wx ? walking.lane : a0, nx = fx + wx, ny = fy + wy;
-    if (autoJump() && Leap.due(p, walking)) { Leap.start(p, now, null, true); Leap.frame(p, t, now); return; }
-    if (Leap.dropDue(p, walking, t)) { Leap.start(p, now, null, false, 0); Leap.frame(p, t, now); return; }   // over a ledge: falling at the walk's speed (leap.js)   // a step ahead: a jump through the air, at the walk's speed (leap.js), this frame's time in it
+    if (autoJump() && Leap.due(p, walking)) { Leap.start(p, now, null, true); Leap.frame(p, t, now); return; }   // a step ahead: a jump through the air, at the walk's speed (leap.js), this frame's time in it
+    if (Leap.dropDue(p, walking, t)) { Leap.start(p, now, null, false, 0); Leap.frame(p, t, now); return; }   // over a ledge: falling at the walk's speed (leap.js)
     if (!walkable(nx, ny, fx, fy)) { p[along] -= s * Math.min((p[along] - a0) * s, 10 * t); p.tx = fx; p.ty = fy; break; }   // a wall: you stay
     const v = Climb.pace(fx, fy, myZ(fx, fy), nx, ny) || speedAt(fx, fy, p);      // (up or down a ladder: rung by rung, climbing.js)
     const go = Math.min((a0 + s - p[along]) * s, v * t);
