@@ -85,7 +85,7 @@ def test_the_boss_piece_takes_over_during_a_fight_and_hands_back(game):
     game.js("moment.next = 0")
     game.wait("music.on && music.nodes.size > 0", 30000)
     game.js("(() => { window.realBossMusic = bossMusic; bossMusic = () => {}; })()")     # (boss.js turns it off twice a second: no boss in view)
-    game.js("realBossMusic(true)")
+    game.js("realBossMusic('boss')")                           # (a fight is named since Nyxwing, #40: "boss" or "nyxwing", false)
     try:                                                       # (on GitHub's runners it once never started: say why, #47)
         game.wait("bossTrack.on && bossTrack.nodes.size > 0", 15000)
     except Exception:
