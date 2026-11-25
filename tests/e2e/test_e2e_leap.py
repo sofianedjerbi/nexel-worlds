@@ -10,11 +10,11 @@ import pytest
 pytestmark = pytest.mark.e2e
 
 # every frame drawn: [ms, x, y, body over the level drawn from (art px), pose, the level drawn from, the world's x, its z, feet on the screen (art px), a fixed place of the land (art px), your level, the land's top there, the eye's pitch,
-#  the tile you are going to (x, y), how far ahead of the world you are (tiles: walk.js leadOf)]
+#  the tile you are going to (x, y), how far ahead of the world you are (tiles: walk.js leadOf), which jump (the hop's start, the step's key, in the air)]
 FRAMES = """([ox, oy, oz]) => { window.__fr = []; window.__frOn = true; if (!window.__frHook) { window.__frHook = true; const show = HdView.show;
   HdView.show = (...A) => { const r = show(...A); if (window.__frOn) { const p = ents.get('agent' + myId), lv = HdLook.level, a = HdLook.art(); if (p && a) {
     const now = lastT, j = jumping(p, now), b = HdLook.screenOf(p.x + .5, p.y + .5, lv[2]), o = HdLook.screenOf(window.__o[0] + .5, window.__o[1] + .5, window.__o[2]);
-    __fr.push([now, p.x, p.y, j ? Math.round(j.body) : 0, j && j.pose || '', lv[2], p.e.x, p.e.z, Math.round(b[1] / a.u) - (j ? Math.round(j.body) : 0), o[1] / a.u, myAt ? myAt.z : null, topAt(Math.round(p.x), Math.round(p.y)), HdLook.cam.pitch, p.tx, p.ty, walking ? leadOf(p, now) : 0]); } } return r; }; }
+    __fr.push([now, p.x, p.y, j ? Math.round(j.body) : 0, j && j.pose || '', lv[2], p.e.x, p.e.z, Math.round(b[1] / a.u) - (j ? Math.round(j.body) : 0), o[1] / a.u, myAt ? myAt.z : null, topAt(Math.round(p.x), Math.round(p.y)), HdLook.cam.pitch, p.tx, p.ty, walking ? leadOf(p, now) : 0, (() => { const s = BodyPlace.state(p), q = jumpOf(p); return s.hop + '/' + (q ? q.key : '') + '/' + !!Leap.state; })()]); } } return r; }; }
   window.__o = [ox, oy, oz]; return 1; }"""
 
 
@@ -31,13 +31,15 @@ def frames(game, act, z0=0):
 def smooth(rec, speed=10):
     """Frame to frame: the body goes no faster than `speed` tiles a second (and a tenth of a tile for a frame's
     rounding), its height on the screen no more than 4 art px in a 60th of a second, and no pose shown for a frame
-    and gone back from in the same jump (to the same tile: two jumps one after the other, the frame on the ground
-    between them not drawn, were "apex, rise, apex" on the runners, a frame every 80 ms). -> the largest move along x in a frame, in tiles."""
+    and gone back from in the same jump (the same tile and the same jump: two jumps one after the other, the frame on
+    the ground between them not drawn, were "apex, rise, apex" on the runners, a frame every 80 ms; and up a stair
+    with Space pressed at each step, a hop on the tile you had just come up to, "rise, fall, rise"). -> the largest move along x in a frame, in tiles."""
     for a, b in zip(rec, rec[1:]):
         dt = max(b[0] - a[0], 1) / 1000
         assert abs(b[1] - a[1]) + abs(b[2] - a[2]) <= speed * dt * 1.35 + .1, ("a jump along the ground", a, b)
         assert abs(b[8] - a[8]) <= max(2, -(-4 * dt * 1000 // 16.67)) + (4 if "takeoff" in (a[4], b[4]) else 0), ("a jump on the screen", a, b)   # (more as it leaves the ground: a jump, as the brief has it)
-    runs = [(r[4], r[13], r[14]) for r, q in zip(rec, [None] + rec) if q is None or (r[4], r[13], r[14]) != (q[4], q[13], q[14])]
+    key = lambda r: (r[4], r[13], r[14], r[16])
+    runs = [key(r) for r, q in zip(rec, [None] + rec) if q is None or key(r) != key(q)]
     assert not [i for i in range(1, len(runs) - 1) if runs[i - 1] == runs[i + 1] and runs[i][0]], runs
 
 
