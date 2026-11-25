@@ -137,4 +137,7 @@ def render(pal):
 
 
 if __name__ == "__main__":
-    (OUT / "bright.json").write_text(json.dumps([render(p) for p in PALETTES], indent=1))
+    import sys
+    done = {d["id"]: d for d in (render(p) for p in PALETTES if not sys.argv[1:] or p["id"] in sys.argv[1:])}   # (names: those alone, music/renders.py)
+    old = {d["id"]: d for d in json.loads((OUT / "bright.json").read_text())} if (OUT / "bright.json").exists() else {}
+    (OUT / "bright.json").write_text(json.dumps([(old | done)[p["id"]] for p in PALETTES if p["id"] in old | done], indent=1))
