@@ -87,10 +87,19 @@ const Floors = (() => {
     const s = myPos(), it = selected && !shift ? selected : null, isMe = s.x === p.x && s.y === p.y;
     const z = settleNear(p.x, p.y, myZ(s.x, s.y)), c = FLOORS ? get(p.x, p.y, z) : null, on = c ? c[1] : "", zArg = (zz) => (FLOORS ? {z: zz} : {});
     const place = (zz, text) => ({text, ghost: it, ok: true, z: zz, run: (d) => act("place", {dir: d, item: it, ...zArg(zz)})});
+    const h = myZ(s.x, s.y);
+    // A block of the land in hand, aimed over ground lower than your own (past a cliff's edge, over a hole): it goes at your own level, the
+    // ground you stand on carried on in a straight line through the air, a block at a time, each held by the one before (the world's put_land).
+    // It went down onto the ground at the cliff's foot: "placing above a cliff shouldn't make the bloc go right down on the cliff". (mouse.js
+    // points over such ground at your level too: tileAtScreen)
+    if (LAND_BLOCKS.has(it) && FLOORS && !isMe && topAt(p.x, p.y) < h) {
+      const why = Build.landFits(p.x, p.y, h, () => false);
+      return why ? {text: why, ghost: it, ok: false, z: h} : place(h, `Place ${label(it)}`);
+    }
     const t = tile(p.x, p.y);                         // earth on open ground: the ground comes up a layer (as digging takes it down one)
     if (LAND_BLOCKS.has(it) && FLOORS && t && ".,'".includes(t[1]) && (GROUND.has(t[0]) || t[0] === "f") && !isMe && !c && z === topAt(p.x, p.y) && colAt(p.x, p.y) === colSolid(z) && !colOf(p.x, p.y))
       return entityAt(p) ? {text: "Someone is standing there", ghost: it, ok: false} : {text: "Raise the ground", ghost: it, ok: true, run: (d) => act("place", {dir: d, item: it})};
-    const h = myZ(s.x, s.y);                          // standing on a block, the air before you at your own height: the floor goes on
+                                                      // standing on a block, the air before you at your own height: the floor goes on
     if (it === "plank" && FLOORS && get(s.x, s.y, h) && !isMe && !solidAt(p.x, p.y, h) && !fits(p.x, p.y, h)) return place(h, "Lay planks");
     if (it === "roof" || (it === "plank" && c && !isMe)) {       // a block: a roof a storey over the tile; planks on the block you face
       const zz = z + (it === "roof" ? STOREY : 1), why = fits(p.x, p.y, zz);

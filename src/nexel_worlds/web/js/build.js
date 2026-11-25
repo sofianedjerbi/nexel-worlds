@@ -273,5 +273,5 @@ const Build = (() => {
     return out;
   }
   const waiting = () => (!S.on && todo().length ? todo().length : 0);        // plans left on the ground, out of the mode
-  return {S, LAYER_CAP, toggle, onKey, ways: () => { const L = level(), all = S.at && myPos() ? stops(S.at) : []; return {up: all.some((z) => z > L), down: all.some((z) => z < L)}; }, click, point, tick, pan, rows, hint, taking, waiting, level, get on() { return S.on; }, aim: () => { const it = hint(S.at); return {p: S.at, it: it.ghost || it.z !== undefined ? it : {...it, z: level()}}; }};
+  return {S, LAYER_CAP, toggle, onKey, ways: () => { const L = level(), all = S.at && myPos() ? stops(S.at) : []; return {up: all.some((z) => z > L), down: all.some((z) => z < L)}; }, click, point, tick, pan, rows, hint, taking, waiting, level, landFits, get on() { return S.on; }, aim: () => { const it = hint(S.at); return {p: S.at, it: it.ghost || it.z !== undefined ? it : {...it, z: level()}}; }};
 })();
