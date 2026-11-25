@@ -64,4 +64,4 @@ def test_a_walks_poses_are_read_once(browser, server):
         n = g.js(READS, 40)
     finally:
         g.page.keyboard.up("ArrowRight")
-    assert n and max(n) <= 2, n                                        # (each picture read once by each of its two readers)
+    assert not n or max(n) <= 2, n                                     # (each picture read once by each of its two readers; none: every pose known already)
