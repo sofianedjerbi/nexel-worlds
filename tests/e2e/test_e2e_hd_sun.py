@@ -1,3 +1,4 @@
+import pytest
 """The HD look's sun (hd_sun.js): what stands throws the hour's shadow on the land, away from the sun, and none at
 night; a roof is two pitched faces; and while the land is made again after a change, a shadow keeps its own px."""
 
@@ -116,7 +117,8 @@ def test_a_roof_has_two_slopes(browser, server):
         g.page.close()
 
 
-def test_a_shadow_keeps_its_px_while_the_land_is_made_again(browser, server):
+@pytest.mark.parametrize("run", range(4))   # (PROBE #106: not for merge)
+def test_a_shadow_keeps_its_px_while_the_land_is_made_again(browser, server, run):
     """Your own shadow, each frame, while a change of the land makes the land again (its paints wiped, a new set made
     over several frames): as many px of it all along, the shape it had. (A guard: what is drawn each frame over the
     land asks for its paints while the land still shown has its own set, vox_style.js A and B.)"""
@@ -132,7 +134,7 @@ def test_a_shadow_keeps_its_px_while_the_land_is_made_again(browser, server):
         g.js("""(() => { const p = myPos(), a = HdLook.screenOf(p.x + .5, p.y + .92, topAt(p.x, p.y)), k = devicePixelRatio, X = Math.round(a[0] * k), Y = Math.round(a[1] * k);
           const mid = HdLook.read(X, Y, 1, 1).data; window.__sh = []; window.__st = []; window.__b0 = HdLook.builds; window.__busy = 0;
           const f = () => { const d = HdLook.read(X - 24 * k, Y - 9 * k, 48 * k, 18 * k).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - mid[0]) + Math.abs(d[i + 1] - mid[1]) + Math.abs(d[i + 2] - mid[2]) < 12) n++;
-            window.__sh.push(n); window.__st.push([n, HdLook.why, HdLook.busy ? 1 : 0, HdLook.builds, HdThings.sheet.id, [...HdLook.read(X, Y, 1, 1).data.slice(0, 3)].join(), JSON.stringify(HdLook.work)]); if (HdLook.busy) window.__busy++; if (window.__sh.length < 150) requestAnimationFrame(f); };
+            window.__sh.push(n); window.__st.push([n, HdLook.why, HdLook.busy ? 1 : 0, HdLook.builds, HdThings.sheet.id, [...HdLook.read(X, Y, 1, 1).data.slice(0, 3)].join(), "out " + [...HdLook.read(X + 30 * k, Y, 1, 1).data.slice(0, 3)].join(), "outN " + [...HdLook.read(X, Y - 14 * k, 1, 1).data.slice(0, 3)].join(), JSON.stringify(HdLook.work)]); if (HdLook.busy) window.__busy++; if (window.__sh.length < 150) requestAnimationFrame(f); };
           requestAnimationFrame(f); return 1; })()""")
         g.sleep(150)
         # (rocks, away from you, along a row 25 tiles long: the land's version changes, in more than one of its chunks. It was
@@ -145,6 +147,8 @@ def test_a_shadow_keeps_its_px_while_the_land_is_made_again(browser, server):
         # (the frames round the one that lost it, each [its px, why the frame was drawn, land being made, lands made, the things' sheet, the px under you, the paints' work]:
         #  it reads 0 px on one frame one run in twenty on a machine loaded past 15, never in 70 runs under that: the state is said so that the next one tells)
         k = min(range(len(got)), key=lambda q: got[q])
+        st = g.js("window.__st"); print("PROBE #106 frames:"); [print(r[:8]) for r in st]            # (PROBE #106: not for merge)
+        assert False, "probe: see the frames printed above"
         assert got[0] > 60 and max(got) - min(got) <= 4, (got[0], min(got), max(got), k, g.js("window.__st")[max(0, k - 3):k + 4], g.js("[window.__busy, HdLook.builds, window.__b0]"))   # (all of it: which frame lost it)
     finally:
         g.page.close()
