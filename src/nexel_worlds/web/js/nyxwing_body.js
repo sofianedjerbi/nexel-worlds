@@ -1,7 +1,7 @@
 // Nyxwing's body on the creature's own canvas (nyxwing.js, drawWild): its frame of the sheet, by what it does.
 //   NyxBody(K) -> {frame, draw}
 const NyxBody = (K) => {
-  const {BEAT, WARN, ATTACKS, st} = K;
+  const {BEAT, WARN, ATTACKS, began, st} = K;
   // ---- its body, on the creature's own canvas (drawWild)
   function frame(s, moving, now, id) {
     const A = WILD.nyxwing, t = now - (s.windAt ?? -1e9), warm = (k) => A[k][0] + (t < 192 ? 0 : t < 384 ? 1 : 2);
@@ -27,7 +27,7 @@ const NyxBody = (K) => {
     const e = p.e, A = WILD.nyxwing, z = zoom, s = st(e.id);
     if (e.act !== s.act && ATTACKS.has(e.act) && s.anim !== e.act) { s.windAt = now; s.anim = e.act; }    // (a warning we did not hear of)
     s.act = e.act;
-    if (e.act === "arrive") { s.arriveAt ??= now; return; }                  // coming down: drawn in the land (hd)
+    if (e.act === "arrive") { began(e, now); return; }                       // coming down: drawn in the land (hd), timed from when it came
     if (e.act === "sky") return;                                             // up out of sight: its shadow is (hd)
     const moving = now - p.moved < 350 || Math.abs(p.x - p.tx) + Math.abs(p.y - p.ty) > .05;
     const acting = ATTACKS.has(s.anim) && now - s.windAt < WARN + 3 * BEAT + 288;
