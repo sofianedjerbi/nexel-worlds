@@ -29,7 +29,7 @@
 // surface's top cell and your height, not from each cell it shows (vox_style.js sectAt, flag 8388608); its first line is the land's own
 // top px, grass on a meadow (vox_style_glsl.js wn 11); a riser and a window's side edge "A"
 // are one tone whatever their rock (vox_style_glsl.js); a far patch's skirt is one tile's rock; a model face wider or deeper than a tile is
-// its 16 px stretched (model); ore shows on any face of a cell with air beside it, seen or not (host.ore).
+// its 16 px stretched (model).
 const VoxStyleLand = (() => {
   const H = VoxStyleGLSL.H, C = 16, N = 10, CH = 8, KINDS = ["main", "model", "shade", "water"];
   const gp = (x, y, z) => [x, z * H, y];
@@ -256,7 +256,7 @@ const VoxStyleLand = (() => {
             const F = FACES[f], nx = x + F.n[0], ny = y + F.n[1], nz = z + F.n[2];
             if (f === 1 || solidIn(nx, ny, nz)) continue;
             const nc = real(nx, ny); let sky = (f === 0 ? z >= open : !nc || z > nc[nc.length - 1]) ? 1 : 0, s, kind = f === 0 ? 1 : 0, e = 0;
-            const ore = host.ore && host.ore(x, y, z);   // (a cell of ore that shows: nuggets on its faces, ore_paint.js; its own paints, by the ore)
+            const ore = host.ore && !solidC(nc, nz) && host.ore(x, y, z);   // (a cell of ore that shows: nuggets on its faces that open onto the land's real air, ore_paint.js; a face only the x-ray cut opens (rock beside it in the real column, nc) is the rock's own, face rule 4)
             if (f === 0) {
               const mo = sky && !walled(x, y, z) ? runs(x, y, z, mouths(x, y, z)) : 0; s = topSlot(x, y, z, (px, at, st) => { topPaint(x, y, z, px, at, st); if (mo) mouthShade(px, at, st, mo); if (ore) OrePaint.nuggets(px, at, st, C, C, ore, x * 31 + y * 17 + z); }, ore ? (mo || "") + "o" + ore : mo);   // (a mouth's shade is for the open ground before it: a shaft's floor at a passage's end took it, a dark blue band across a level way in the window)
               if (sky && walled(x, y, z)) e |= 32768;   // (a floor under the sky in a shaft, a trench, a pit: lit as the floors of your space are when you are under the land (the shader's sk); open ground, even at a cliff's foot, keeps the sun: "still weird color mismatch when entering a cave")
