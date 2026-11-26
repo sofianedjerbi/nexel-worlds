@@ -198,6 +198,4 @@ def test_earth_raises_the_ground_and_planks_go_on_from_a_floor(game):
     assert "Lay planks" in game.actions()
     game.press("e", 700)
     assert game.js(f"!!Floors.get({x + 4}, {y + 2}, 3)") and game.inv("plank") == 0
-    game.hold(["ArrowUp"], 90)
-    game.sleep(500)
-    assert (game.server()["y"], game.server()["z"]) == (y + 2, 3) and not game.errors                  # and you walk out on it
+    assert game.step("ArrowUp")[1:] == (y + 2, 3) and not game.errors                   # and you walk out on it (a tap: one tile, off the floor's end was two on a slow runner)
