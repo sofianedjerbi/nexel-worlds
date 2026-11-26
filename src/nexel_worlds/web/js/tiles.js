@@ -3,7 +3,7 @@
 // =====================================================================================
 //  Tile store: 32x32 blocks, filled from the server and patched by tile events
 // =====================================================================================
-const B = 32, P = 16;
+const B = 32;
 const smooth = (v) => { v = Math.max(0, Math.min(1, v)); return v * v * (3 - 2 * v); };   // 0..1, eased
 const blocks = new Map();
 const bkey = (bx, by) => bx + "," + by;

@@ -17,7 +17,7 @@
 // of the walk (or the run) the blade sways a few degrees and the hand a px. The body aims; the weapon does not.
 
 const HoldArt = (() => {
-  const CELL = 48, SS = 4, KINDS = ["axe", "pickaxe", "hoe", "sword", "spear", "torch", "watering_can"];
+  const SS = 4, KINDS = ["axe", "pickaxe", "hoe", "sword", "spear", "torch", "watering_can"];
   // degrees on the screen, facing [down, up, right] (left: right's mirror); the paw is on the left of the picture facing us
   const ANG = {rest: [-120, -75, -60], up: [-100, -80, -80], ahead: [110, -90, -10], down: [100, 80, 45]};
   const UPRIGHT = {rest: [-100, -80, -75], up: [-95, -85, -80], ahead: [-110, -90, -50], down: [-115, -75, -65]};   // (a torch)

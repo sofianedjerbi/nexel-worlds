@@ -6,7 +6,7 @@
 // clothes built from it have nothing to work around.
 
 const SwingArt = (() => {
-  const CELL = 48, SS = 4, CX = 23.5, CY = 26;             // (CX, CY): the middle of the body, at the hips
+  const SS = 4, CX = 23.5, CY = 26;             // (CX, CY): the middle of the body, at the hips
   const C = {wood: [170, 121, 89], dark: [144, 98, 93], iron: [129, 129, 129], steel: [183, 183, 183], edge: [158, 170, 182],
     blade: [226, 232, 236], gold: [222, 178, 86], streak: [243, 244, 231]};
   const FACE = [90, -90, 0];                               // down, up, right, in degrees on the screen (left is right, mirrored)
