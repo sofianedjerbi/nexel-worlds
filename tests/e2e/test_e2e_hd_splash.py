@@ -10,7 +10,7 @@ pytestmark = pytest.mark.e2e
 
 # every frame drawn while you go down: the top of your body's own px on the screen, in art px (HdLook.art().body / u), how it is drawn (BodyPlace mode, up),
 # the landing's lift (levels) and the body's height (art px)
-LOG = """(() => { window.__fr = []; const f = () => { if (!window.__fr) return; const a = HdLook.art(), b = a && a.body, q = ents.get('agent' + myId); if (b && q) { const pl = BodyPlace.of(q); window.__fr.push([Math.round(b.y / a.u * 10) / 10, pl.mode, pl.up, Math.round(Leap.lift(q) * 100) / 100, Math.round(b.h / a.u)]); } requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; })()"""
+LOG = """(() => { window.__fr = []; const f = () => { if (!window.__fr) return; const a = HdLook.art(), b = a && a.body, q = ents.get('agent' + myId); if (b && q) { const pl = BodyPlace.of(q); window.__fr.push([Math.round(b.y / a.u * 10) / 10, pl.mode, pl.up, Math.round(Leap.lift(q) * 100) / 100, Math.round(b.h / a.u), Leap.on() ? 'L' : Leap.gliding() ? 'G' : '', Math.round(q.y * 100) / 100, Math.round(performance.now())]); } requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; })()"""
 LOGGED = "(() => { const l = window.__fr; window.__fr = null; return l; })()"
 
 
@@ -36,12 +36,13 @@ def test_off_a_high_ledge_into_water_your_body_does_not_jump_up_the_screen(brows
         g.wait("(() => { const q = ents.get('agent' + myId); return q && BodyPlace.of(q).mode === 'swim'; })()", 4000)
     finally:
         g.page.keyboard.up("d")
-    g.frames(3)
+    g.wait("(() => { const q = ents.get('agent' + myId); return q && !Leap.lift(q); })()", 4000)       # (the eye down at the water)
+    g.frames(8)
     fr = g.js(LOGGED)
     k = next(i for i, r in enumerate(fr) if r[1] == "swim")
     assert k > 0, fr
     up = fr[k - 1][0] - fr[k][0]                                             # art px up the screen, into the water
     sink = g.js("SWIM.sink")                                                 # (in the water its top goes down by the swimmer's sink, swim.js)
-    assert -sink - 2 < up < 3, str(fr[max(0, k - 4):k + 6])                  # (it was 13 up)
+    assert -sink - 2 < up < 3, str(fr[max(0, k - 4):])                  # (it was 13 up)
     g.rest()
     assert g.server()["swimming"] and not g.errors, g.errors
