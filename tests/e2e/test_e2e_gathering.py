@@ -46,17 +46,23 @@ def test_space_never_stops_you(game):
 
 
 def test_a_click_picks_on_the_move(game):
+    """A click on a flower you walk past picks it, and the walk goes on. (It clicked 200 ms after the key, wherever that
+    had got you: on a runner whose walk set out a frame late you were still out of reach, and the click said "Too far")"""
+    game.clear_area(10)
     game.stamp(3, -1, ["f"])
     fx, fy = game.pos()[0] + 3, game.pos()[1] - 1
     game.page.keyboard.down("d")
-    game.sleep(200)
+    game.wait(f"(() => {{ const s = myPos(); return walking !== null && s && s.x >= {fx - 2}; }})()", 3000)   # (two tiles off, one across: in reach)
     sx, sy = game.js(SCREEN, [fx, fy])                       # (the flower's own tile: you are moving, your tile is changing)
     game.page.mouse.click(sx, sy)                            # a click on the flower while walking...
-    game.sleep(150)
+    toast = game.toast()
+    for _ in range(40):                                      # (its answer: the server's word, however late it comes)
+        if game.inv("flower") >= 1:
+            break
+        game.sleep(50)
     moving = game.js("walking !== null")
     game.page.keyboard.up("d")
-    game.sleep(400)
-    assert moving and game.inv("flower") >= 1                # ...picks it without stopping you
+    assert game.inv("flower") >= 1 and moving, (game.inv("flower"), moving, toast)   # ...picks it without stopping you
 
 
 def test_chop_by_hand_and_with_an_axe(game):
