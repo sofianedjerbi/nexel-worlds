@@ -15,9 +15,13 @@ const VoxStyleGLSL = (() => {
   //  over and over, and faces were drawn with places given to other paints: grass tops as stone, stone fronts as grass. 16 MB of px)
   const AW = typeof window === "object" && window.SHEET_AW || 2048, H = 1,   // (SHEET_AW: tests, a sheet of their own size)
     LV = 16, LVC = `const float H = ${H.toFixed(1)}, LV = ${LV.toFixed(1)}, LV0 = ${(16 - LV).toFixed(1)};`;
-  // THE BEND (the curved world: the land north of the eye's point sinks away to a horizon; vox_style.js project and vox_style_win.js sink it the same): a few FLAT FACETS, 4 tiles each, on the old
-  // curve (dn squared at every fourth tile, straight between; the first 4 tiles as ever: a facet there sank the land at your feet 4 times as much). It was dn squared at every corner: a straight block 12 tiles deep rolled over it as a smooth arc, its ends round loaves ("melted")
-  const SINK = "float sink(float dn) { float k = floor(dn / 4.); return dn < 4. ? dn * dn : 16. * (k * k + (2. * k + 1.) * (dn / 4. - k)); }", sink = (dn) => { const k = Math.floor(dn / 4); return dn < 4 ? dn * dn : 16 * (k * k + (2 * k + 1) * (dn / 4 - k)); };
+  // THE BEND (the curved world: the land north of the eye's point sinks away to a horizon; vox_style.js project and vox_style_win.js sink it the same): FLAT FACETS 4 tiles long on the old
+  // curve (dn squared at each facet's corner, straight between). It was dn squared at every corner: a straight block 12 tiles deep rolled over it as a smooth arc, its ends round loaves ("melted").
+  // The corners are rows of the WORLD (y = 4m - .5), not counted from you: counted from you, as you walked a crease slid along a far block (#86). Near you, up to the first corner 4 tiles off
+  // or more, the curve as ever (a facet there sank the land at your feet). On a corner row of yours (y a multiple of 4) the corners are where they were, 4, 8, 12 ... tiles north.
+  // sink(c, z): how far the land at row z sinks, c: the row the bend begins (the eye's point less 1); sinkd: its slope, per tile north
+  const SINK = "float knot(float c, float z) { return c + .5 - 4. * floor((z + .5) / 4.); } float sink(float c, float z) { float a = knot(c, z), n = a - 4., dn = max(0., c - z); return n < 4. ? dn * dn : n * n + (a + n) * (dn - n); } float sinkd(float c, float z) { float a = knot(c, z), n = a - 4.; return n < 4. ? 2. * max(0., c - z) : a + n; }",
+    sink = (c, z) => { const a = c + .5 - 4 * Math.floor((z + .5) / 4), n = a - 4, dn = Math.max(0, c - z); return n < 4 ? dn * dn : n * n + (a + n) * (dn - n); };
   // THE WINDOW'S CUT EDGES (PORT, in the land's and the sprites' painters): the x-ray window is your whole space (vox_style_land.js: the flood of your cave, room, gorge, as far as it goes), the mask of its
   // boxes (mk, vox_style_win.js). port(f): 1 on the mask, 0 off it: the cut is whole. side(f): px from f, on the mask, to the nearest px off it west or east (1..4; 9: farther; 0: off the mask): the cut's
   // sides, where kept land stands beside your space (its north edge is the section, the land's own rim; its south one the lit lip). How a side looks (pw.x: HdLook.edge): 1 "A" crisp, a px of the land's
@@ -32,7 +36,7 @@ const VoxStyleGLSL = (() => {
   const VS = `#version 300 es
   in vec3 p; in vec2 uv; in vec4 a; in float e; uniform mat4 m; uniform vec3 ctr, go; uniform float bend; uniform sampler2D gw; out vec2 vu; out vec4 va, vs; flat out float ve; out vec3 wp; out highp float vw; flat out highp float vo;
   ${SINK}
-  void main() { vec3 q = p; float dn = max(0., ctr.z - 1. - q.z); q.y -= bend * sink(dn); gl_Position = m * vec4(q, 1.); vw = gl_Position.w; vu = uv; vo = uv.y; va = a; ve = e; wp = p; vs = vec4(0.);
+  void main() { vec3 q = p; q.y -= bend * sink(ctr.z - 1., q.z); gl_Position = m * vec4(q, 1.); vw = gl_Position.w; vu = uv; vo = uv.y; va = a; ve = e; wp = p; vs = vec4(0.);
     if ((a.z > .5 && a.z < 1.5) || a.z > 9.5) { vec2 tl = floor(p.xz - step(8., mod(uv, 16.)) + .5) - go.xy; if (tl.x >= 0. && tl.y >= 0. && tl.x < go.z && tl.y < go.z) vs = texelFetch(gw, ivec2(tl), 0); } }`;   // (vs: the light of your space on this tile (vox_style.js `light`), for a floor and a shadow on one: its tile is its corner less where in its paint that corner is)
   const FS = `#version 300 es
   precision highp float; in vec2 vu; in vec4 va, vs; flat in float ve; in highp vec3 wp; in highp float vw; flat in highp float vo; uniform sampler2D t, wt, mk; uniform vec3 lamp, eye, fogc, mc;
@@ -41,7 +45,7 @@ const VoxStyleGLSL = (() => {
   ${PORT}
   // (a place of the land on the screen, in px, bent as the painter bends it (VS); is a px in a quad's four corners on the screen: water beside water, waterFaces)
   uniform mat4 m; uniform vec3 ctr; uniform float bend; uniform vec2 vpx; ${SINK}
-  vec2 scr(vec3 q) { q.y -= bend * sink(max(0., ctr.z - 1. - q.z)); vec4 c = m * vec4(q, 1.); return (c.xy / c.w * .5 + .5) * vpx; }
+  vec2 scr(vec3 q) { q.y -= bend * sink(ctr.z - 1., q.z); vec4 c = m * vec4(q, 1.); return (c.xy / c.w * .5 + .5) * vpx; }
   float cr(vec2 a, vec2 b) { return a.x * b.y - a.y * b.x; }
   // WATER IS THE SAME AT EVERY DISTANCE: its depth's tint as near you, to the horizon, softened by the land's own haze. SEEN ALONG ITS FACE it is not seen through, as real water is not: graze(),
   // 0 looking down on it, rising to 1 over the last stretch before its horizon (from six tenths of the way to it; the horizon: where the eye looks along the bent land's face, b dn^2 + 2 b D dn = E:
@@ -117,7 +121,7 @@ const VoxStyleGLSL = (() => {
     if (kind > 2.5 && kind < 3.5) {                              // water: the game's own picture of it over a tint (the picture is the clear water, its bed showing: only a little of it over the sea tint)
       // (water PAST THE HORIZON is not drawn: its face, on the bend's facet there, is turned from the eye. Water writes no depth: sunk under the horizon it came back down the picture OVER the water
       //  before it, chunk by chunk, in its own distance's haze: lighter bands with stepped edges just under the horizon)
-      if (vu.x < .5 && bend > 0.) { float bn = max(0., ctr.z - 1. - wp.z); if (dot(eye - vec3(wp.x, wp.y - bend * sink(bn), wp.z), vec3(0., 1., -bend * (bn < 4. ? 2. * bn : 4. * (2. * floor(bn / 4.) + 1.)))) < 0.) discard; }
+      if (vu.x < .5 && bend > 0.) { if (dot(eye - vec3(wp.x, wp.y - bend * sink(ctr.z - 1., wp.z), wp.z), vec3(0., 1., -bend * sinkd(ctr.z - 1., wp.z))) < 0.) discard; }
       if (vu.x > .5 && (vu.x < 1.5 ? eye.z < wp.z : vu.x < 2.5 ? eye.x < wp.x : eye.x > wp.x)) discard;   // (a side of the water (vox_style_land.js waterFaces: vu.x 1 south, 2 east, 3 west) turned from the eye: it lay over its own top, two tints)
       if (vu.x < .5 && vo > .5) { float q = floor(vo + .5); vec2 tl = floor(wp.xz);   // (a top whose near part is seen through higher water beside it, south, east, west, south-east or south-west (vo, its uv's v: by how much, eighths, 5 and 4 bits each): the px that water's own top covers on the screen (its corners put where the painter puts them) are that water's, left out here)
         for (int i = 0; i < 5; i++) { float s = i == 0 ? mod(q, 32.) : i == 1 ? mod(floor(q / 32.), 32.) : i == 2 ? mod(floor(q / 1024.), 32.) : i == 3 ? mod(floor(q / 32768.), 16.) : floor(q / 524288.); if (s < .5) continue;   // (south, east, west, south-east, south-west)
