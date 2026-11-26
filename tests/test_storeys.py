@@ -222,3 +222,20 @@ def test_a_bed_upstairs_wakes_you_upstairs_and_off_a_floors_edge_you_come_down_u
             break
         run(s, a, "step", {"dir": "S"})
     assert (a.x, s.height(a)) == (x0 + 3, 0) and a.y >= y0 + 5 and a.hp == 20     # down on the ground before the door, unhurt (three layers)
+
+
+def test_earth_or_stone_goes_on_a_floor_whatever_stands_on_the_land_under_it(world):
+    """A block of earth on a floor laid over a wall rests on the floor: the wall far under it is not in its way (a sod
+    roof on its deck of planks; nexel-agent's builder, nexel-worlds#308)."""
+    s, a = world
+    a.add("stone_wall", 1)
+    a.add("plank", 1)
+    a.add("dirt", 1)
+    a.add("stone_block", 1)
+    x, y = a.x + 1, a.y
+    assert run(s, a, "place", {"x": x, "y": y, "item": "stone_wall"})["ok"]
+    lv = s.world.level(x, y)
+    assert run(s, a, "place", {"x": x, "y": y, "item": "plank", "z": lv + 3})["ok"]
+    assert run(s, a, "place", {"x": x, "y": y, "item": "dirt", "z": lv + 4})["ok"] and s.world.solid(x, y, lv + 4)
+    assert run(s, a, "place", {"x": x, "y": y, "item": "stone_block", "z": lv + 5})["ok"]
+    assert s.world.block(x, y) == "stone_wall"                                        # (the wall stands under it all)
