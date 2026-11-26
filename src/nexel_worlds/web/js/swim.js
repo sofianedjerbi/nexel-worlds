@@ -6,7 +6,7 @@
 // both sides and behind, a wave of foam is pushed ahead, and the wake is another thing: marks twice as close, three
 // flecks a side that spread nearly twice as wide and last longer, with a churned line of white down the middle.
 
-const SWIM = {sink: 5, line: 27, stroke: 260, tread: 700, wakeEvery: 110, wakeLife: 1400, dashStroke: 130, dashEvery: 45, dashLife: 2100};   // art px; sheet row of the waterline; ms
+const SWIM = {sink: 5, sinkMs: 150, line: 27, stroke: 260, tread: 700, wakeEvery: 110, wakeLife: 1400, dashStroke: 130, dashEvery: 45, dashLife: 2100};   // art px; sheet row of the waterline; ms
 function swimsAt(p, e) {
   if (e.sail) return false;
   // (you in the air, a jump's arc (leap.js) over the water: not in it. The tile under you is water, and you were drawn
@@ -65,6 +65,9 @@ function wakePicture(p, now) {
   c._v = (c._v || 0) + 1;
   return {canvas: c, fx: L, fy: T};
 }
+// how far under the water's face a swimmer is drawn: SWIM.sink, eased in over SWIM.sinkMs from going in (all at once, the body
+// dropped 5 art px in a frame on top of the leap's own fall: hd_splash's jolt, 11 px in 27 ms), in whole art px
+const sinkOf = (st, now) => Math.round(SWIM.sink * Math.min(1, (now - (st.swamAt ?? -1e9)) / SWIM.sinkMs));
 function drawSwimmer(p, e, sheet, x, y, z, now, sx, sy) {
   y -= BodyPlace.of(p).up * z;                              // (just down from a leap: its lift, body_place.js)
   const moving = now - p.moved < 300 || Math.abs(p.x - p.tx) + Math.abs(p.y - p.ty) > .05;
@@ -74,7 +77,7 @@ function drawSwimmer(p, e, sheet, x, y, z, now, sx, sy) {
   p.running = dash;
   const st = BodyPlace.state(p);
   if (!st.swam) {                                             // going in: a splash
-    st.swam = true; p.wake = p.wake || [];                   // (the marks of the last swim, if any are left, stay)
+    st.swam = true; st.swamAt = now; p.wake = p.wake || [];                   // (the marks of the last swim, if any are left, stay)
     burst(p.x, p.y + .3 - UP, "water", 10, {up: 2.6, spread: 3, g: 7, life: .5});
     sfx("water", Math.round(p.x), Math.round(p.y));          // one splash going in; after that only the strokes are heard
   }
@@ -94,7 +97,7 @@ function drawSwimmer(p, e, sheet, x, y, z, now, sx, sy) {
     if (stroke % 2) sfx("swim", Math.round(p.x), Math.round(p.y));      // a soft pull, every second stroke; treading water is silent
   }
   p.lastStroke = stroke;
-  const row = DIR_ROW(p), col = Math.floor(now / (dash ? 70 : 140)) % 8, cellX = x - 16 * z, cellY = y - 18 * z + SWIM.sink * z + bob, wl = y + 14 * z;
+  const row = DIR_ROW(p), col = Math.floor(now / (dash ? 70 : 140)) % 8, cellX = x - 16 * z, cellY = y - 18 * z + sinkOf(st, now) * z + bob, wl = y + 14 * z;
   const back = [-p.fx, -p.fy], fi = row * 8 + col;
   wearFx("back", e, sheet, fi, cellX, cellY, z, now, moving, back);
   if (WaterBed.on) WaterBed.under(sheet, col * 48, row * 48 + SWIM.line, 48, 12, cellX, cellY + SWIM.line * z, z, Math.round(p.x), Math.round(p.y));      // (clear water: the body under the face, tinted by its depth)
