@@ -40,14 +40,21 @@ def test_every_file_loads_and_each_action_plays_its_own_sound(game):
     assert cow
 
 
+# (each time struckOnce runs: the chops heard before it, and after)
+ONCE = """(() => { window.__once = []; const f = struckOnce; window.struckOnce = (a, r) => { const n = () => __snd.filter((s) => s === 'chop').length;
+  const b = n(); f(a, r); __once.push([b, n()]); }; return 1; })()"""
+
+
 @pytest.mark.parametrize("drawn", [False, True])
 def test_a_chop_with_no_frame_drawn_at_its_strike_still_sounds_and_never_twice(game, drawn):
     """The strike sounds on the frame drawn at a swing's fourth (characters.js). A frame longer than the swing's first
     third went from before it to the action's end: on the tests' fast clock on a runner (0.47 s of the game a frame),
     the axe felled the tree in silence, "chop" not in what test_e2e_ui test_actions_make_their_sounds heard (#47). No
     body drawn while it chops: the strike still sounds once, as the work is done (agent.js struckOnce). Drawn as
-    always: as many chops as strikes drawn, never one more (one, if no frame was drawn at a strike)."""
+    always: when the dig ends, struckOnce adds a chop only if none was heard since the key was pressed. It added one
+    to a chop a frame had drawn from the world's tick, before the server's word the dig had started: two chops."""
     game.js("window.__snd = []; const s0 = sfx; window.sfx = (n, x, y) => { __snd.push(n); s0(n, x, y); }")
+    game.js(ONCE)
     game.stamp(-1, 0, ["T"])
     game.face(-1, 0)
     game.give(axe=1)
@@ -57,14 +64,14 @@ def test_a_chop_with_no_frame_drawn_at_its_strike_still_sounds_and_never_twice(g
     try:
         game.press("x", 0)
         game.wait(f"combAt({game.pos()[0] - 1}, {game.pos()[1]}) === 't'", 8000)
-        game.wait("!busy && !myAction && __snd.includes('chop')", 3000)          # (the action's answer in: struckOnce has run)
+        game.wait("!busy && __once.length > 0", 3000)                              # (the dig's answer in: struckOnce has run)
     finally:
         if not drawn:
             game.js("(() => { drawBody = window.__db; return 1; })()")
-    chops, struck = game.js("[__snd.filter((n) => n === 'chop').length, ents.get('agent' + myId).struck || 0]")
-    assert chops == max(1, struck) and not game.errors, (drawn, chops, struck, game.js("__snd"), game.errors)
+    once = game.js("__once")
+    assert all(after == max(1, before) for before, after in once) and not game.errors, (drawn, once, game.js("__snd"), game.errors)
     if not drawn:
-        assert struck == 0                                                         # (it was struckOnce's, not a frame's)
+        assert once[-1] == [0, 1], once                                            # (no frame chopped: struckOnce did, once)
 
 
 def test_an_unknown_sound_is_reported_once_and_does_not_break(game):

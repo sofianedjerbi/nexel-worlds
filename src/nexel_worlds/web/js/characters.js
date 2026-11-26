@@ -103,7 +103,7 @@ function drawBody(p, sx, sy, S, t, now) {
           const spr = GROUND.has(target) ? null : objectSprite(target, tx, ty, now / 1000);
           debris(tx, ty, spr, GROUND.has(target) ? 5 : 4, {kind: "o", dy: "TFU".includes(target) ? -.5 : 0, dust: "M*%Y".includes(target) || GROUND.has(target)});
           shakes.set(tx + "," + ty, now);
-          sfx(strikeSound(target, held), tx, ty);
+          p.strikeAt = now; sfx(strikeSound(target, held), tx, ty);   // (when: agent.js struckOnce, whichever action it was drawn from)
         } else if (tool === "craft") burst(Math.round(p.tx), Math.round(p.ty), "spark", 5, {dy: -.6, g: 4});
       }
       if (blow) frame = 0;
