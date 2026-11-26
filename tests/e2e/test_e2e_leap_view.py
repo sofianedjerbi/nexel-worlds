@@ -4,6 +4,7 @@
 import pytest
 
 from test_e2e_leap import agree, frames, smooth
+from waits import ANSWERED
 
 pytestmark = pytest.mark.e2e
 
@@ -76,6 +77,10 @@ def test_sprint_jumping_up_a_hill_under_the_open_sky_keeps_the_open_view(game, w
     game.wait("myAt && myAt.z >= 5", 8000)
     for k in (key, "Shift"):
         game.page.keyboard.up(k)
+    # (and until the world has answered all the page said: it makes a flight a stride behind the screen, at the height
+    # it left from until it is told where it came down (sim/leaping.py). Read as the screen landed, it had you on the
+    # hill's top tile a level low, z 4: main's run 45880440852)
+    game.wait(f"({ANSWERED})()", 8000)
     game.rest()
     rec = game.js("(() => { __vwOn = false; return __vw; })()")
     assert game.server()["z"] == 5, game.server()
