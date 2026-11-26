@@ -1,7 +1,7 @@
 // The keys that do something where you look, beside it, in the corner's keycaps. By the build cursor (build.js):
 // what Space and X do there at its right; at its left E over Q where it can go up or down (the way they move it),
-// how deep it is between them. By what you face, playing by keys: E and X. They were a list in the bottom
-// corner, and each mode said its keys in the chat: "the keys appear in the chat, as a guide in each mode. can't you
+// how deep it is between them. By what you face, playing by keys: E and X. Not a list in the bottom
+// corner, nor each mode saying its keys in the chat: "the keys appear in the chat, as a guide in each mode. can't you
 // make it more intuitive ??" The corner keeps the rest (keyboard.js: the mode's name, Esc, eat, pick up). Put where
 // the thing is on the screen each frame; its words written again only when they change.
 const Prompts = (() => {

@@ -14,7 +14,7 @@ const Keyhole = (() => {
   }
   // What is written of a cursor n layers over the floor you stand on: under it, how far; over it, how far over your
   // head: the block in front of your legs (1) and of your eyes (2) are level with you, nothing is written ("+1 mean
-  // whaT ? +1 above player ?": it was the block in front of his legs). A storey up is +1: the floor over your head
+  // whaT ? +1 above player ?": that +1 meant the block in front of his legs). A storey up is +1: the floor over your head
   const rel = (n) => (n > 0 ? Math.max(0, n - 2) : n);
   // ...and on you, where the cursor is on a block near your height (in the ground; on it, over your floor): the layer
   // of you it is level with, between two marks (your legs, your head; over your head, under your feet), in its light

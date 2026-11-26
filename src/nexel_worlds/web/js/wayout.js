@@ -19,7 +19,7 @@
 // one). The way is found again each time the land changes, and its first move is always true.
 const WayOut = (() => {
   const WAYS = [[1, 0, "E"], [-1, 0, "W"], [0, -1, "N"], [0, 1, "S"]], TURN = .01,      // (of two ways as good: the one that goes straight on; east or west first: a stair seen from its side; south last: its blocks stand between the eye and you)
-     DIG = 30, FALL = 3, HURT = 100, R = 28;      // (HURT: a level of a fall that costs hearts: more than three blocks: the way shown is not one that hurts while a stair can be cut. It was 6: out of a shaft in the stone mountain the way dropped six into the river)
+     DIG = 30, FALL = 3, HURT = 100, R = 28;      // (HURT: a level of a fall that costs hearts: more than three blocks: the way shown is not one that hurts while a stair can be cut. Not 6: out of a shaft in the stone mountain a way drops six into the river)
   const key = (x, y, z) => ((x + 32768) * 65536 + (y + 32768)) * 2048 + (z + 1024);
   // out: under the open sky and not walled in (of the 49 tiles round it, 12 at most stand higher than a hop), nor at
   // the bottom of a gorge or a wide pit (of 49 tiles looked at 9 around, half at most stand over three higher: the
@@ -77,10 +77,10 @@ const WayOut = (() => {
   function* find(W, s, o = {}) {
     if (out(W, s.x, s.y, s.z)) return {out: true, trapped: false, path: null, blocks: 0, n: 0};
     const a = yield* run(W, s, false, o.walk || 3000, 0, 0, o.d);
-    let g = a.goal, n = a.n; const trapped = !g && !a.capped && !a.edge;      // (it was "fewer than 150 places under the sky": a closed canyon was no trap, a long river's was one when narrow)
+    let g = a.goal, n = a.n; const trapped = !g && !a.capped && !a.edge;      // (not "fewer than 150 places under the sky": that makes a closed canyon no trap, a long narrow river's one)
     if (!g && o.keep) return o.keep;      // (o.keep: a way with blocks to break that still holds (wayshow.js): kept, unless there is now one on foot: the tunnel's end opened beside you)
     if (!g && (trapped || !o.sky)) { const b = yield* run(W, s, true, o.dig || 6000, 0, 0, o.d); g = b.goal; n += b.n;      // (o.sky: under the open sky only a trap's way is shown: no dig search for the rest)
-      if (!g && b.capped) { const tops = []; for (let j = -9; j <= 9; j += 3) for (let i = -9; i <= 9; i += 3) tops.push(W.top(s.x + i, s.y + j));      // (the level to climb to: where half the land round you is no more than three higher: `out`. It was the lowest top within reach: in a gorge, its own floor: no pull, no way)
+      if (!g && b.capped) { const tops = []; for (let j = -9; j <= 9; j += 3) for (let i = -9; i <= 9; i += 3) tops.push(W.top(s.x + i, s.y + j));      // (the level to climb to: where half the land round you is no more than three higher: `out`. Not the lowest top within reach: in a gorge, its own floor: no pull, no way)
         const zt = tops.sort((p, q) => q - p)[24] - 3;
         const c = yield* run(W, s, true, o.far || 12000, 2 * DIG, zt, o.d); g = c.goal; n += c.n; } }
     const path = g ? pathOf(g) : null;

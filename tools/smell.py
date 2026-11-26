@@ -11,6 +11,10 @@ What each count is:
 - cell_defs: `CELL = 48` (a sprite cell) typed in more than one file.
 - hdlook_chars, hdlook_branches: the size of the HD look's one closure (hd.js HdLook).
 - long_functions: functions over 60 lines or 6000 characters.
+- big_files: hand-written web files over BIG_FILE characters (nexel-worlds#11: lines that run to 700 characters
+  kept files under the line cap of tests/test_code_size.py while they grew to 60 KB).
+- long_lines (shown, not held yet: the code is written in long lines, a hold now would fail most PRs): lines over
+  LONG_LINE characters in the hand-written web files.
 - special_cases: branches (`if`, `?`, `&&`, `||`) that test for one kind of place or body (ladder, stairs, water...),
   the guards each consumer adds for itself instead of asking one owner.
 """
@@ -24,6 +28,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 JS = ROOT / "src" / "nexel_worlds" / "web" / "js"
 BASELINE = Path(__file__).with_name("smell.json")
+GENERATED = {"rules.js", "title_map.js"}     # (written by rules.py and tools/build_title_scene.py, not by hand)
+BIG_FILE, LONG_LINE = 24_000, 160
 
 PATCH = re.compile(r"\b(It was|it was|It went|it went|They were|they were|was drawn|were drawn|stayed|no longer|used to"
                    r"|before:|as before|the old way)\b")
@@ -96,8 +102,13 @@ def report():
         "hdlook_chars": hd[1], "hdlook_branches": hd[2],
         "long_functions": len(long),
         "special_cases": sum(sum(c.values()) for c in per.values()),
+        "big_files": sum(len("\n".join(lines)) > BIG_FILE for name, lines in src.items() if name not in GENERATED),
     }
     return counts, patches, long, per
+
+
+def long_lines():
+    return sum(len(line) > LONG_LINE for name, lines in sources().items() if name not in GENERATED for line in lines)
 
 
 def counts():
@@ -121,6 +132,7 @@ def main(argv):
     print("counts (now / held in tools/smell.json):")
     for k, v in found.items():
         print(f"  {k}: {v} / {held.get(k, '-')}")
+    print(f"  long_lines: {long_lines()} (not held)")
     if "--write" in argv:
         BASELINE.write_text(json.dumps(found, indent=2) + "\n")
         print(f"wrote {BASELINE.relative_to(ROOT)}")

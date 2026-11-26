@@ -1,5 +1,5 @@
 // Zoom: how many screen pixels an art pixel takes (a whole number, so the art stays sharp).
-// "fix the zooming process. in the game, zooming is hard, uninturitive and ugly". What it was: every wheel event was a
+// "fix the zooming process. in the game, zooming is hard, uninturitive and ugly". What went wrong: every wheel event was a
 // whole level, so one swipe on a trackpad (dozens of events) flew from one end to the other; the picture jumped with
 // nothing between two sizes; nothing said where you were or where it stops; and the smallest level made you a few
 // pixels tall. Now:
@@ -84,7 +84,7 @@ function zoomSign(level, stuck) {
   el.querySelector("span").innerHTML = Array.from({length: ZOOM.max - lo + 1}, (_, i) => `<i class="${lo + i <= level ? "on" : ""}"></i>`).join("");
   el.querySelector("[data-d='-1']").classList.toggle("end", level <= lo);
   el.querySelector("[data-d='1']").classList.toggle("end", level >= ZOOM.max);
-  const hud = $("vitals").getBoundingClientRect();           // "the zoom indicator show up at a weird spot" (it was half way up the right edge): over your bar, under you
+  const hud = $("vitals").getBoundingClientRect();           // "the zoom indicator show up at a weird spot" (not half way up the right edge): over your bar, under you
   el.style.bottom = (hud.height ? innerHeight - hud.top + 10 : 16) + "px";
   el.classList.add("show");
   if (stuck) { el.classList.remove("nod"); void el.offsetWidth; el.classList.add("nod"); }

@@ -6,12 +6,12 @@
 // yell: higher, each syllable held longer and falling as it goes, pushed until it breaks up a little (a strained
 // voice), with more of its bite, and an echo off the land after it. All of a line is put on the audio clock at once, so it keeps time whatever the frames do.
 // An AI player (robot: the server marks its lines `bot`) says it the same way in its robot voice (robot_voice.js, ROBOT_KIND).
-// (It was one "say" sound a line, and none for what you said yourself.)
+// (Not one "say" sound a line: syllables for every line, what you say yourself too.)
 
 const BABBLE = {letter: .045, every: 2, piece: .085, most: 2.7, vowel: {a: 0, e: 2, i: 4, o: -2, u: -3, y: 3}};   // s a letter; letters a syllable; s of a recording; s of talk at most; semitones
 // A shout: semitones up; a syllable's length; how far it falls in pitch as it is held (semitones); how hard it is pushed
 // into the breaking curve; the bite's frequency and gain (dB); its level beside talk; the echo's delay (s) and its level.
-const SHOUT = {up: 5, piece: .15, fall: 3, push: 2.2, bite: [2400, 5], level: 1, echo: [.21, .25]};      // ("a bit less loud": it was 1.5, pushed at 3.2)
+const SHOUT = {up: 5, piece: .15, fall: 3, push: 2.2, bite: [2400, 5], level: 1, echo: [.21, .25]};      // ("a bit less loud": not 1.5, pushed at 3.2)
 // What is typed in capitals is shouted: three letters or more, none of them small ("OK" and "I" are only talk).
 const shouted = (line) => (line.match(/\p{L}/gu) || []).length >= 3 && line === line.toUpperCase() && line !== line.toLowerCase();
 let strain = null;                                           // (the breaking curve: a soft clip)
@@ -64,5 +64,5 @@ function babble(name, text, x, y, shout, robot) {
   } catch (e) { /* audio not available yet (needs a user gesture) */ }
   return made;
 }
-// How much of a bubble's line is written yet (s since it was said)
+// How much of a bubble's line is written yet (s since the line was said)
 const written = (text, since) => text.slice(0, Math.max(0, Math.floor(since / BABBLE.letter) + 1));

@@ -16,7 +16,7 @@ const HdSun = (() => {
   let H = {on: false, night: false, kx: 0, ky: 0, sun: 0}, sid = "";
   function hour() {
     const h = SunLand.hour(), want = !!opt("shadows") && !!opt("depth");
-    H = {on: want && h.alpha > .02, night: want && Light.now().lamps, kx: Math.round(h.kx * 8) / 8, ky: Math.round(h.ky * 8) / 8, sun: Math.min(1, h.alpha / SunLand.SHADE.alpha)};   // (kx, ky: the sun's way in the world, ground px a px of height; the eye's projection alone foreshortens it. It was ky / .6, made for the 36-degree eye: from 78.6 degrees a cliff's shadow lay 1.6x as long on the screen)
+    H = {on: want && h.alpha > .02, night: want && Light.now().lamps, kx: Math.round(h.kx * 8) / 8, ky: Math.round(h.ky * 8) / 8, sun: Math.min(1, h.alpha / SunLand.SHADE.alpha)};   // (kx, ky: the sun's way in the world, ground px a px of height; the eye's projection alone foreshortens it. Not ky / .6, made for the 36-degree eye: from 78.6 degrees that lays a cliff's shadow 1.6x as long on the screen)
     return H;
   }
   const key = () => { hour(); return H.on ? H.kx + "," + H.ky : H.night ? "n" + fireAt.length : "-"; };
@@ -75,7 +75,7 @@ const HdSun = (() => {
   // The land's own shadow: a cliff, a terrace, a hill throws the hour's shadow on the land under it (the classic picture had it). For a tile's surface, px by px: is some
   // column towards the sun, two levels or more over it, between the px and the sun? (a px h px under a top is in its shadow when the px, moved h back along the sun's
   // way, is on that top's tile.) The same tone and the same soft rim as the things' shadows, on tops only (never a wedge on a wall's face); kept until the land or the sun moves on.
-  const lands = new Map(), tops = new Map(), TALL = 192; let lkey = null;   // (TALL: the height in px a column's shadow is counted to: 12 levels, the gorge's cliff whole. It was 6: a taller cliff's shadow stopped short, cut straight)
+  const lands = new Map(), tops = new Map(), TALL = 192; let lkey = null;   // (TALL: the height in px a column's shadow is counted to: 12 levels, the gorge's cliff whole. At 6 a taller cliff's shadow stops short, cut straight)
   const topOf = (x, y) => { const k = (x + 32768) * 65536 + y + 32768; let t = tops.get(k); if (t === undefined) { const c = Voxels.host.column(x, y); t = c && c.length ? c[c.length - 1] : null; tops.set(k, t); } return t; };
   function land(out, x, y) {
     if (!H.on) return; const lk = lkey; if (!lk || lk[0] !== landVer || lk[1] !== Floors.ver || lk[2] !== H.kx || lk[3] !== H.ky || lk[4] !== HdThings.sheet.id || lands.size > 8000) { lands.clear(); tops.clear(); lkey = [landVer, Floors.ver, H.kx, H.ky, HdThings.sheet.id]; }   // (what it hangs on, looked at: a string was made of it for every tile asked)
@@ -110,7 +110,7 @@ const HdSun = (() => {
     const bm = picture("b" + [r[2] - r[0], r[3] - r[1], Math.round(h0), Math.round(h1)], r[0], r[1], v, (put) => { for (let j = 0; j < r[3] - r[1]; j++) for (let i = 0; i < r[2] - r[0]; i++) put(i, j, Math.round(h0), Math.round(h1)); });
     if (bm) lay(out, x, y, L, bm, bm.x + ((r[0] >> 4) << 4), bm.y + ((r[1] >> 4) << 4));
   }
-  // a body's: the shape it has NOW (its pose, the way it faces: its own picture this frame; it was the shape it had when first seen), thrown from its feet
+  // a body's: the shape it has NOW (its pose, the way it faces: its own picture this frame, not the shape it had when first seen), thrown from its feet
   function body(out, s) {
     const kind = s.q.e ? s.q.e.kind || "agent" : "agent", X = Math.floor(s.x), Y = Math.floor(s.y + .42), Z = s.zh ?? s.z; if (!open(X, Y, Z)) return; const v = way(s.x, s.y); if (!v) return;   // (Z: where the body stands as the land's depth has it (hd.js zh): a swimmer lifted to a river's rim cast its shadow on the bank)
     const c = s.canvas, pk = c._h === undefined ? undefined : kind + c._h; let sk = pk === undefined ? undefined : poses.get(pk), S = sk ? sils.get(sk) : null;   // (a picture made by the same calls as one looked at before (canvas._h, hd.js): its shape is known: its px were read and counted every frame)

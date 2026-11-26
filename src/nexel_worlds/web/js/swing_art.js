@@ -6,14 +6,14 @@
 // clothes built from it have nothing to work around.
 
 const SwingArt = (() => {
-  const CELL = 48, SS = 4, CX = 23.5, CY = 26;             // (CX, CY): the middle of the body, at the hips
+  const SS = 4, CX = 23.5, CY = 26;             // (CX, CY): the middle of the body, at the hips
   const C = {wood: [170, 121, 89], dark: [144, 98, 93], iron: [129, 129, 129], steel: [183, 183, 183], edge: [158, 170, 182],
     blade: [226, 232, 236], gold: [222, 178, 86], streak: [243, 244, 231]};
   const FACE = [90, -90, 0];                               // down, up, right, in degrees on the screen (left is right, mirrored)
   // The sword: where it points on each frame, in degrees from the way faced (it starts on the sword arm's side and
   // ends across the body), and the streak behind it: [from, to, how thick].
   const SLASH = {at: [-120, -75, 20, 85, 100, 100, 70, 40], streak: [null, null, [-115, 20, 2.6], [-70, 85, 2.6], [5, 100, 1.3], null, null, null]};
-  // Side on it comes down from over the shoulder and stops out in front: carried on to the feet, it was a chop again.
+  // Side on it comes down from over the shoulder and stops out in front: carried on to the feet it would read as a chop.
   const SIDE = {at: [-125, -95, -20, 28, 36, 36, 22, 10], streak: [null, null, [-120, -20, 2.6], [-90, 28, 2.6], [-30, 36, 1.3], null, null, null]};
   // The spear: how far it is pushed out along the way faced, and how long the streak behind its point is.
   const THRUST = {out: [-3, -5, 2, 6, 6, 5, 2, 0], streak: [0, 0, 6, 9, 4, 0, 0, 0]};

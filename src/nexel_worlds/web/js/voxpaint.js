@@ -27,11 +27,11 @@ const VoxPaint = (() => {
   // STONE OR EARTH IS THE CELL'S, AND THE WORLD SAYS IT (stoneAt: chunks.py keeps it, from when its land was laid out): a high hill stone at any height (2), lower land
   // earth on top and stone under, whatever is dug of it: a trench cut in a stone hill has stone walls and a stone floor, a hole in a meadow comes to stone. A block put
   // on its top is what was put (matAt). Nothing is guessed here.
-  // (It was guessed from the heights now: a mass of tiles 5 high or more, a low tile "cut in stone" by the stone round it; then the column's own top: a cut turned the tiles beside it
-  // earth, lighter boxes along it; then its own floor, a brown face in a grey hill.)
+  // (Not guessed from the heights: a mass of tiles 5 high or more, a low tile "cut in stone" by the stone round it, the column's own top: a cut would turn the tiles beside it
+  // to earth, lighter boxes along it, and its own floor to a brown face in a grey hill.)
   // rocky: is the tile's cell at z stone (no z: its top); level: the level whose paint the block with its top at z has there (4: the highest earth). The engine: host.rock, voxels.js
   const rocky = (x, y, z) => { const top = topAt(x, y), m = matAt(x, y); if (z === undefined) z = top; return m && z >= top ? (m === "s" ? 2 : false) : z <= stoneAt(x, y) ? 2 : false; };
-  const level = (x, y, z) => (z < 5 && rocky(x, y, z) === 2 ? 5 : z > 4 && !rocky(x, y, z) ? 4 : z);   // (stone under 5, a cut's floor in a stone hill: stone's lowest level, its darkest top, at any depth. It was 5 to 8 in turn by its height: a floor a level down was three tones lighter than the one over it)
+  const level = (x, y, z) => (z < 5 && rocky(x, y, z) === 2 ? 5 : z > 4 && !rocky(x, y, z) ? 4 : z);   // (stone under 5, a cut's floor in a stone hill: stone's lowest level, its darkest top, at any depth. Not 5 to 8 by its height: a floor a level down would be three tones lighter than the one over it)
   const ids = new Map(), cells = [null];                        // a shape: [what of it is drawn, its sheet, the sheet's cell (cx, cy) each quarter of it is: NW, NE, SW, SE]; 0: the whole square
   // A narrow top (a tile in no 2 x 2 of land as high: a pillar, a wall one tile wide, its ends, an L, a T, a plus, a ring): the
   // sheet's own cell for it is all rim (a pillar's top was a button, a ridge a hedge, a plus a muddle: the sheet's rim is 7 px a
@@ -110,7 +110,7 @@ const VoxPaint = (() => {
     }
   }
   // the pack's own cliff px: the two rows of a sheet's south edge cell over its foot (its wall: light and mid in blobs, the darkest in
-  // them), and its lightest and darkest px. A front's body is laid from them (it was one flat tone with a fleck in twelve px: a slab)
+  // them), and its lightest and darkest px. A front's body is laid from them (not one flat tone with a fleck in twelve px: a slab)
   const mots = new Map(), lum = (v) => (v & 255) * .3 + (v >>> 8 & 255) * .59 + (v >>> 16 & 255) * .11;
   function mottle(z) {
     const sheet = hillSheet(wallOf(z)); let m = mots.get(sheet); if (m) return m;

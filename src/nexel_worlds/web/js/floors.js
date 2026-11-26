@@ -28,7 +28,7 @@ const Floors = (() => {
     const had = !!(b.built && b.built.size); b.built = new Map();
     for (const [i, z, kind, ch] of d.floors || []) put(b, i, z, kind, ch);
     for (const i of d.roofs || []) put(b, i, b.lv[i].charCodeAt(0) - SEA + STOREY, "roof", "");
-    if (had || b.built.size) ver++;   // (a block with nothing built, come in: nothing built changed. It was a new version of all that is built: the HD look's whole land made again at each block come in)
+    if (had || b.built.size) ver++;   // (a block with nothing built, come in: nothing built changed: no new version, which makes the HD look's whole land again)
   }
   // The built cells of the tile's column (cells.js: what you walk on is the land and these): all of them, by height; is there one at z?
   const cells = (x, y) => (FLOORS && colOf(x, y)) || null, built = (x, y, z) => { const c = FLOORS && colOf(x, y); return !!c && c.has(z); };
@@ -55,7 +55,7 @@ const Floors = (() => {
   }
 
   // The height a body is drawn at on a tile: the land's, or, where something is built, its own (yours: caves.js keeps
-  // it as the server does; the others': the server says), where it was a step ago, or where a step would land it
+  // it as the server does; the others': the server says), where it stood a step ago, or where a step would land it
   function standOf(p, x, y) {
     if (!p.e || !(FLOORS && colOf(x, y) || hollow(x, y))) return standAt(x, y);   // (over a hollow too, a cave or a tunnel: on its roof or in it)
     const mine = p.e.kind === "agent" && p.e.id === myId, at = mine ? myAt : p.zAt, was = mine ? myWas : p.zWas;
@@ -88,7 +88,7 @@ const Floors = (() => {
   // (cut away: none of it)
   const alpha = (x, y, z) => ((mine().tiles.has(x + "," + y) && z >= over.z) || (Build.on && z > Build.level()) ? 0 : 1);
   // A step of a flight, painted (climbing.js: its own picture). Planks and a roof are data the land's painter lays: hd_things.js block
-  // (they were painted here on a 2D canvas at the zoom and read back)
+  // (drawn with the land, not on a 2D canvas here)
   function cell(kind, x, y, z, sx, sy, S, a) { return Climb.drawStep(x, y, z, sx(x), syUp(sy, y, shOf(z) * zoom), a); }
   // What a click or a key means with a block in hand, or on a tile whose ground at your height is a built block
   // (intent.js asks first): said in a few words, with what does it. Nothing: the ground's own (intent.js goes on)
@@ -99,7 +99,7 @@ const Floors = (() => {
     const h = myZ(s.x, s.y);
     // A block of the land in hand, aimed over ground lower than your own (past a cliff's edge, over a hole): it goes at your own level, the
     // ground you stand on carried on in a straight line through the air, a block at a time, each held by the one before (the world's put_land).
-    // It went down onto the ground at the cliff's foot: "placing above a cliff shouldn't make the bloc go right down on the cliff". (mouse.js
+    // Not down onto the ground at the cliff's foot ("placing above a cliff shouldn't make the bloc go right down on the cliff"). (mouse.js
     // points over such ground at your level too: tileAtScreen)
     if (LAND_BLOCKS.has(it) && FLOORS && !isMe && topAt(p.x, p.y) < h) {
       const why = Build.landFits(p.x, p.y, h, () => false);

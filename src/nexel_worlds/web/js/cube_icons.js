@@ -65,8 +65,8 @@ const CubeIcon = (() => {
     made.set(key, out); return out;
   }
   function canvas(name, W) { const im = px(name, W); if (!im) return null; const c = document.createElement("canvas"); c.width = c.height = W; c.getContext("2d").putImageData(im, 0, 0); return c; }
-  // Where a cube's px go in a cell of W, its px in the middle: (it was made at 16, a 15 px block that filled the pack's cell, where a log or a loaf is
-  // 12 or 13 px of a 16 px icon: the blocks stood out as tiles. Made at CELL, 12 px: as big as the others, and never scaled)
+  // Where a cube's px go in a cell of W, its px in the middle: (not made at 16, a 15 px block filling the pack's cell, where a log or a loaf is
+  // 12 or 13 px of a 16 px icon: the blocks stand out as tiles. Made at CELL, 12 px: as big as the others, and never scaled)
   function mid(im, W) {
     const d = new Uint32Array(im.data.buffer); let b = [1e9, 1e9, -1, -1];
     for (let y = 0; y < im.height; y++) for (let x = 0; x < im.width; x++) if (d[y * im.width + x] >>> 24) b = [Math.min(b[0], x), Math.min(b[1], y), Math.max(b[2], x), Math.max(b[3], y)];

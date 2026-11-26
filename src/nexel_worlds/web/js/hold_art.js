@@ -1,5 +1,5 @@
-// A tool in the paw, gripped (the owner: "it should look like the player is really holding it, like the sword"). It was
-// its 8 px icon pasted at the paw. Here it is drawn from its grip: the hand (the sheet's swing hand, a ring of outline
+// A tool in the paw, gripped (the owner: "it should look like the player is really holding it, like the sword"), not
+// its 8 px icon pasted at the paw: it is drawn from its grip: the hand (the sheet's swing hand, a ring of outline
 // round its fur) over the handle, the tool out of it at the angle the pose gives, in whole art px (redrawn at each
 // angle as the swings draw their tools, never scaled or blurred). A sword and a spear are the attack's own
 // (swing_art.js frame), so the cut starts from where they are held.
@@ -17,7 +17,7 @@
 // of the walk (or the run) the blade sways a few degrees and the hand a px. The body aims; the weapon does not.
 
 const HoldArt = (() => {
-  const CELL = 48, SS = 4, KINDS = ["axe", "pickaxe", "hoe", "sword", "spear", "torch", "watering_can"];
+  const SS = 4, KINDS = ["axe", "pickaxe", "hoe", "sword", "spear", "torch", "watering_can"];
   // degrees on the screen, facing [down, up, right] (left: right's mirror); the paw is on the left of the picture facing us
   const ANG = {rest: [-120, -75, -60], up: [-100, -80, -80], ahead: [110, -90, -10], down: [100, 80, 45]};
   const UPRIGHT = {rest: [-100, -80, -75], up: [-95, -85, -80], ahead: [-110, -90, -50], down: [-115, -75, -65]};   // (a torch)

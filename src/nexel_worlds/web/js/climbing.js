@@ -45,8 +45,8 @@ const Climb = (() => {
     return Math.abs(la - lb) > 1 && onLadder(ax, ay, la, bx, by, lb) ? 1 / (Math.abs(la - lb) * CLIMB_S) : 0;
   }
   // Someone between two tiles on a ladder, as drawn: up its rungs on its own tile first, and only at the top over onto
-  // what it leans on (coming down: over the edge first, then down the rungs); facing it all the way. (It was a straight
-  // slide from the foot to the top in a fifth of a second, the ladder drawn over the body.) -> null, or {dx, dy: tiles
+  // what it leans on (coming down: over the edge first, then down the rungs); facing it all the way. (Not a straight
+  // slide from the foot to the top in a fifth of a second, under the ladder.) -> null, or {dx, dy: tiles
   // to move the body by, h: the height it is at (levels: its picture's px over the line are the place's, body_place.js), on: on the rungs, u: how far up, fx, fy:
   // the way to the top}
   const OVER = .8;                                    // (the part of the step spent on the rungs; the rest is the step over)
@@ -107,7 +107,7 @@ const Climb = (() => {
     }
     ctx.globalAlpha = 1;
   }
-  // A step of a flight, drawn as stairs (it was a plank block, and a flight looked like boxes): over its top and its
+  // A step of a flight, drawn as stairs, not a plank block (a flight of those looks like boxes): over its top and its
   // front, small steps of the house's wood, a board to tread on and a darker riser, three to a tile, and a stringer
   // down each side; the same rhythm from the ground to the floor. Rising east or west, the treads are seen from above
   // across the tile and the front is the stringer, stepped as the flight climbs; rising south (towards you), each
@@ -147,8 +147,8 @@ const Climb = (() => {
 
   // A ladder in hand, and p is a wall right in front of you, two layers or more over where you stand (and no more
   // than a ladder goes): the ladder goes on YOUR OWN tile, against it (the server: Climbing.ladder_spot). -> the
-  // height you stand at, or null. (It went on the tile you aimed at only: at the bottom of your own one-tile shaft
-  // every tile you face is a wall: "Needs something taller behind", with a ladder in hand.) Not in build mode: its
+  // height you stand at, or null. (Not on the tile you aim at only: at the bottom of your own one-tile shaft
+  // every tile you face is a wall: there a ladder in hand would only say "Needs something taller behind".) Not in build mode: its
   // cursor plans a ladder on the cursor's tile.
   function own(p, s) {
     const h = myZ(s.x, s.y);

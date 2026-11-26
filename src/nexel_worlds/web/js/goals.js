@@ -43,7 +43,7 @@ function drawGoals() {
   localStorage.setItem("nexel-goals-" + me, JSON.stringify(d));
   const lingering = goalsShown.filter((i) => goalsDoneAt[i] && now - goalsDoneAt[i] < 1600);
   const open = GOALS.map((_, i) => i).filter((i) => !d["g" + i] && !lingering.includes(i));
-  goalsShown = [...lingering, ...open].slice(0, 3).sort((a, b) => a - b);      // (in the list's order: the one just done stays where it was)
+  goalsShown = [...lingering, ...open].slice(0, 3).sort((a, b) => a - b);      // (in the list's order: the one just done keeps its place)
   const el = $("goals"), done = GOALS.filter((_, i) => d["g" + i]).length;
   const book = $("craft").style.display === "block";
   el.style.display = goalsOff || book ? "none" : "block";
@@ -70,7 +70,7 @@ function drawGoals() {
     row.classList.toggle("done", !!goalsDoneAt[i]);
     if (list.children[k] !== row) list.insertBefore(row, list.children[k] || null);
   });
-  for (const [i, top] of tops) {                       // the ones that stay: from where they were to where they are
+  for (const [i, top] of tops) {                       // the ones that stay: from their old place to their new one
     const row = old.get(i), dy = row.isConnected ? top - row.offsetTop : 0;
     if (dy && row.animate) row.animate([{transform: `translateY(${dy}px)`}, {transform: "none"}], {duration: 260, easing: "cubic-bezier(.2, .7, .3, 1)"});
   }

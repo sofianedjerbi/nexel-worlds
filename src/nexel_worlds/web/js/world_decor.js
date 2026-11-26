@@ -151,7 +151,7 @@ const chestOpen = new Map(), doors = new Map(), doorShut = new Map();      // (d
 let occupied = new Set();
 
 // A chair is turned to what it is set at: a table or a fire a tile or two from it (every chair faced east, the
-// sheet's first of four: of two chairs by a fire, one had its back to it). With neither near: east, as before.
+// sheet's first of four: of two chairs by a fire, one had its back to it). With neither near: east.
 const CHAIR = {E: 64, W: 80, S: 96, N: 112};          // (the sheet's four chairs: where each is, by the way it faces)
 function chairFaces(x, y) {
   for (const far of [1, 2]) for (const [way, dx, dy] of [["E", 1, 0], ["W", -1, 0], ["S", 0, 1], ["N", 0, -1]])

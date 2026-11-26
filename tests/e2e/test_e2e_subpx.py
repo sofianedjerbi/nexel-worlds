@@ -10,6 +10,7 @@ fractions of a px: its letters drawn another way every other step (two rasters o
 import pytest
 from conftest import open_game
 from game import Game, new_name
+from waits import FRAMES
 
 pytestmark = pytest.mark.realtime                 # (every frame of a walk is looked at: on the tests' clock there are four times fewer)
 
@@ -74,14 +75,78 @@ def test_a_bubble_goes_with_its_speaker_px_for_px_and_its_letters_stay_as_they_a
         tail = {round(f["at"][0] + round(f["w"] / 2 / u) * u - f["body"][0], 4) for f in walk}
         assert len(tail) == 1, tail                                                        # over the speaker's head: the same place every frame
         # its px as the frame before's: not drawn another way (its letters put a fraction of a px aside were most of their
-        # px; a few px of the outline, 5 or so, come out another way now and then). At a whole density only: at 1.25 and
-        # 1.75 on the runners' renderer (Mesa lavapipe) the letters' soft px are another raster each frame of a walk (4 to
-        # 11 % of the bubble's px) while the bubble is on whole px of the screen, as asserted above (#61)
+        # px; a few px of the outline, 5 or so, come out another way now and then). At a whole density only: read each frame,
+        # the canvas is drawn by the CPU after a while, and at 1.25 or 1.75 that is another raster of its letters (4 to 12 %
+        # of the bubble's px), even from whole px of the screen: the measure changes what it measures. What a player sees
+        # at those densities: test_a_bubble_looks_the_same_on_every_step_of_a_walk, from screenshots (#61)
         if dpr == int(dpr):
             offs = [f["off"] for f in still + walk]
             assert max(offs) < walk[0]["n"] / 100, [(i, o) for i, o in enumerate(offs) if o]
         mine = {round(f["mine"], 4) for f in walk if f["mine"] is not None}
         assert len(mine) == 1, mine        # your own name over your head: the same place every frame (from your place to 1/16 tile, it was an art px off and back)
+        assert not g.errors and not other.errors
+    finally:
+        if other:
+            other.page.close()
+        page.close()
+
+
+# What a player sees, the game's canvas never read: frames frozen a moment during the walk (the last one drawn stays on the
+# screen), a screenshot of the bubble on whole px of the screen, then on
+FREEZE = "(() => { window.__go = frame; frame = () => {}; return 1; })()"
+THAW = "(() => { frame = window.__go; requestAnimationFrame(frame); return 1; })()"
+BUBBLE_AT = "(name) => { const b = bubbles.find((b) => b.name === name && b.at); return b && [b.at[0], b.at[1], b.w, b.h]; }"
+# how many px of each picture differ from the first's by more than 24 in a channel (the pictures read by the page itself)
+DIFFS = """async (b64s) => { const px = [];
+  for (const b of b64s) { const im = await createImageBitmap(await (await fetch('data:image/png;base64,' + b)).blob()), c = document.createElement('canvas');
+    c.width = im.width; c.height = im.height; const x = c.getContext('2d', {willReadFrequently: true}); x.drawImage(im, 0, 0); px.push(x.getImageData(0, 0, im.width, im.height).data); }
+  return px.map((d) => d.length !== px[0].length ? -1 : d.reduce((n, v, i) => (i % 4 === 0 && (Math.abs(d[i] - px[0][i]) > 24 || Math.abs(d[i + 1] - px[0][i + 1]) > 24 || Math.abs(d[i + 2] - px[0][i + 2]) > 24) ? n + 1 : n), 0)); }"""
+
+
+@pytest.mark.parametrize("dpr", DPRS)
+def test_a_bubble_looks_the_same_on_every_step_of_a_walk(browser, server, dpr):
+    """Does a player with a fractional density (a laptop at 125 or 175 %) see a walking speaker's bubble shimmer (#61)? Read
+    from the game's canvas each frame, its letters came out another way at 1.25 and 1.75 on the runners: but read, Chrome
+    draws that canvas on the CPU after a while. So: what is on the screen, from screenshots of the bubble at several steps
+    of a walk, the canvas left as a player has it."""
+    import base64
+    page = browser.new_page(viewport={"width": 1200, "height": 800}, device_scale_factor=dpr)
+    other = None
+    try:
+        g = Game(page, server)
+        g.join(new_name(), 3)
+        g.clear_area(6)
+        g.stamp(-6, -4, ["." * 60] * 6)
+        other = open_game(browser, server)
+        x, y = g.pos()
+        other.rpc("dev_teleport", x=x + 2, y=y - 3)
+        g.wait(f"[...ents.values()].some((p) => p.e && p.e.name === {other.name!r} && p.x === {x + 2})", 8000)
+        g.rest()
+        g.js(f"bubbles.push({{name: {other.name!r}, text: 'nice day for a walk, is it not', t: performance.now() / 1000 - 2}})")
+        g.frames(3)
+        shots, places = [], []
+        other.page.keyboard.down("d")
+        g.page.keyboard.down("d")
+        try:
+            for _ in range(6):
+                g.wait(f"[...ents.values()].some((p) => p.e && p.e.name === {other.name!r} && p.x > {x + 2} + {len(shots) * .5})", 10000)
+                g.js(FREEZE)
+                g.js(FRAMES, 2)                                                        # (frame() asks for the next one first: that one still draws, the bubble a step on)
+                at = g.js(BUBBLE_AT, other.name)
+                assert at, "no bubble drawn"
+                X, Y, W, H = (round(v * dpr) / dpr for v in at)                    # (on whole px of the screen)
+                shots.append(base64.b64encode(g.page.screenshot(clip={"x": X, "y": Y, "width": W, "height": H})).decode())
+                places.append(at[:2])
+                g.js(THAW)
+        finally:
+            other.page.keyboard.up("d")
+            g.page.keyboard.up("d")
+        assert len({tuple(p) for p in places}) > 1, places                         # (it went somewhere: the steps of a walk)
+        n = round(at[2] * dpr) * round(at[3] * dpr)
+        off = g.js(DIFFS, shots)
+        k = dpr / g.js("DPR")                                                          # (a slow page draws the words with fewer px: by a whole number only)
+        assert abs(k - round(k)) < 1e-9, (dpr, k)
+        assert max(off) < n / 100, (dpr, n, off, places, k)                        # the same letters at every step
         assert not g.errors and not other.errors
     finally:
         if other:

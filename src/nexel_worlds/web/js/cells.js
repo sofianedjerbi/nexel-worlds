@@ -3,7 +3,7 @@
 // kept about relief. A cave is empty cells with solid ones over them; a pit, a column dug low. A column is kept as
 // the heights where it changes, from the bottom up: solid up to the first, empty up to the second, solid up to the
 // third... An odd count: a plain column is one height; a cave under a hill three (its floor, its ceiling, the hill's
-// top). (It was 32 cells, -16 to 15, a bit each in a number: "make the underground reach -512 and the sky max block
+// top). (Not 32 cells, -16 to 15, a bit each in a number: "make the underground reach -512 and the sky max block
 // should be 512 too".) A block of tiles (tiles.js) keeps a char a tile for its lowest ground (SEA + height) and, for
 // the tiles where that isn't the whole story (a hollow under a hill), their column.
 

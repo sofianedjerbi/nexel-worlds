@@ -8,7 +8,7 @@
 // last place says how many more there are. (It grew by a line for the seven recipes that take four things.)
 // It is drawn in one pixel size, the land's (--q, ui.js): a sunk cell of 18 pixels holds a thing's whole 16 pixel
 // icon, and the window, the cells and the buttons are bevelled, a light edge up and left, a dark one down and right.
-// (It was sixty small pictures at once, then twelve cards of several sizes: too much on the screen.)
+// (Not sixty small pictures at once, nor twelve cards of several sizes: too much on the screen.)
 // Up and down move in the list and turn the page at its ends, left and right (or Tab, Q and E) change kind, Enter
 // makes (Shift: five), F is the switch, Home and End go to the first and the last of the kind, Esc closes. All of it
 // is done without a mouse: every button has its key, written on it while you play by keys (`kbd`: keyboard.js).

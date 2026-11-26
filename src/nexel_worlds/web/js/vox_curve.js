@@ -23,7 +23,7 @@
 //   floor how squeezed a row is when it reaches the horizon (0, or not given: to nothing, the whole parabola; .25: a
 //         tile's 16 px are 4 there, and what is further is behind the horizon: land is never drawn as mush). The
 //         horizon is then where the parabola's slope is `floor`: at d = 2 * D * (1 - floor), drawn D * floor * floor
-//         under yh (`line(c)`); past it a point comes down as the mirror of how it went up.
+//         under yh (`line(c)`); past it a point comes down as the mirror of how it goes up.
 // Whole px of paint ("never scale pixel art"): `snap` and the GLSL's rollY put a bent point on a whole px of the
 // paint (k px of the picture each, counted from o: the flat picture's own px), so a tile's row is drawn a whole
 // number of them tall; which of its 16 rows of paint are then left out is `rows`' (the same for a given height,
