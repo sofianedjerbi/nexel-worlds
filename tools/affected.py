@@ -39,6 +39,11 @@ SERVER_E2E = ("test_e2e_world.py", "test_e2e_edits.py")
 MOVE_JS = ("leap.js", "jump.js", "walk.js", "body_place.js", "render.js")
 MOVE_SET = ("test_e2e_body_trace.py", "test_e2e_leap.py", "test_e2e_leap_terrain.py", "test_e2e_leap_view.py",
             "test_e2e_jump.py", "test_e2e_jump_camera.py", "test_e2e_jump_feel.py")
+# what the pointer names (mouse.js tileAtScreen, reached through keyboard.js too: their globals name none of these
+# tests): the aim, the build mode's faces and ghost, the floors, the box of the target (#250)
+AIM_JS = ("mouse.js",)
+AIM_SET = ("test_e2e_aim.py", "test_e2e_build_face.py", "test_e2e_buildghost.py", "test_e2e_floors.py", "test_e2e_target.py",
+           "test_e2e_target_px.py", "test_e2e_place_air.py")
 AUDIO_JS = JS + "audio.js"                       # what plays it: its globals name the tests that play sound
 SOUND_PIPELINE = ("tools/build_audio.py", ".github/workflows/ci.yml")                # (and music/**)
 TOP = re.compile(r"^(?:const|let|var)\s+([A-Za-z_$][\w$]*)|^(?:async\s+)?function\*?\s+([A-Za-z_$][\w$]*)|^class\s+([A-Za-z_$][\w$]*)"
@@ -155,6 +160,10 @@ def affected(changed, root: Path = ROOT, why=None):
                 for t in MOVE_SET:
                     if E2E + t in E:
                         add(e2e, E2E + t, f"{name}: how you move")
+            if name in AIM_JS:
+                for t in AIM_SET:
+                    if E2E + t in E:
+                        add(e2e, E2E + t, f"{name}: what the pointer names")
             names = globals_of((root / f).read_text(errors="replace")) if (root / f).exists() else set()
             for t, text in E.items():
                 hit = mentions(text, names) or ([name] if named(text, name) else [])
