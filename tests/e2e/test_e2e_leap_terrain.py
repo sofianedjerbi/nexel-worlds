@@ -91,7 +91,9 @@ def test_off_a_high_ledge_the_fall_is_smooth_on_the_screen(game, how):
         game.page.keyboard.down("Shift"); game.page.keyboard.down("d")
         if how == "jump":
             game.wait(f"myPos().x >= {x - .3}", 3000); game.page.keyboard.press("Space")
-        game.sleep(1000)
+        # (till down on the ground under the ledge, and its landing's squash and settle drawn: 1 s held was a runner's few frames, #47)
+        game.wait("!!myAt && myAt.z === 0 && !Leap.on() && !Leap.gliding()", 8000)
+        game.frames(6)
         game.page.keyboard.up("d"); game.page.keyboard.up("Shift")
     try:
         rec = frames(game, act, z0=0)
@@ -151,12 +153,14 @@ def test_running_uphill_with_the_jump_key_never_meets_a_step_s_face(game, prof):
     game.js("""() => { window.__hit = 0; if (!window.__hitHook) { window.__hitHook = true; const f = Leap.frame;
       Leap.frame = (p, dt, now) => { const a = Leap.state && {...Leap.state}; f(p, dt, now); const b = Leap.state;
         if (a && b && Math.abs(a.vx) + Math.abs(a.vy) > 0 && Math.abs(b.x - a.x) + Math.abs(b.y - a.y) < 1e-4) __hit++; }; } return 1; }""")
-    t0 = game.js("performance.now()")
     game.page.keyboard.down("Shift"); game.page.keyboard.down("d")
-    for _ in range(80):
-        if game.js(f"myPos().x >= {x + 13} || performance.now() - {t0} > 6000"):
+    # (Space whenever you are on the ground, a frame looked at a time: it was pressed every 80 ms of the machine's, for 6 s at the most, #47)
+    for _ in range(600):
+        if game.js(f"myPos().x >= {x + 13}"):
             break
-        game.page.keyboard.press("Space"); game.page.wait_for_timeout(80)
+        if not game.js("Leap.on()"):
+            game.page.keyboard.press("Space")
+        game.frames(1)
     game.page.keyboard.up("d"); game.page.keyboard.up("Shift")
     game.rest()
     assert game.js("__hit") == 0, game.js("__hit")

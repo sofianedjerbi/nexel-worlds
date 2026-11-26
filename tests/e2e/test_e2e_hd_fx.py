@@ -83,13 +83,14 @@ def test_a_creature_killed_flashes_white_and_lifts_before_it_is_gone(browser, se
     g.face(1, 0)
     g.rest()
     g.js(DYING, [x + 1, y, 0])
-    g.sleep(300)
+    g.wait("__dy.length >= 3", 8000)                     # (frames of it alive first: what white and lifted are measured from)
     for _ in range(40):
         if not g.js(f"ents.has('cow{cow}')"):
             break
         g.press("x", 250)
     assert not g.js(f"ents.has('cow{cow}')")
-    g.sleep(900)
+    # (its dying over, begun and gone (effects.js dying), not 0.9 s of the machine's: #47)
+    g.wait("__dy.some((q) => q[0]) && dying.length === 0", 10000)
     r = g.js("(() => { __on = false; return __dy; })()")
     alive = [q for q in r if not q[0]][:10]
     dying = [q for q in r if q[0]]
