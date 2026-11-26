@@ -8,8 +8,8 @@ const ACCOUNT = {url: document.body.dataset.accounts || "", session: localStorag
 const ACCOUNT_SAYS = {bad_email: "That does not look like an email.", too_many: "Too many tries. Wait a little, then ask again.",
   mail_down: "The mail could not be sent. Try again in a moment.", bad_code: "That is not the code. Look at the mail again, or start over.",
   offline: "The account service does not answer.", no_session: "You were logged out. Log in again."};
-async function accountAsk(path, body) {
-  try { return await (await fetch(ACCOUNT.url + path, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)})).json(); }
+async function accountAsk(path, body, keepalive = false) {      // (keepalive: it reaches the door even if the page goes now)
+  try { return await (await fetch(ACCOUNT.url + path, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body), keepalive})).json(); }
   catch (e) { return {ok: false, error: "offline"}; }
 }
 function accountStep() { return !ACCOUNT.url || ACCOUNT.session ? "me" : ACCOUNT.sent ? "code" : "mail"; }
@@ -38,7 +38,7 @@ function accountDrop() {                                      // this browser is
   ACCOUNT.session = ""; ACCOUNT.sent = false; ACCOUNT.named = null; localStorage.removeItem("nexel-session");
   $("name").readOnly = false; titleStep();
 }
-function accountOut() { accountAsk("/logout", {session: ACCOUNT.session}); accountDrop(); }
+function accountOut() { accountAsk("/logout", {session: ACCOUNT.session}, true); accountDrop(); }   // (a reload at once still ends it at the door)
 async function accountTicket() {                              // what the world's door asks for: good for this world, two minutes
   const r = await accountAsk("/ticket", {session: ACCOUNT.session, world: location.host});
   if (r.ok) return r.ticket;
