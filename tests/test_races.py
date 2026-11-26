@@ -23,7 +23,7 @@ def test_the_ai_players_come_in_every_race(world):
 def test_the_client_knows_the_same_races():
     import re
     from pathlib import Path
-    js = (Path(__file__).parent.parent / "src/nexel_worlds/web/js/races.js").read_text()
+    js = (Path(__file__).parent.parent / "src/nexel_worlds/web/js/race_list.js").read_text()
     assert tuple(re.findall(r'\{key: "(\w+)", name:', js)) == RACES
 
 
