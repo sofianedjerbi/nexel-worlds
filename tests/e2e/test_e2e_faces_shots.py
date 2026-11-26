@@ -54,3 +54,25 @@ def test_faces_shots(browser, server, hill):
     shot(g, f"{hill}-cut-section", x, y - 2, int(lv) - 2, 160, 120)
     shot(g, f"{hill}-under-floor", x, y, int(lv) - 4)
     g.page.close()
+
+
+@pytest.mark.parametrize("hill", ["meadow", "stone7"])
+def test_deep_room_shots(browser, server, hill):
+    """A room 14 under the land (#8: the x-ray box's outer edges in a deep room): the room, and the cut round it."""
+    g = hd(browser, server)
+    g.js("setOpt('names', false); setOpt('hints', false); setOpt('clouds', 0); setOpt('rays', 0); setOpt('shimmer', 0)")
+    g.hour(.3, still=True)
+    x, y = g.pos()
+    if hill == "stone7":
+        scene(g, ["." * 17] * 17, ["7" * 17] * 17)
+    z = g.js(f"topAt({x}, {y})")
+    g.rpc("dev_col", tiles=[[x + i, y + j] for j in range(-2, 3) for i in range(-3, 4)], col=[z - 14, z - 11, z])
+    g.rest()
+    g.rpc("dev_teleport", x=x, y=y, z=z - 14)
+    g.arrive()
+    g.wait("HdLook.win.a === 1 && !HdLook.busy", timeout=15000)
+    g.rest()
+    g.frames(8)
+    shot(g, f"deep-{hill}-room", x, y, z - 14, 200, 150)
+    shot(g, f"deep-{hill}-north-wall", x, y - 3, z - 11, 200, 150)
+    g.page.close()
