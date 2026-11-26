@@ -25,7 +25,7 @@ const F3 = (() => {
   const RANK = {you: 0, server: 1, frames: 0, budget: .5, look: 1, machine: 2};      // (the order the sections are read in, whatever order their files came in)
   const parts = [], S = {gaps: [], js: [], land: 0, n: 0, last: 0, at: 0, cost: 0, now: -1, moved: [], px: null, py: null};
   const MOVED = 300, L = {title: null, wake: null, world: null};       // (L: ms from the visit's start to each step of it)
-  // the first screen usable: shown (`scene`) and no longer waiting on the world (`booting`)
+  // the first screen usable: shown (`scene`) and done waiting on the world (`booting` gone)
   const usable = () => { if (L.title === null && document.body.classList.contains("scene") && !document.body.classList.contains("booting")) { L.title = performance.now(); seen.disconnect(); } };
   const seen = new MutationObserver(usable); seen.observe(document.body, {attributes: true, attributeFilter: ["class"]}); usable();
   let on = q.get("perf") === "1" || q.get("debug") === "1" || was("f3") || was("perf") || was("coords"), el = null, painted = 0;
