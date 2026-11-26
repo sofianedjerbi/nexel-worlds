@@ -108,6 +108,7 @@ def test_taps_move_one_tile_and_never_snap_back(game):
     assert game.pos() == (game.server()["x"], game.server()["y"])
 
 
+@pytest.mark.stepped   # (its keys held 300 ms each and its pace read off the frames: on the page's own 1/60 s frames, not a runner's, #47)
 def test_letting_go_and_pressing_another_key_never_stalls(game):
     """Turning by releasing one key and pressing the next (not rolling onto it): the step under way is made first,
     on the server too, so you keep your pace (each such turn froze you 170-280 ms: sprinting round corners went at

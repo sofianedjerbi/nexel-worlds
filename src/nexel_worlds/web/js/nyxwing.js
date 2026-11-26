@@ -28,7 +28,9 @@ const Nyx = (() => {
     due(ARRIVE * BEAT - HIT.drake_descend, "drake_descend");
     return at;
   }
-  const began = (e) => e.came === undefined ? st(e.id).arriveAt : came(e, performance.now() - e.came * 1000);
+  // (the one rule, wherever it is first asked: drawn, drawn in the land, or by a test: the server's `came` seconds ago,
+  // now if it has not said; a page that first drew it at its own `now` started a late player's entrance from 0)
+  const began = (e, now = performance.now()) => came(e, now - (e.came ?? 0) * 1000);
   // (its parts, each its own file, made in order: each takes what it uses from K)
   const K = {BEAT, WARN, SKY, LOCK, FALL_FROM, ARRIVE, HIT, GOLD, FIRE, ATTACKS, seen, st, later, say, came, began};
   for (const part of [NyxArt, NyxBody, NyxDeath, NyxSky, NyxDeeds]) Object.assign(K, part(K));

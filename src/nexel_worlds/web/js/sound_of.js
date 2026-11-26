@@ -15,6 +15,11 @@ function material(c) {
 }
 const STRIKE = {wood: "chop", stone: "mine", plant: "rustle", soil: "dig"};      // a tool hits it
 const BREAK = {wood: "snap", stone: "crumble", plant: "rustle", soil: "dig"};    // it gives way
+// A tool (or a bare hand: `held` false) striking the tile `target` char: wood and stone hurt a bare hand
+function strikeSound(target, held) {
+  const mat = GROUND.has(target) ? "soil" : material(target);
+  return !held && (mat === "wood" || mat === "stone") ? "punch" : STRIKE[mat];
+}
 const STEP = {n: "tock", ":": "tock", _: "click", "~": "wade", "(": "wade", "=": "wade", ")": "wade"};                  // ground char under the feet -> footstep (default: step)
 const VOICE = {cow: "moo", calf: "moo", chicken: "cluck", chick: "chirp"};       // an animal's ordinary voice
 const animalVoice = (kind) => VOICE[kind] || "cluck";

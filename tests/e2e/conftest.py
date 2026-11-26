@@ -86,7 +86,7 @@ def pytest_collection_modifyitems(config, items):
 
 
 def pace_of(item) -> float:
-    return 1.0 if item.get_closest_marker("realtime") else clock.PACE
+    return 1.0 if item.get_closest_marker("realtime") or item.get_closest_marker("stepped") else clock.PACE
 
 
 @pytest.hookimpl(wrapper=True)
@@ -100,7 +100,7 @@ def pytest_runtest_makereport(item, call):
 
 def pytest_runtest_protocol(item, nextitem):
     """What the test after this one will play on, for the page that is loaded ahead (pages.py)."""
-    clock.coming = pace_of(nextitem) if nextitem is not None and "game" in getattr(nextitem, "fixturenames", ()) else None
+    clock.coming = pace_of(nextitem) if nextitem is not None and "game" in getattr(nextitem, "fixturenames", ()) and not nextitem.get_closest_marker("stepped") else None
 
 
 def free_port() -> int:
@@ -150,14 +150,35 @@ def pytest_terminal_summary(terminalreporter):
         terminalreporter.write_line(f"Pace: {MACHINE[1]} (a frame of the game: {MACHINE[0]:.0f} ms; E2E_PACE={os.environ.get('E2E_PACE', '4')})")
 
 
+# RUNNER-LIKE (#275, tools/e2e_local.sh): E2E_RUNNER_LIKE=<rate> plays a GitHub runner on the Mac, to loop one flaky test
+# in minutes: the land drawn on the CPU (SwiftShader, as the runners' lavapipe) and every page's CPU slowed `rate` times
+# (CDP Emulation.setCPUThrottlingRate), its frames ~100-120 ms as in the CI logs. Never the whole suite: that is GitHub's
+RUNNER_LIKE = float(os.environ.get("E2E_RUNNER_LIKE") or 0)
+
+
+def runner_like():
+    """Each game's page slowed RUNNER_LIKE times once it is in (Game.join): its frames as a runner's. (Slowed from its
+    making, its boot at 30x took over 30 s and the name box was not clicked.)"""
+    join = Game.join
+    def slowed(self, *a, **kw):
+        out = join(self, *a, **kw)
+        self.page._throttle = self.page.context.new_cdp_session(self.page)   # (kept: the rate holds while the session lives)
+        self.page._throttle.send("Emulation.setCPUThrottlingRate", {"rate": RUNNER_LIKE})
+        return out
+    Game.join = slowed
+
+
 @pytest.fixture(scope="session")
 def browser():
     pw = pytest.importorskip("playwright.sync_api").sync_playwright().start()
+    args = shlex.split(os.environ.get("E2E_CHROME_ARGS", "")) + (["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] if RUNNER_LIKE else [])
     try:
-        b = pw.chromium.launch(channel="chrome", headless=True, args=shlex.split(os.environ.get("E2E_CHROME_ARGS", "")))
+        b = pw.chromium.launch(channel="chrome", headless=True, args=args)
     except Exception as e:  # noqa: BLE001 - no Chrome here: skip the suite rather than fail it
         pw.stop()
         pytest.skip(f"Chrome is needed for the end-to-end suite: {e}")
+    if RUNNER_LIKE:
+        runner_like()
     RENDERER.append(webgl_renderer(b))
     yield Pages(b)                                        # (its pages on the tests' clock, counted and shut: pages.py)
     b.close()
@@ -216,6 +237,7 @@ def pace(request):
     if "browser" in request.fixturenames:
         request.getfixturevalue("machine")
     clock.now = pace_of(request.node)
+    clock.step = request.node.get_closest_marker("stepped") is not None   # (its pages' time 1/60 s a frame: clock.py STEP)
     if "server" in request.fixturenames:
         url = request.getfixturevalue("server")
         if _world_pace.get(url, 1.0) != clock.now:
@@ -225,7 +247,9 @@ def pace(request):
     if "browser" in request.fixturenames:                 # (a page left open is a player left awake in the next test's world: pages.py)
         rep = getattr(request.node, "rep_call", None)
         request.getfixturevalue("browser").shut(failed=bool(rep and rep.failed))
-    clock.now = 1.0
+    if clock.step and "server" in request.fixturenames:  # (a stepped page set the world's pace to its own, 0.15 on a slow runner: unknown now, so the
+        _world_pace[request.getfixturevalue("server")] = None   # next test sets it whatever its pace, 1 too: dropped, it read as 1 and a test at 1 kept 0.15)
+    clock.now, clock.step = 1.0, False
 
 
 @pytest.fixture

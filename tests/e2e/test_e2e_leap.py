@@ -50,7 +50,7 @@ def agree(game):
     assert game.pos() == (s["x"], s["y"]) and game.js("myAt.z") == s["z"], (game.pos(), s, game.js("myAt"))
 
 
-@pytest.mark.realtime
+@pytest.mark.stepped
 def test_sprinting_down_six_steps_is_smooth_and_never_put_back(game):
     """It jumped up off every step down, slowed to a jump's third of a second a step while the world sprinted down at
     a tenth: six tiles behind, it was put back on the world at once (the teleport at the foot of the stairs)."""
@@ -72,7 +72,7 @@ def test_sprinting_down_six_steps_is_smooth_and_never_put_back(game):
     assert not game.errors, game.errors
 
 
-@pytest.mark.realtime
+@pytest.mark.stepped
 def test_down_a_stair_cut_into_a_hill_you_are_drawn_in_the_cut(game):
     """Down a stair cut into a hill four high, under its roof at the foot: on every frame you are drawn at the level
     of the stair you are on (between two steps, between theirs), never on the hill's top over it."""
@@ -93,7 +93,7 @@ def test_down_a_stair_cut_into_a_hill_you_are_drawn_in_the_cut(game):
     assert not game.errors, game.errors
 
 
-@pytest.mark.realtime
+@pytest.mark.stepped
 def test_a_jump_onto_a_block_is_smooth_and_agreed(game):
     """Walking into a block a layer up (auto-jump), and standing in front of one with the jump key: up on it, every
     frame smooth, no pose flashing, the world there too."""
@@ -125,7 +125,7 @@ def test_a_jump_onto_a_block_is_smooth_and_agreed(game):
     assert not game.errors, game.errors
 
 
-@pytest.mark.realtime
+@pytest.mark.stepped
 def test_a_sprint_jump_carries_over_a_two_tile_gap_and_lands_agreed(game):
     """Sprinting, the jump key a tile before a pit two wide: over it in the air (never down in it), down on the far
     side 3 to 5 tiles on from where you left the ground, at once where the world has you."""
@@ -160,7 +160,7 @@ def test_a_sprint_jump_carries_over_a_two_tile_gap_and_lands_agreed(game):
     assert not game.errors, game.errors
 
 
-@pytest.mark.realtime
+@pytest.mark.stepped
 def test_steering_in_the_air(game):
     """A jump standing still, the way held once in the air: you drift that way and land off where you left."""
     game.clear_area(6)
@@ -182,7 +182,7 @@ def test_steering_in_the_air(game):
     assert not game.errors, game.errors
 
 
-@pytest.mark.realtime
+@pytest.mark.stepped
 def test_sprinting_over_steps_up_and_down_keeps_its_speed(game):
     """"the whole jump physics are ruined when going on block above / below. it stops the velocity and does an
     up-block animation": sprinting over a run of steps up and down, you jump up each through the air and drop off each

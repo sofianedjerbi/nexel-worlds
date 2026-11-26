@@ -25,6 +25,9 @@ def camera_over(game, keys, ms):
     game.js(CAM, [x, y])
     if keys:
         walk_up(game, keys)
+        # (and landed: up on the step's tile is half way through the leap, and the walk may wait on the world (walk.js LEAD), so the
+        #  land still came down a px in the last 130 ms one run in three, a fixed 300 ms after it: #247)
+        game.wait("!Leap.on() && !Leap.gliding()", 3000)
     else:
         game.press("Space", 0)
         game.sleep(ms)
@@ -34,7 +37,7 @@ def camera_over(game, keys, ms):
     return x, rec
 
 
-@pytest.mark.realtime
+@pytest.mark.stepped
 def test_the_camera_follows_the_ground_through_a_hop_and_a_step_jump(game):
     """"When jumping the camera goes crazy": the eye's level went after yours eased over 100 ms, so up a step it was a third of
     a level behind as you landed and the land slid on 200 ms after (your body went 5 art px up the screen and back); half way
@@ -56,7 +59,7 @@ def test_the_camera_follows_the_ground_through_a_hop_and_a_step_jump(game):
     assert not game.errors, game.errors
 
 
-@pytest.mark.realtime
+@pytest.mark.stepped
 def test_a_step_jump_by_a_cliffs_foot_keeps_the_camera_and_the_window_steady(game):
     """A terrace three up just south of you, a step east along its foot: the eye's level is yours on every frame, the pitch
     and the x-ray window change one way at the most (never back and forth), your feet stay put on the screen."""
@@ -91,7 +94,7 @@ def drawn_over(game, act):
     return x, rec
 
 
-@pytest.mark.realtime
+@pytest.mark.stepped
 def test_the_land_moves_by_whole_art_px_never_back_and_your_feet_stay_put(game):
     """"It is still jumping vertically by a few pixels": the eye's place was rounded to 1/16 tile and 1/16 level, so up a step
     the land went 1.6 px a frame, drawn 1 or 2 px on, and your body (rounded to a px as every sprite) a px up and down (3 screen
@@ -116,7 +119,7 @@ def test_the_land_moves_by_whole_art_px_never_back_and_your_feet_stay_put(game):
     assert not game.errors, game.errors
 
 
-@pytest.mark.realtime
+@pytest.mark.stepped
 @pytest.mark.parametrize("how, up", [("woken", 3), ("dropped", 3), ("dropped", 1)])
 def test_off_a_pillar_the_land_still_goes_up_a_step_by_whole_px(game, how, up):
     """test_e2e_jump's camera test failed one run in eight, the land by you going 0.965 px a frame up a step, then -0.035:

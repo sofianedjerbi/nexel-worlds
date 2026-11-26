@@ -8,7 +8,7 @@ from test_e2e_leap import agree, frames, smooth
 pytestmark = pytest.mark.e2e
 
 
-@pytest.mark.realtime
+@pytest.mark.stepped
 def test_up_a_stair_under_a_roof_with_the_jump_key_never_on_the_land_over_it(game):
     """Up a stair cut under the land, three cells high, the jump key pressed at every step (as the HD stair test
     does): no jump through the air there (no room for its top), so you are never taken for on the land over the
@@ -47,7 +47,7 @@ VIEW = """() => { window.__vw = []; window.__vwOn = true; const f = () => { cons
   if (p) __vw.push([HdLook.cam.pitch, HdLook.win.a, p.x, p.y]); if (__vwOn) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""
 
 
-@pytest.mark.realtime
+@pytest.mark.stepped
 @pytest.mark.parametrize("way", ["S", "N", "E", "W"])
 def test_sprint_jumping_up_a_hill_under_the_open_sky_keeps_the_open_view(game, way):
     """"when sprinting and jumping south blocks up (hills) the blocks cause the camera to trigger the underground
@@ -115,7 +115,7 @@ SLOW = """(slow) => { const raf = requestAnimationFrame; window.__slow = slow; w
     if (e) __told.push(e); return f(op, extra).then((r) => { if (e) e.push(r && (r.ok === false ? r.error : r.result && r.result.z)); return r; }); }; return 1; }"""
 
 
-@pytest.mark.realtime
+@pytest.mark.realtime                                  # (its slow case is a slow frame on purpose: real time)
 @pytest.mark.parametrize("slow", [False, True])
 def test_sprint_jumping_down_off_a_high_step_you_go_on_south_never_put_back(game, slow):
     """"sprinting [down the north mountain] my character ends up getting into the floor and glitching, facing the north

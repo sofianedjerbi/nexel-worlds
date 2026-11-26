@@ -16,6 +16,7 @@ from waits import ANSWERED, MADE, QUIET, Waits
 
 
 SERVER_LOG = None        # the test server's log (conftest.py)
+HOURED = set()           # the tests whose first page has set the hour (Game.join): a test's later pages leave it
 _names = itertools.count(1)
 # what the tests on this worker's world laid out (dev_stamp, dev_col): [x0, y0, x1, y1] boxes, for the next HD test to lay
 # its place out again over them (test_e2e_hd_sun.py hd)
@@ -82,7 +83,13 @@ class Game(Waits):
                 said = [ln[:200] for ln in lines if name in ln or "Traceback" in ln or "ERROR" in ln or "Error" in ln][-12:] + ["...the log's end:"] + [ln[:160] for ln in lines[-14:]]
             raise AssertionError(f"{name} did not get in: {state}; page errors: {self.errors}; server: {said}") from e
         self.js(clock.DAY)
-        self.rpc("dev_time", phase=.3)
+        # (morning, set by the test's first page only: dev_time only goes forward, so a second page of the same test set it
+        # again and sent the world on to tomorrow's .3, 12000 ticks, mid-test: a Nyxwing summoned 4 s before had come 1199.6 s
+        # ago for the late page. Whatever hour the test is at, its later pages leave the world's day as it is)
+        test = os.environ.get("PYTEST_CURRENT_TEST", "").split(" ")[0]
+        if test not in HOURED:
+            HOURED.add(test)
+            self.rpc("dev_time", phase=.3)
         # (awake: the land there and drawn; and the picture all there, not still coming in over the first screen's: that
         # takes 0.7 s, and a test that looked at the canvas's animations meanwhile counted it with its own)
         self.js("(() => { for (const a of cv.getAnimations()) a.finish(); return 1; })()")
@@ -115,7 +122,20 @@ class Game(Waits):
         return self.js(f"(a) => rpc({json.dumps(op)}, a)", kw)
 
     def wait(self, expr, timeout=5000):
-        self.page.wait_for_function(expr, timeout=timeout)
+        self._until(expr, timeout)
+
+    def _until(self, expr, timeout, arg=None):
+        """Until `expr` (an expression, or a function of `arg`) holds on the page, `timeout` ms at the most. Stepped
+        (clock.py STEP): ms of the page's own time, which a slow runner gives at a seventh of the wall's (8 s of it
+        in some 50 s), the wall only a guard; then asked once more, and the timeout's error if it still does not hold."""
+        if not clock.step:
+            return self.page.wait_for_function(expr, arg=arg, timeout=timeout)
+        ask = f"(a) => {{ const v = ({expr}); return !!(typeof v === 'function' ? v(a) : v); }}"
+        t = self.page.evaluate("performance.now()")
+        self.page.wait_for_function(f"([a, until]) => ({ask})(a) || performance.now() >= until", arg=[arg, t + timeout],
+                                    timeout=max(30000, timeout * 30))
+        if not self.page.evaluate(ask, arg):
+            raise NotYet(f"not within {timeout} ms of the page's own time: {expr[:200]}")
 
     def sleep(self, ms):
         """Time that has to pass in the game (a walk, a swing, a fade). Not for "until it is drawn": rest(), hour(),
@@ -126,7 +146,7 @@ class Game(Waits):
             # time: land being made, and the server's answers on their way, which take what they take. Until those are
             # done, then; the whole sleep at the most)
             try:
-                self.page.wait_for_function(f"({MADE})() && ({ANSWERED})()", timeout=ms - clock.real(ms))
+                self._until(f"({MADE})() && ({ANSWERED})()", ms - clock.real(ms))
             except NotYet:
                 pass
 
@@ -149,7 +169,7 @@ class Game(Waits):
         this was: the test says what is wrong, in its own words.)"""
         for e, a in ((expr, arg), ("dirtyTiles.length === 0", None)):
             try:
-                self.page.wait_for_function(e, arg=a, timeout=timeout)
+                self._until(e, timeout, a)
             except NotYet:
                 pass
 
@@ -191,7 +211,7 @@ class Game(Waits):
         cid = self.rpc("dev_creatures", kind=kind, dx=dx, dy=dy, still=still)["spawned"]
         if cid is not None:
             try:
-                self.page.wait_for_function(f"ents.has({json.dumps(kind + str(cid))})", timeout=1500)
+                self._until(f"ents.has({json.dumps(kind + str(cid))})", 1500)
             except NotYet:
                 pass                 # (out of what this screen is told of: as it was)
         return cid
@@ -235,7 +255,7 @@ class Game(Waits):
         if 60 < wait <= 400:
             self.frames(2)
             try:
-                self.page.wait_for_function(QUIET, timeout=wait)
+                self._until(QUIET, wait)
             except NotYet:
                 pass
         elif wait:
@@ -250,14 +270,14 @@ class Game(Waits):
             # let go before one is a stop where you stand. 90 ms of the game's time are 22 of the machine's on the tests'
             # clock, less than a frame of a busy one: "(8, -12, 6) == (8, -11, 0)", a tap down a ladder that did nothing)
             self.frames(1)
-        clock.held(self.page, max(0, ms - (time.time() - t0) * 1000 * clock.now))   # (the game's time to the ms: a tap of 90 ms is a tile, one of 240 is two)
+        clock.held(self.page, ms if clock.step else max(0, ms - (time.time() - t0) * 1000 * clock.now))   # (stepped: ms of the page's own time, STEP)   # (the game's time to the ms: a tap of 90 ms is a tile, one of 240 is two)
         for k in reversed(keys):
             self.page.keyboard.up(k)
         # (and the server's answers to what the keys asked: the walk's, its stop's. They take the machine's time, the hold
         # the game's: at a pace over 1 a short hold was let go before the walk was answered, and what the test read next
         # was the server half way: a step not finished, a wall not yet met)
         try:
-            self.page.wait_for_function(ANSWERED, timeout=3000)
+            self._until(ANSWERED, 3000)
         except NotYet:
             pass
 
