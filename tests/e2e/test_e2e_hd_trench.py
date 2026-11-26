@@ -93,7 +93,10 @@ def test_no_px_is_drawn_from_a_paint_that_is_not_there_on_ten_walks_down_the_sta
             g.wait(done, timeout=20000)
             g.page.keyboard.up(key)
     n, raw = g.js("(() => { __on = false; return [__n, __raw]; })()")
-    assert n > 300 and raw == 0, (n, raw, g.js("HdLook.work"))                                        # every frame read: no px of the land from an empty paint
+    # every frame read: no face of the land from an empty paint. (A lost paint marks a whole face, about 200 px of the land's
+    # canvas, art px; HdLook.blank below reads over 1000. raw counts any px of alpha 236 to 254, and one frame in 1013 of a
+    # runner's had 1: a blended edge of what is drawn over the land, not a face)
+    assert n > 300 and raw < 16, (n, raw, g.js("HdLook.work"))
     # and were the shown land's paints lost (they cannot be now: a full sheet no longer wipes them): the counter sees it, and the land is its mean colour, not one earth brown
     g.rest()
     spot = [x - 4.5, y + 2.5, 0]
