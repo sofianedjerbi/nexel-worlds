@@ -117,7 +117,7 @@ const VoxStyle = (() => {
       const t0 = performance.now(), L = v.light, RW = v.w, RH = v.h, W = v.water, sized = el.width !== RW || el.height !== RH;
       if (sized) { el.width = RW; el.height = RH; }
       const {m, eye} = matrix(v); if (!sameN(m, 16, lastM, 16) || lastB[0] !== (v.bend || 0) || lastB[1] !== v.at[1]) mver++; lastM = m; lastB = [v.bend || 0, v.at[1]]; const lamp = gp(...v.at), hr = typeof v.hour === "function" ? v.hour() : v.hour;   // (mver: goes up when where a place is drawn (at) changes: marks drawn from it are kept till then)
-      self.__drawAt = {at: [...v.at].map((q) => +q.toFixed(2)), lamp: [...lamp].map((q) => +q.toFixed(2))};
+      self.__drawAt = {at: Array.from(v.at || [], (q) => Math.round(q * 100) / 100), lamp: Array.from(lamp || [], (q) => Math.round(q * 100) / 100)};
       // what this frame is made of, before anything is sent: the ghosts and the moving shadows (view.ghosts: [[x, y, box]...], made each frame), the sprites, every number the painter takes
       const gh = GW[lastG === GW[0] ? 1 : 0], sd = DW[lastD === DW[0] ? 1 : 0]; gh.n = sd.n = 0; for (const g of v.ghosts || []) land.model(g[0], g[1], g[2], g[2].shade ? sd : gh);   // (into the writer the last frame drawn is not in: GW, DW)
       const mef = (v.sprites || []).find((s) => s.top), mf = mef && project(m, mef.x, mef.y, mef.z), mp = mf && [(mf[0] * .5 + .5) * RW, (.5 - mf[1] * .5) * RH], disc = mp ? [mp[0], RH - mp[1] + 1, 12] : [0, 0, 0];   // (the disc round you: what covers you is seen through there only)
