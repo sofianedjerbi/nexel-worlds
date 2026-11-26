@@ -28,7 +28,7 @@ def test_it_comes_down_out_of_the_sky_on_the_drop_and_nothing_touches_it_meanwhi
     c = put(sim, "nyxwing", a.x + 6, a.y)
     sim.step()
     assert c.mode == "arrive" and events(a, "boss", "arrive")
-    sim.damage(c, sim.shell(c, 10), "test", by=a)                # (a blow, as combat.py lands one)
+    sim.damage(c, sim.shell(c, 10), "dev", by=a)                # (a blow, as combat.py lands one)
     assert c.hp == CREATURES["nyxwing"]["hp"]
     run(sim, ARRIVE - 1)
     assert c.mode == "arrive"
@@ -119,7 +119,7 @@ def test_the_dive_goes_up_hunts_you_with_its_shadow_and_falls_on_you(world):
     sim.step()
     assert c.mode == "sky" and events(a, "boss", "up")
     hp = a.hp
-    sim.damage(c, sim.shell(c, 10), "test", by=a)                # nothing reaches it up there
+    sim.damage(c, sim.shell(c, 10), "dev", by=a)                # nothing reaches it up there
     assert c.hp == CREATURES["nyxwing"]["hp"]
     run(sim, SKY + 0.2)
     assert events(a, "boss", "crash") and c.mode == ""
@@ -151,7 +151,7 @@ def test_alone_it_goes_back_to_the_night(world):
 def test_killed_it_leaves_its_eclipse_core(world):
     sim, a = world
     c = landed(sim, a, 3, 0)
-    sim.damage(c, c.hp, "test", by=a)
+    sim.damage(c, c.hp, "dev", by=a)
     assert c.id not in sim.creatures
     died = events(a, "creature_died")
     assert died and died[-1]["kind"] == "nyxwing" and died[-1]["drops"] == {"eclipse_core": 1}

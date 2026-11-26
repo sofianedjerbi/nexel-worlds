@@ -42,7 +42,7 @@ def test_death_drops_what_you_wore_and_the_save_keeps_what_you_wear(world):
     assert a.to_json()["worn"] == {"head": "gold_crown", "effect": "flame_charm"}
     assert sim.observe(a)["self"]["wearing"]["head"] == "gold_crown"
     x, y = a.x, a.y
-    sim.damage(a, 999, "test")
+    sim.damage(a, 999, "dev")
     assert a.worn == {} and sim.items[(x, y)]["gold_crown"] == 1 and sim.items[(x, y)]["flame_charm"] == 1
 
 

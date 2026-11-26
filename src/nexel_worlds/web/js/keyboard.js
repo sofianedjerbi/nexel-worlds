@@ -29,15 +29,13 @@ const useful = (it) => it && !it.walk && !it.info && it.ok !== false;
 // Who you're fighting: set when you hit someone or someone hits you, so X keeps hitting them, not the tree beside.
 let foe = null;   // {key: entity key, until: ms}
 const FOE_MS = 8000;
-function entKey(name) {               // an attack event names agents by name and creatures as "kind#id"
-  const m = /^(\w+)#(\d+)$/.exec(name || "");
-  if (m) return m[1] + m[2];
-  const a = [...ents.values()].find((q) => q.e && q.e.kind === "agent" && q.e.name === name);
-  return a ? "agent" + a.e.id : null;
-}
+// Who an event names, {kind, id, name} (sim/entities.py ref; #6: told apart by kind, never by the words for people):
+// its key in `ents`, and whether it is you
+const refKey = (r) => (r ? (r.kind === "agent" ? "agent" : r.kind) + r.id : null);
+const refIsMe = (r) => refKey(r) === "agent" + myId;
 function noteFight(e) {
-  if (e.attacker === me) foe = {key: entKey(e.target), until: performance.now() + FOE_MS};
-  else if (e.target === me) foe = {key: entKey(e.attacker), until: performance.now() + FOE_MS};
+  if (refIsMe(e.who)) foe = {key: refKey(e.whom), until: performance.now() + FOE_MS};
+  else if (refIsMe(e.whom)) foe = {key: refKey(e.who), until: performance.now() + FOE_MS};
 }
 // What E (alt = false) or X (alt = true) does, without having to turn first. X's fighting comes first: the one
 // you're fighting, then any wild enemy within reach; then the tile you face; then other creatures within reach; then
