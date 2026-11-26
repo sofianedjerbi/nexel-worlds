@@ -22,7 +22,7 @@ const HdLook = (() => {
   // (the old Normal's, as much farther as the view)}; worked out when the screen or the settings change. Two settings, one view: the view distance D, the curved world (curve.js bent: off, b 0, flat)
   function viewOf(h, w, pitch) {
     const D = Math.max(VIEW_MIN, Math.min(VIEW_MAX, Math.round(opt("view")) || VIEW_MIN)), bent = typeof Curve === "undefined" || Curve.bent, k = [D, bent, h, w, pitch.toFixed(1), cam.fov].join(); if (k === vKey) return vOf; vKey = k;
-    const t = Math.tan(cam.fov * Math.PI / 360), d = h / (32 * t), p = pitch * Math.PI / 180, cp = Math.cos(p), sp = Math.sin(p), sink = (dn) => VoxStyleGLSL.sink(-.5, .5 - dn);   // (worked out with the eye on a corner row: the bend's corners 4k tiles off)
+    const t = Math.tan(cam.fov * Math.PI / 360), d = h / (32 * t), p = pitch * Math.PI / 180, cp = Math.cos(p), sp = Math.sin(p), sink = VoxStyleGLSL.sink;
     const top = (b) => { let m = -1e9, at = 0; for (let n = 1; n <= 400; n++) { const s = b * sink(Math.max(0, n - 1)), u = (n * sp - s * cp) / (d + n * cp + s * sp); if (u > m) { m = u; at = n; } } return [at, m]; };   // (the highest ground on the picture: the horizon)
     let b = 0, b1 = 0, n = Math.ceil(t * d / Math.max(.01, sp - t * cp));   // (flat: the row at the picture's top)
     if (bent) { let lo = .0005, hi = .5; for (let i = 0; i < 30; i++) { const q = Math.sqrt(lo * hi); if (top(q)[0] >= D) lo = q; else hi = q; }

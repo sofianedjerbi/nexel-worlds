@@ -15,13 +15,12 @@ const VoxStyleGLSL = (() => {
   //  over and over, and faces were drawn with places given to other paints: grass tops as stone, stone fronts as grass. 16 MB of px)
   const AW = typeof window === "object" && window.SHEET_AW || 2048, H = 1,   // (SHEET_AW: tests, a sheet of their own size)
     LV = 16, LVC = `const float H = ${H.toFixed(1)}, LV = ${LV.toFixed(1)}, LV0 = ${(16 - LV).toFixed(1)};`;
-  // THE BEND (the curved world: the land north of the eye's point sinks away to a horizon; vox_style.js project and vox_style_win.js sink it the same): FLAT FACETS 4 tiles long on the old
-  // curve (dn squared at each facet's corner, straight between). It was dn squared at every corner: a straight block 12 tiles deep rolled over it as a smooth arc, its ends round loaves ("melted").
-  // The corners are rows of the WORLD (y = 4m - .5), not counted from you: counted from you, as you walked a crease slid along a far block (#86). Near you, up to the first corner 4 tiles off
-  // or more, the curve as ever (a facet there sank the land at your feet). On a corner row of yours (y a multiple of 4) the corners are where they were, 4, 8, 12 ... tiles north.
-  // sink(c, z): how far the land at row z sinks, c: the row the bend begins (the eye's point less 1); sinkd: its slope, per tile north
+  // THE BEND (the curved world: the land north of the eye's point sinks away to a horizon; vox_style.js project and vox_style_win.js sink it the same): FLAT FACETS 4 tiles long on the
+  // curve dn squared (dn: tiles north of where the bend begins), straight between their corners: a straight block deep in the bend has straight edges. The corners are rows of the WORLD
+  // (y = 4m - .5), so a crease stays on the land as you walk (#86); near you, up to the first corner 4 tiles off or more, the curve itself. On a row a multiple of 4 the corners are 4, 8, 12 ... tiles north.
+  // sink(c, z): how far row z sinks, c: the row the bend begins at (the eye's point less 1); sinkd: its slope a tile north. JS: sinkAt(c, z); sink(dn): the eye on a corner row (hd.js viewOf)
   const SINK = "float knot(float c, float z) { return c + .5 - 4. * floor((z + .5) / 4.); } float sink(float c, float z) { float a = knot(c, z), n = a - 4., dn = max(0., c - z); return n < 4. ? dn * dn : n * n + (a + n) * (dn - n); } float sinkd(float c, float z) { float a = knot(c, z), n = a - 4.; return n < 4. ? 2. * max(0., c - z) : a + n; }",
-    sink = (c, z) => { const a = c + .5 - 4 * Math.floor((z + .5) / 4), n = a - 4, dn = Math.max(0, c - z); return n < 4 ? dn * dn : n * n + (a + n) * (dn - n); };
+    sinkAt = (c, z) => { const a = c + .5 - 4 * Math.floor((z + .5) / 4), n = a - 4, dn = Math.max(0, c - z); return n < 4 ? dn * dn : n * n + (a + n) * (dn - n); }, sink = (dn) => sinkAt(-.5, .5 - dn);
   // THE WINDOW'S CUT EDGES (PORT, in the land's and the sprites' painters): the x-ray window is your whole space (vox_style_land.js: the flood of your cave, room, gorge, as far as it goes), the mask of its
   // boxes (mk, vox_style_win.js). port(f): 1 on the mask, 0 off it: the cut is whole. side(f): px from f, on the mask, to the nearest px off it west or east (1..4; 9: farther; 0: off the mask): the cut's
   // sides, where kept land stands beside your space (its north edge is the section, the land's own rim; its south one the lit lip). How a side looks (pw.x: HdLook.edge): 1 "A" crisp, a px of the land's
@@ -167,5 +166,5 @@ const VoxStyleGLSL = (() => {
     { float cx = mod(floor(gl_FragCoord.x / 2.), 2.), cy = mod(floor(gl_FragCoord.y / 2.), 2.); if (vk.y < mod(cx + cy, 2.) * .5 + cx * .25 + .125) discard; }   // (vk.y: how much of it is there: what the window takes away or gives back goes and comes in four steps of a 2x2 dither; vk.x: as dim as the floor it stands on)
     if (xr * port(gl_FragCoord.xy) > mod(floor(gl_FragCoord.x / 2.), 2.) * .25 + mod(floor(gl_FragCoord.x / 2.) + floor(gl_FragCoord.y / 2.), 2.) * .5 + .125) { vec4 k4 = texelFetch(mk, ivec2(gl_FragCoord.xy), 0); highp float di = k4.r * 255. + k4.g * 255. / 256., z = gl_FragCoord.z * 2. - 1., w = 2. * nf.x * nf.y / (nf.x + nf.y - z * (nf.y - nf.x)); if (di > 0. && w < di + .06 && mod(floor(gl_FragCoord.x / 2.) + floor(gl_FragCoord.y / 2.), 2.) < 1.) discard; }   // (WIN: what stands between the eye and your space: one px in two)
     float dm = distance(gl_FragCoord.xy, mc.xy + vec2(0., 8.)); if (sil > 1.5 && dm < mc.z + 2. && mod(floor(gl_FragCoord.x / 2.) + floor(gl_FragCoord.y / 2.), 2.) < 1.) discard; o = sil > .5 && sil < 1.5 ? vec4(.95, .8, .55, .4) : sil > 2.5 ? vec4(mix(c.rgb, vec3(1., .97, .8), .45), 1.) : vec4(c.rgb * vk.x, c.a); }`;   // (sil 3: a ghost: what would be put, pale)   // (sil 2: what stands in front of you: one px in two of it, 2x2, in a disc round you (mc): you are seen through it and it keeps its shape. It was a whole hole: a tree's crown was gone, a stub at your feet)
-  return {AW, H, LV, SINK, sink, PORT, VS, FS, SV, SF};
+  return {AW, H, LV, SINK, sink, sinkAt, PORT, VS, FS, SV, SF};
 })();

@@ -103,7 +103,7 @@ const VoxStyle = (() => {
       const kx = 2 * dx / RW, ky = 2 * dy / RH; for (const i of [0, 4, 8, 12]) { m[i] += kx * m[i + 3]; m[i + 1] -= ky * m[i + 3]; } return {m, eye};
     }
     const PJ = new Float64Array(3);   // (projTo: a place's clip coordinates into PJ, no array made (a few hundred a frame); project: the same as a new array, for a caller that keeps it)
-    const projTo = (m, x, y, z) => { const p0 = x, p1 = (z - lastB[0] * VoxStyleGLSL.sink(lastB[1] - 1, y) / H) * H, p2 = y,   // (sunk with the bend north of you, as the shader sinks the land: what stands there stood in the air past the bend, and the aim was off)
+    const projTo = (m, x, y, z) => { const p0 = x, p1 = (z - lastB[0] * VoxStyleGLSL.sinkAt(lastB[1] - 1, y) / H) * H, p2 = y,   // (sunk with the bend north of you, as the shader sinks the land: what stands there stood in the air past the bend, and the aim was off)
       w = m[3] * p0 + m[7] * p1 + m[11] * p2 + m[15]; PJ[0] = (m[0] * p0 + m[4] * p1 + m[8] * p2 + m[12]) / w; PJ[1] = (m[1] * p0 + m[5] * p1 + m[9] * p2 + m[13]) / w; PJ[2] = (m[2] * p0 + m[6] * p1 + m[10] * p2 + m[14]) / w; return PJ; };
     const project = (m, x, y, z) => { projTo(m, x, y, z); return [PJ[0], PJ[1], PJ[2]]; };
     // the sprites' sheet: each canvas has a place in it (shelves), its picture sent there when it is new or changed (canvas._v); full: all places given again
