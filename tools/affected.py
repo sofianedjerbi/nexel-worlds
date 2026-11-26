@@ -9,8 +9,9 @@ Printed: the e2e test files to run (and the unit test files), one a line. The ma
   test_e2e_hd*.py; and the unit tests naming the file (a vox_* file: those naming vox_, test_vox_layer.py); a part of
   another (its globals used by that one file alone: hd_cards.js's HdCards by hd_things.js, build_do.js's by build.js):
   and what that file selects (the tests name the whole: a part's change ran none of them);
-- a .css file: the ui, menu, title and phone tests; web/scripts.txt (the page's scripts): those, the bundle and loading tests and
-  test_web.py, test_bundle.py; web/index.html: those and the e2e tests naming an id it has changed (not
+- web/index.html, web/scripts.txt, web_bundle.py (how every script of the page is named and loaded): every e2e test; and
+  web/scripts.txt test_web.py, test_bundle.py;
+- a .css file: the ui, menu, title and phone tests; web/index.html: those and the e2e tests naming an id it has changed (not
   read: all of the ui set);
 - a python file of the game (src/nexel_worlds/**.py, not web/): the unit tests that name its module, all of them if
   none does, and the server-facing e2e (tests naming the module, test_e2e_world.py, test_e2e_edits.py);
@@ -37,6 +38,8 @@ UI_SET = ("test_e2e_ui.py", "test_e2e_menu.py", "test_e2e_title.py", "test_e2e_t
 SERVER_E2E = ("test_e2e_world.py", "test_e2e_edits.py")
 AUDIO_JS = JS + "audio.js"                       # what plays it: its globals name the tests that play sound
 SOUND_PIPELINE = ("tools/build_audio.py", ".github/workflows/ci.yml")                # (and music/**)
+# how every script of the page is named and loaded: a change to it runs every browser test (as ci.yml does for how they are dealt out)
+PAGE_LOAD = ("src/nexel_worlds/web/index.html", "src/nexel_worlds/web/scripts.txt", "src/nexel_worlds/web_bundle.py")
 TOP = re.compile(r"^(?:const|let|var)\s+([A-Za-z_$][\w$]*)|^(?:async\s+)?function\*?\s+([A-Za-z_$][\w$]*)|^class\s+([A-Za-z_$][\w$]*)"
                  r"|^window\.([A-Za-z_$][\w$]*)\s*=|^(?:const|let|var)\s+\{([^}]*)\}\s*=", re.M)
 
@@ -126,6 +129,9 @@ def affected(changed, root: Path = ROOT, why=None):
         s.add(f)
         why.setdefault(f, reason)
     for f in changed:
+        if f in PAGE_LOAD:                                          # (the page's scripts, how they are named and loaded: every test)
+            for t in E:
+                add(e2e, t, f"{Path(f).name}: how the page loads every script")
         if f in SOUND_PIPELINE or f.startswith("music/"):        # (the sounds made again: every test that plays them)
             for t in affected([AUDIO_JS], root)[0]:
                 add(e2e, t, f"{Path(f).name}: the game's sounds")
