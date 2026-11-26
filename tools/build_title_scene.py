@@ -12,6 +12,7 @@ import tempfile
 from pathlib import Path
 
 from nexel_worlds.server import GameServer
+from nexel_worlds.sim.storeys import STOREY
 from nexel_worlds.tiles import BLOCKS, GROUNDS
 
 W, H = 96, 64
@@ -78,9 +79,9 @@ def build():
             edge = x in (38, 44) or y in (22, 27)
             put(x, y, ground="floor", block="wood_wall" if edge else "none")
     put(41, 27, block="door")
-    for y in range(22, 28):                                    # its roof: a tile over each of its tiles (sim/roofing.py)
+    for y in range(22, 28):                                    # its roof: a roof block a storey over each of its tiles (sim/storeys.py)
         for x in range(38, 45):
-            gs.sim.roofed.set(x, y, True)
+            gs.sim.set_block(x, y, world.level(x, y) + STOREY, "roof")
     put(39, 23, block="bed"); put(42, 24, block="table"); put(43, 24, block="chair"); put(39, 25, block="chest")
     put(43, 28, block="mailbox")
 
