@@ -31,7 +31,7 @@
 // are one tone whatever their rock (vox_style_glsl.js); a far patch's skirt is one tile's rock; a model face wider or deeper than a tile is
 // its 16 px stretched (model).
 const VoxStyleLand = (() => {
-  const H = VoxStyleGLSL.H, C = 16, N = 10, CH = 8, KINDS = ["main", "model", "shade", "water"];
+  const H = VoxStyleGLSL.H, C = 16, N = 10, CH = 8, KINDS = ["main", "model", "shade", "water"], TRI = [0, 1, 2, 0, 2, 3];   // (TRI: a quad's two triangles)
   const gp = (x, y, z) => [x, z * H, y];
   const FACES = [
     {n: [0, 0, 1], k: 1, q: [[0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1]]},
@@ -70,20 +70,11 @@ const VoxStyleLand = (() => {
     const F = dst.f; let n = dst.n; F[n++] = a; F[n++] = b; F[n++] = c; F[n++] = d; F[n++] = e; F[n++] = f; F[n++] = g; F[n++] = h; F[n++] = i; F[n++] = j; dst.n = n; };
   const solidC = (c, z) => { if (!c) return false; for (let i = 0; i < c.length; i += 2) if (z <= c[i]) return i === 0 || z > c[i - 1]; return false; };
   function create(host, cfg, P) {
-    const SL = P.SL, store = new Map(), tops = new Map(), late = new Set(), farOf = new Map(), farDirty = []; let msh = null, making = false, stamp = 0, farN = 0, into = null, wantK = null, fars = 0, partN = 0, partOf = 0;   // (farOf: the far land's patches made, by where they are: "bx,by" (8 tiles) -> "x,y,w,h" -> faces; farDirty: boxes of tiles changed since)
+    const SL = P.SL, store = new Map(), tops = new Map(), late = new Set(), farOf = new Map(), farDirty = []; let making = false, stamp = 0, farN = 0, into = null, wantK = null, fars = 0, partN = 0, partOf = 0;   // (farOf: the far land's patches made, by where they are: "bx,by" (8 tiles) -> "x,y,w,h" -> faces; farDirty: boxes of tiles changed since)
     const slot = (k, paint) => { const s = P.slot(k, paint); if (into && P.mk) into.push(s); return s; };   // (into: the places of the paints a chunk or a far patch being made names: kept with it, P.use)
     const lim = (z) => Math.max(cfg.levels[0], Math.min(cfg.levels[1], z)), ck = (x, y) => Math.floor(x / CH) + "," + Math.floor(y / CH);
-    // what stands in the land as boxes (host.models: a bridge's deck and posts): a top and a south front each, its paint from the host's sheet px for px into a slot; each face lit as the land's own face that way is (FACES k: it had its own .85, .68, .74)
-    const paintOf = new WeakMap(), QC = new Float64Array(12);   // (model: a uv's paint name and painter; a face's four corners)
-    const sheet = () => { if (!msh) { const q = host.modelSheet(); msh = q.px ? q : {px: new Uint32Array(q.getContext("2d").getImageData(0, 0, q.width, q.height).data.buffer), w: q.width}; } return msh; };
-    const model = (x, y, b, dst) => { const X = x + b.x / C, Y = y + b.y / C, X1 = X + b.w / C, Y1 = Y + b.d / C, Z0 = b.z / cfg.up, Z1 = (b.z + b.h) / cfg.up, Zn = Z1 + (b.tilt ? b.tilt[0] / cfg.up : 0), Zs = Z1 + (b.tilt ? b.tilt[1] / cfg.up : 0);
-      const face = (uv, w, h, k) => { if (!uv) return; w = Math.min(C, w); h = Math.min(C, h); const wi = b.win ? b.win[0] : 0, wj = b.win ? b.win[1] : 0, ins = b.shade ? .02 : 0, pw = b.win ? C : w, ph = b.win ? C : h, id = b.sheet ? b.sheet.id : "";
-        const ob = typeof uv === "object"; let pk = ob ? paintOf.get(uv) : null; if (!pk || pk.id !== id || pk.pw !== pw || pk.ph !== ph) { const ms = b.sheet; pk = {id, pw, ph, k: "m" + id + uv + "," + pw + "," + ph, paint: (px, at, st) => { const m = ms || sheet(); for (let j = 0; j < ph; j++) for (let i = 0; i < pw; i++) px[at + j * st + i] = m.px[(uv[2] ? uv[1] : uv[1] + j) * m.w + (uv[2] ? uv[0] : uv[0] + i)]; }}; if (ob) paintOf.set(uv, pk); }   // (its paint's name and painter, made once per uv and kept: a shadow's faces share them, frame to frame)
-        const sl = slot(pk.k, pk.paint), u0 = (sl % SL) * C + wi, v0 = (sl / SL | 0) * C + wj, kind = b.shade ? 10 : b.ghost ? 9 : 8;
-        for (let t = 0; t < 6; t++) { const n = TRI[t], o = n * 3; emit(dst, QC[o], QC[o + 2] * H, QC[o + 1], u0 + (n === 0 || n === 3 ? ins : w - ins), v0 + (n < 2 ? ins : h - ins), k, 1, kind, Z1, 0); } };   // (corners in QC: x, y, z each)
-      const cq = (a, b2, c, d, e, f, g, h, i, j, k, l) => { QC[0] = a; QC[1] = b2; QC[2] = c; QC[3] = d; QC[4] = e; QC[5] = f; QC[6] = g; QC[7] = h; QC[8] = i; QC[9] = j; QC[10] = k; QC[11] = l; };
-      cq(X, Y, Zn, X1, Y, Zn, X1, Y1, Zs, X, Y1, Zs); face(b.top, b.w, b.d, b.k || 1); const fh = b.fh || b.h; if (b.h) { cq(X, Y1, Zs, X1, Y1, Zs, X1, Y1, Z0, X, Y1, Z0); face(b.front, b.w, fh, FACES[2].k);
-        cq(X, Y, Zn, X, Y1, Zs, X, Y1, Z0, X, Y, Z0); face(b.west, b.d, fh, FACES[5].k); cq(X1, Y1, Zs, X1, Y, Zn, X1, Y, Z0, X1, Y1, Z0); face(b.east, b.d, fh, FACES[4].k); } };   // (b.sheet: a paint sheet of its own, {px, w, id}; west, east: its sides, d x h px; fh: its front and sides are that many rows of paint over its height; win: [i, j]: its paint is 16 x 16 px and the face shows it from px (i, j) on; a shade's paint is read a hair inside its edges: at an edge it took a px of the paint beside it in the atlas, a thin dark line on the ground; tilt: [n, s]: its top a slope: px its north and its south edge are over its height (a roof's pitch); k: its top's light)
+    // what stands in the land as boxes (host.models): vox_land_model.js
+    const model = VoxLandModel({host, cfg, slot, SL, C, emit, TRI, FACES});
     // a top's paint: the host's; the px it leaves see-through (a cap's inset sides and tucked corners: the classic picture shows the wall there) take the block's own wall tone, stone on stone
     // (not one earth brown for every block: that shows a brown strip down the west side of each stone step, brown corners, a mountain's terraces a lattice)
     const tones = new Map(), tmp = new Uint32Array(C * C);
@@ -106,41 +97,8 @@ const VoxStyleLand = (() => {
     }
     // water that ran into a tile (flow.js): its chunk is made again, and the chunk beside it where it lies on a chunk's edge (the sides of the water beside it look at it)
     function wet(x, y) { for (const k of new Set([[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => ck(x + dx, y + dy)))) { store.delete(k); if (making) late.add(k); } stamp++; }
-    // WATER, STILL OR RUNNING, DRAWN ONE WAY. A tile's water is its wet cells (wetOf: cell z -> level 1 to 8): the still water's (the sea, a river, a pond: its bed up to its face,
-    // full) and what runs (flow.js: 1 to 7, 8 full). Over a still face the cells are water as high as the water beside it is full, and up to running water over it (flow.py keeps
-    // nothing there: over the sea it is the sea. Filled, a river in a flood is no trench, a pond under it no second face, no light box).
-    // A cell's water stands to z - 1 + v / 8 (full: to its top), so running water steps down a level's eighth a level (2 art px). Its faces: ONE top where the cell over it is
-    // not water, and a side (south, east, west) down to the water or the cell's floor beside it, where that stands lower: no gap at a step, no face inside other water; the
-    // painter leaves out a side turned from the eye (vox_style_glsl.js: s, its uv's u). So every px shows ONE face of water over what is under it (no tints stacked, no dark
-    // sliver where an east or west side is missing).
-    // Its tint (e) by how deep it is, its face over the floor, as the still water's: never under a level's (a film of running water is water, not a pale box; the levels
-    // show by its height, the colour stays), and never over a pond's (2): the deeper bands are the still water's own, 3 a lake's, 4 the open sea's dark, OPAQUE (a pit filled 5 deep
-    // under a river, a flood over the meadow: a flat navy slab). A still tile keeps its own depth; risen under a flood, a lake's at most.
-    // Still water keeps its look: a side of its own only where running water lies beside it lower. Drawn as the sea's face, kind 3
-    const wq = (dst, q, lv, e, s = 0, oc = 0) => { for (const t of TRI) { const p = q[t]; emit(dst, p[0], p[2] * H, p[1], s, oc, 1, 1, 3, lv, e); } };
-    const SIDES = [[0, 1, 1, (x, y, a, b) => [[x, y + 1, a], [x + 1, y + 1, a], [x + 1, y + 1, b], [x, y + 1, b]]], [1, 0, 2, (x, y, a, b) => [[x + 1, y + 1, a], [x + 1, y, a], [x + 1, y, b], [x + 1, y + 1, b]]], [-1, 0, 3, (x, y, a, b) => [[x, y, a], [x, y + 1, a], [x, y + 1, b], [x, y, b]]]];
-    const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-    function wetOf(x, y, col) {
-      const fw = host.flow && host.flow(x, y), still = host.water && host.water(x, y); if (!fw && !still) return null; const w = new Map(fw || []);
-      if (still) { const wz = host.waterTop ? host.waterTop(x, y) : 0, c = col(x, y), bt = c && c.length ? c[c.length - 1] : wz - 1; let hi = wz; for (const z of w.keys()) if (z > hi) hi = z;
-        for (let z = Math.min(wz, Math.max(bt + 1, wz - 8)); z <= wz; z++) w.set(z, 8);   // (its bed to its face, full: the face's own cell at least (clear water off, the bed is the ground))
-        for (let z = wz + 1; z < wz + 64; z++) { if (w.has(z)) continue; if (z < hi || N4.some(([dx, dy]) => { const n = host.flow && host.flow(x + dx, y + dy); return n && n.get(z) === 8; })) w.set(z, 8); else break; } }
-      return w; }
-    // (the face of the water a cell is in: from cell z up to the last wet cell over it)
-    const surf = (w, z) => { while (w.has(z + 1)) z++; return z - 1 + w.get(z) / 8; };
-    // A TOP SEEN THROUGH THE WATER BESIDE IT: where the water south, east, west, south-east or south-west of a top stands higher, the eye sees the near part of this top through that water
-    // too (two tints: a lighter band along every step down away from you). Each top says by how much each of the five stands over it (oc: eighths of a level, its uv's v); the painter
-    // leaves out a px of it that the top beside it covers on the screen (vox_style_glsl.js): every px is seen through one face of water.
-    function waterFaces(dst, x, y, col, solidAt, fromZ) { const w = wetOf(x, y, col); if (!w) return 0; let n = 0; const still = host.water && host.water(x, y), oc0 = still ? col(x, y) : null, own = still && oc0 && oc0.length ? (host.waterTop ? host.waterTop(x, y) : 0) - oc0[oc0.length - 1] : 0, runs = !!host.flow && (!!host.flow(x, y) || N4.some(([dx, dy]) => host.flow(x + dx, y + dy))),
-        nb = SIDES.map(([dx, dy]) => (runs ? wetOf(x + dx, y + dy, col) : null)), nd = runs ? [wetOf(x + 1, y + 1, col), wetOf(x - 1, y + 1, col)] : [null, null];   // (the sea, a pond with nothing running by: its face alone, as it ever was, and as cheap)
-      for (const [z, v] of w) { if (z < fromZ) continue; const full = w.has(z + 1), top = z - 1 + (full ? 1 : v / 8); let f = z; while (w.has(f - 1)) f--; const e = Math.max(1, Math.min(top - (f - 1), still ? Math.max(3, own) : 2));
-        if (!full) { let oc = 0; [...nb, ...nd].forEach((o, i) => { if (!o) return; let c = z; if (!o.has(c)) { c = [...o.keys()].filter((k) => k > z).sort((a, b) => a - b)[0]; if (c === undefined) return; }
-            oc += Math.max(0, Math.min(i < 3 ? 31 : 15, Math.round((surf(o, c) - top) * 8))) * (i < 3 ? 32 ** i : 32768 * 16 ** (i - 3)); });   // (south, east, west 5 bits each; south-east, south-west 4: 23 bits, whole in a float)
-          wq(dst, [[x, y, top], [x + 1, y, top], [x + 1, y + 1, top], [x, y + 1, top]], z + 1, e, 0, oc); n++; }
-        SIDES.forEach(([dx, dy, s, q], i) => { const X = x + dx, Y = y + dy; if (solidAt(X, Y, z) || (still && !(host.flow && host.flow(X, Y)))) return;
-          const o = nb[i], ov = o && o.get(z), b = Math.max(z - 1, ov ? (o.has(z + 1) ? z : z - 1 + ov / 8) : z - 1);
-          if (b < top - .01) { wq(dst, q(x, y, top, b), z + 1, e, s); n++; } }); }
-      return n; }
+    // WATER, STILL OR RUNNING, DRAWN ONE WAY: vox_land_water.js (a tile's water faces: waterFaces)
+    const waterFaces = VoxLandWater(host, emit, TRI);
     // the far land's patches a changed tile reaches (what they read: the tiles round them, a tile's paint by its rock five tiles off) are made again; a patch is 8 tiles at most
     const farForget = () => { for (const [x0, y0, x1, y1] of farDirty) for (let by = Math.floor((y0 - 16) / CH); by <= Math.floor((y1 + 7) / CH); by++) for (let bx = Math.floor((x0 - 16) / CH); bx <= Math.floor((x1 + 7) / CH); bx++) { const m = farOf.get(bx + "," + by); if (m) { farN -= m.size; farOf.delete(bx + "," + by); } } farDirty.length = 0; };
     const farClear = () => { farOf.clear(); farDirty.length = 0; farN = 0; };
@@ -152,7 +110,7 @@ const VoxStyleLand = (() => {
     const farFree = (kept) => { for (const [bk, m] of farOf) { for (const [fk, f] of m) if (f[2].some((v) => !kept(v))) { m.delete(fk); farN--; } if (!m.size) farOf.delete(bk); } };
     // (each face's corners: the three cells beside a corner that darken it, worked out once and kept, not made as small arrays for every corner of every face)
     const AOV = FACES.map((F) => F.q.map((q) => { const ax = F.n.map((a) => (a ? 0 : 1)), d = [q[0] * 2 - 1, q[1] * 2 - 1, q[2] * 2 - 1].map((v, j) => v * ax[j]);
-      const t = [0, 1, 2].filter((j) => ax[j]), a = [0, 0, 0], b = [0, 0, 0]; a[t[0]] = d[t[0]]; b[t[1]] = d[t[1]]; return [a, b, [a[0] + b[0], a[1] + b[1], a[2] + b[2]]]; })), AOK = [1, .84, .72, .62], TRI = [0, 1, 2, 0, 2, 3], vq = new Float64Array(40);
+      const t = [0, 1, 2].filter((j) => ax[j]), a = [0, 0, 0], b = [0, 0, 0]; a[t[0]] = d[t[0]]; b[t[1]] = d[t[1]]; return [a, b, [a[0] + b[0], a[1] + b[1], a[2] + b[2]]]; })), AOK = [1, .84, .72, .62], vq = new Float64Array(40);
     function quad(out, x, y, z, F, k, sky, kind, lv, e, s, solid, isTop) {
       const u0 = (s % SL) * C, v0 = (s / SL | 0) * C, top = isTop ? 0 : C - cfg.up, I = .01, A = AOV[FACES.indexOf(F)], ox = x + F.n[0], oy = y + F.n[1], oz = z + 1 + F.n[2];   // (read a hair inside its paint: at an edge a row of px took the paint beside it in the sheet: a bright line across a stone terrace)
       for (let i = 0; i < 4; i++) {
