@@ -46,7 +46,7 @@ def test_a_bubble_goes_with_its_speaker_px_for_px_and_its_letters_stay_as_they_a
         g = Game(page, server)
         g.join(new_name(), 3)                         # (zoom 3: the land's pixel and the bubble's (2) are not one in the other)
         g.clear_area(6)
-        g.stamp(-6, -4, ["." * 60] * 6)              # (a road east for both)
+        g.stamp(-6, -4, ["." * 120] * 6)             # (a road east for both: long enough for the frames asked below at 200 ms a frame, half of them drawing no words, ~50 tiles)
         other = open_game(browser, server)
         x, y = g.pos()
         other.rpc("dev_teleport", x=x + 2, y=y - 3)   # (its bubble not over your name)
@@ -59,10 +59,14 @@ def test_a_bubble_goes_with_its_speaker_px_for_px_and_its_letters_stay_as_they_a
         still = g.js("__pr.splice(0)")
         assert still, still
         far = f"[...ents.values()].some((p) => p.e && p.e.name === {other.name!r} && p.x >= {x + 2} + %d)"
+        # (and on till 13 frames drew the bubble inside the screen: frames, not tiles, are what is looked at. Their number
+        # in 12 tiles is the frame's length's: 9 on a runner of long frames, some drawing no words, main 45901208215)
+        enough = "__pr.filter((f) => f.drawn && 4 < f.at[0] && f.at[0] + f.w < innerWidth - 4).length > 12"
         for k, tiles in (("d", 5), ("Shift", 12)):    # (walk 5 tiles, then sprint 7 more, both of them: as far, not as long, on a slow machine)
             other.page.keyboard.down(k)
             g.page.keyboard.down(k)
             g.wait(far % tiles, 30000)
+        g.wait(enough, 30000)
         for k in ("Shift", "d"):
             other.page.keyboard.up(k)
             g.page.keyboard.up(k)
