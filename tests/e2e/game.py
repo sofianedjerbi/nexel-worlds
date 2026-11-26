@@ -243,7 +243,7 @@ class Game(Waits):
             # let go before one is a stop where you stand. 90 ms of the game's time are 22 of the machine's on the tests'
             # clock, less than a frame of a busy one: "(8, -12, 6) == (8, -11, 0)", a tap down a ladder that did nothing)
             self.frames(1)
-        clock.held(self.page, max(0, ms - (time.time() - t0) * 1000 * clock.now))   # (the game's time to the ms: a tap of 90 ms is a tile, one of 240 is two)
+        clock.held(self.page, ms if clock.step else max(0, ms - (time.time() - t0) * 1000 * clock.now))   # (stepped: ms of the page's own time, STEP)   # (the game's time to the ms: a tap of 90 ms is a tile, one of 240 is two)
         for k in reversed(keys):
             self.page.keyboard.up(k)
         # (and the server's answers to what the keys asked: the walk's, its stop's. They take the machine's time, the hold

@@ -67,7 +67,7 @@ def test_the_worlds_clock_is_paced_only_by_the_dev_tool_and_the_server_ticks_by_
     sim, a = world
     assert not hasattr(sim, "clock_rate")                    # (not there until asked for: the server reads 1)
     assert dev_op(sim, a, "dev_pace", {"pace": 4}) == {"pace": 4.0}
-    assert dev_op(sim, a, "dev_pace", {"pace": 1000})["pace"] == 16 and dev_op(sim, a, "dev_pace", {"pace": 0})["pace"] == .25
+    assert dev_op(sim, a, "dev_pace", {"pace": 1000})["pace"] == 16 and dev_op(sim, a, "dev_pace", {"pace": 0})["pace"] == .05
 
     def ticks(pace, secs=.6):
         gs = GameServer(tmp_path / f"w{pace}", seed=3)

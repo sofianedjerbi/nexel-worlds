@@ -38,7 +38,7 @@ def smooth(rec):
     assert not [k for k in range(1, len(runs) - 1) if runs[k - 1][0] == runs[k + 1][0] and runs[k][0] and quick(*runs[k][1:])], [p for p, _, _ in runs]
 
 
-@pytest.mark.realtime
+@pytest.mark.stepped
 def test_the_hop_goes_a_block_up_and_comes_down_smoothly(game):
     """"The Space jump should be as high as 1 block and more ... right now it looks like a weird 1/10th block
     animation": the hop on the level went 6 art px up in 0.28 s. Now its top is over a block (16 art px), it is in
@@ -59,7 +59,7 @@ def test_the_hop_goes_a_block_up_and_comes_down_smoothly(game):
     assert not game.errors, game.errors
 
 
-@pytest.mark.realtime
+@pytest.mark.stepped
 def test_auto_jump_up_a_staircase_is_smooth_and_keeps_its_rhythm(game):
     """Four steps up, walking: every step a jump as high (its top 4 art px over the step it lands on), the body never
     jumping a px more than its speed, no pose flashing, and a jump every step at the same beat (it was the same beat,
@@ -98,7 +98,7 @@ MOBS = """() => { window.__mb = []; window.__mbOn = true; const f = () => { cons
   if (__mbOn) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""
 
 
-@pytest.mark.realtime
+@pytest.mark.stepped
 def test_a_creature_hops_up_and_down_a_step_without_a_teleport(game):
     """"JUMPING for player and mobs is bad and looks like a teleportation": the HD look put another body at the level
     of the server (a level up as its step began) or of the tile it was nearest, its arc over that: up a step a hen went
@@ -122,7 +122,7 @@ LIT = """() => { window.__lt = []; window.__ltOn = true; const f = () => { const
   __lt.push([!!j, HdLook.youLit]); if (__ltOn) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""
 
 
-@pytest.mark.realtime
+@pytest.mark.stepped
 def test_your_lantern_stays_lit_up_and_down_steps_at_night(game):
     """"The player has a light around him, when going up and down this light disappears the time of the up/down
     animation": between two levels the tile's top was over the drawn body, the lantern cut to a window there was none of."""
@@ -142,7 +142,7 @@ FALLREC = """() => { window.__fr = []; window.__frOn = true; const f = () => { c
   __fr.push([j ? Math.round(j.body) : 0, j && j.pose || '', !!(fl && fl.air) || Leap.on()]); if (__frOn) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""   # (in the air: a fall's, or the jump's: walking off a ledge is the jump's fall, leap.js dropDue)
 
 
-@pytest.mark.realtime
+@pytest.mark.stepped
 def test_jump_pressed_falling_into_a_hole_does_not_play_its_hop_once_down(game):
     """"when i jump above a hole it glitches the player animation": walked off the edge of a hole three deep, Space
     pressed on the way down. The fall is drawn first (it is what the body does); its hop on the spot waited under it and
@@ -171,7 +171,7 @@ AIR = """() => { window.__ar = []; window.__arOn = true; const f = (now) => { co
   __ar.push([Leap.on(), swimsAt(p, p.e), b ? Math.round(b.y / a.u) : null, j ? Math.round(j.body) : 0, BodyPlace.of(p).up, now]); if (__arOn) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""
 
 
-@pytest.mark.realtime
+@pytest.mark.stepped
 @pytest.mark.parametrize("over", ["hole", "water"])
 def test_sprint_jumping_over_a_wide_hole_or_water_the_body_flies_the_arc(game, over):
     """"jumping above a biiiig hole still creates the exact same error as jumping above the water": "only the nametag
@@ -211,7 +211,7 @@ def test_sprint_jumping_over_a_wide_hole_or_water_the_body_flies_the_arc(game, o
     assert not game.errors, game.errors
 
 
-@pytest.mark.realtime
+@pytest.mark.stepped
 def test_space_while_swimming_moves_neither_the_body_nor_its_name(game):
     """"jumping IN water ... only the nametag jumps": Space while swimming hopped (jump.js hopOf), the name with it, while the
     body was drawn swimming. Swimming there is nothing to push off: no hop, the body and its name where they are."""
@@ -234,7 +234,7 @@ NAMED = """() => { window.__nm = []; window.__nmOn = true; const sh = jumpShadow
     if (__nmOn) requestAnimationFrame(f); else { jumpShadow = sh; outlined = ol; } }; requestAnimationFrame(f); return 1; }"""
 
 
-@pytest.mark.realtime
+@pytest.mark.stepped
 def test_space_in_a_boat_moves_neither_the_boat_nor_your_name(game):
     """The audit's P-E: in a boat the jump key's hop ran (not swimming, no jump through the air): the name rose 20 px
     and a jump's shadow was drawn, the boat and the sailor did not move. A body in a boat is in a boat (body_place.js:
@@ -258,7 +258,7 @@ def test_space_in_a_boat_moves_neither_the_boat_nor_your_name(game):
     assert not game.errors, game.errors
 
 
-@pytest.mark.realtime
+@pytest.mark.stepped
 def test_after_a_jump_down_three_levels_your_name_stays_over_your_head(game):
     """The audit's P-A: come down 2+ levels lower, the body is drawn lifted while the eye catches up (leap.js lift); the
     name and the bars had their own sum (jump.js overBody) without it, and sat 30 px and more off the head for a third
