@@ -1,8 +1,12 @@
 """A block of the land dug out is a block in your pack (earth, stone), shown as the pack's own block; stones are made
 of it in the book; put down, it is the land again (landblocks.py). B_SHOTS=<folder>: the screens are saved there."""
 import os
+from types import SimpleNamespace
 
+from nexel_worlds.stone import Stone
 from test_e2e_touch import touch_game
+
+SEED = 7      # the world the browser tests play in: conftest.py's server, --seed 7
 
 CELLS = "(id) => [...$(id).children].map((c) => { const n = c.querySelector('span'); return c.title && !c.classList.contains('ghost') ? c.title.toLowerCase().replace(/ /g, '_') + (n ? ':' + n.textContent : '') : null; }).filter(Boolean)"
 NEEDS = "[...document.querySelectorAll('#craftdetail .cneed')].map((e) => [e.querySelector('span').textContent, e.querySelector('b').textContent, e.classList.contains('miss')])"
@@ -22,7 +26,17 @@ def shot(g, name):
 
 
 def dig_to_stone(g):
-    """The ground east of you, three layers: the meadow's earth, two cells of it, then the stone under it (stone.py)."""
+    """The ground east of you, three layers: the meadow's earth, two cells of it, then the stone under it (stone.py). On a
+    meadow of its own, by a column whose stone is at -2 and is no ore: since #41 a stone cell in a vein is its ore (and a
+    hand crumbles it), the game's own rule from the world's seed (Stone.ore). The ground east of wherever the test before
+    left you was dug: one run in five, no stone block came."""
+    g.clear_area(6)
+    x, y = g.pos()
+    dy = next((d for d in range(6) if g.js(f"stoneAt({x + 1}, {y + d})") == -2 and Stone.ore(SimpleNamespace(seed=SEED), x + 1, y + d, -2) is None), None)
+    assert dy is not None, [(d, g.js(f"stoneAt({x + 1}, {y + d})")) for d in range(6)]
+    if dy:
+        g.rpc("dev_teleport", x=x, y=y + dy)
+        g.arrive()
     for z, item, n in ((0, "dirt", 1), (-1, "dirt", 2), (-2, "stone_block", 1)):
         r = g.rpc("act", tool="dig", args={"dir": "E", "z": z})
         assert r["ok"], r
