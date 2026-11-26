@@ -162,6 +162,7 @@ def test_running_uphill_with_the_jump_key_never_meets_a_step_s_face(game, prof):
     game.page.keyboard.up("d"); game.page.keyboard.up("Shift")
     game.rest()
     assert game.js("__hit") == 0, game.js("__hit")
-    assert game.server()["z"] == prof[-1], (game.server(), prof[-1], x, game.js("__told"))     # (what the world was told on the way up, and said)
+    print("from", x, "page", game.js("myPos()"), "world", game.server(), "told", game.js("__told"))     # (what the world was told on the way up, and said: shown when it fails)
+    assert game.server()["z"] == prof[-1], (game.server(), prof[-1])
     agree(game)
     assert not game.errors, game.errors
