@@ -17,7 +17,7 @@ import json
 import re
 from pathlib import Path
 
-SCRIPT = re.compile(r'<script src="js/([\w.]+)"></script>\n')
+SCRIPT = re.compile(r'<script src="js/([\w.]+)"></script>\n?')   # (a module split in files has them on one line of index.html: race_*.js)
 STYLE = re.compile(r'<link rel="stylesheet" href="css/([\w.]+)">\n?')
 # after one of these a "/" begins a regular expression; after a name, a number or a closing bracket it divides
 BEFORE_REGEX = set("(,=:[!&|?{};+-*%<>~^")
