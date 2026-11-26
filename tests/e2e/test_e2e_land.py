@@ -58,12 +58,13 @@ GLIDE = """() => new Promise((ok) => { follow = null; const out = [], of = windo
     try { of(now); } finally { window.perfFrame = pf; }
     const [qx, qy, qw, qh] = viewRect(0); let miss = 0;
     for (const b of blocks.values()) if (!Voxels.made(b) && b.bx * B < qx + qw && (b.bx + 1) * B > qx && b.by * B < qy + qh && (b.by + 1) * B > qy) miss++;
-    out.push([land, miss]); if (s > 6) { done = true; window.frame = of; ok(out); } }; })"""   # (the page's own frame kept once (__frame0), and a glide that is done only passes on: a second glide hung, its frame put away by the first one's, which a frame already asked for still ran)
+    out.push([land, miss]); if (s > 6 && out.length > 65) { done = true; window.frame = of; ok(out); } }; })"""   # (the page's own frame kept once (__frame0), and a glide that is done only passes on: a second glide hung, its frame put away by the first one's, which a frame already asked for still ran)
 
 
 @pytest.mark.realtime
 def test_land_coming_in_at_a_sprint_takes_little_of_a_frame(browser, server):
-    """Watching, the camera glides ten tiles a second into new land for six seconds: all the land is there when it
+    """(six seconds AND 66 frames: a runner drawing a frame every 100 ms had 60 in six seconds, the bound: #47)
+    Watching, the camera glides ten tiles a second into new land for six seconds: all the land is there when it
     comes on the screen, and building it never takes a frame (it took 9-13 ms of some on a fast machine, 36 ms on a
     phone-speed one: the only late frames there were). What is measured is the land's own share of each frame
     (render.js `landMs`, kept to LAND_MS): the whole frame is the machine's drawing too (13 to 97 ms on a runner's CPU
@@ -73,7 +74,7 @@ def test_land_coming_in_at_a_sprint_takes_little_of_a_frame(browser, server):
     page.on("pageerror", lambda e: errors.append(str(e)))
     page.goto(f"{server}/?zoom=2&follow=nobody")                 # (a link that follows someone: no first screen, the world's own land; no one by that name: the view stays at its middle)
     page.wait_for_function("typeof TitleScene !== 'undefined' && !TitleScene.on && blocks.size > 0 && !arrivingNow", timeout=20000)
-    page.wait_for_timeout(1500)
+    page.wait_for_timeout(1500)                                  # (a settle only: what is measured is the glide's, six seconds AND 66 frames. "Every block made" never came: blocks holds far land, made only when it is in view)
     # (a frame's ms measure the machine as much as the code, README.md rule 6: with three browsers at work the 99th
     # frame in a hundred took 8.2 to 11 ms, one whole run in four. The best of three glides, each on into new land;
     # one is enough on a quiet machine)

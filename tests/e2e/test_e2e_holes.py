@@ -44,7 +44,7 @@ def test_land_you_come_to_is_asked_for_at_once_though_it_was_asked_for_as_far_la
             g.js(HUNT)
             g.page.wait_for_timeout(400)                  # (the far land asked for meanwhile, four blocks a tenth of a second)
             g.page.keyboard.press("Minus")
-            g.page.wait_for_timeout(200)
+            g.wait("zoom === 3", 5000)                     # (the first step taken, not 200 ms (a press in its glide carries on: zoom.js ZOOM.to): #47)
             g.page.keyboard.press("Minus")                # (4 -> 2: the picture twice as wide)
             g.page.wait_for_timeout(3500)                 # (a far ask's answer comes 3 s on: a block missing that long shows in this window)
             g.wait("window.__holes.frames > 30", 15000)  # (and frames enough to have watched it: a runner's 133 ms frames drew 23 in 3.5 s)
@@ -53,8 +53,9 @@ def test_land_you_come_to_is_asked_for_at_once_though_it_was_asked_for_as_far_la
             assert h["frames"] > 30, h
             assert h["unasked"] < 2000, (n, h)           # (a block of the picture's land missing and not asked for: state.js asks ten times a second, mostly there in 0.1 s, at worst 1.3 s seen on a busy machine; not the 3 s of a far ask: 2.86 to 3.12 s before, four runs)
             g.page.keyboard.press("Equal")
+            g.wait("zoom === 3", 5000)
             g.page.keyboard.press("Equal")
-            g.page.wait_for_timeout(400)
+            g.wait("zoom === 4 && !ZOOM.busy", 5000)      # (back where it was, its glide done, not 400 ms)
         assert not g.errors
     finally:
         page.close()

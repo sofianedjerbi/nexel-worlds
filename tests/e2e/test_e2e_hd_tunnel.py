@@ -27,8 +27,12 @@ def test_in_and_out_of_a_tunnel_under_a_hill_the_eye_and_your_body_do_not_jump(b
     try:
         go(g, x, y - 2)                                                    # on the meadow north of the hill
         g.js(LOG)
-        g.hold(["s"], 1000)                                                # into the tunnel
-        g.sleep(700)
+        # (each walk held till you are there and the eye has come to rest, not 1 s held and 0.7 s: a runner's walk of 1 s
+        # was short of the tunnel, #47)
+        g.page.keyboard.down("s")                                          # into the tunnel
+        g.wait(f"myPos().y >= {y + 3}", timeout=8000)
+        g.page.keyboard.up("s")
+        g.rest()
         fr = g.js(LOGGED)
         p = [r[0] for r in fr]
         top = g.js("HdLook.steep") - 1                                     # (the steepest the eye looks down, hd.js STEEP: 58; it was 78)
@@ -36,8 +40,10 @@ def test_in_and_out_of_a_tunnel_under_a_hill_the_eye_and_your_body_do_not_jump(b
         assert min(p[k:]) > top, [round(v) for v in p]                     # never back to the surface's on the way in (it was 49)
         go(g, x, y + 5, 0)                                                 # in the tunnel
         g.js(LOG)
-        g.hold(["w"], 1000)                                                # out
-        g.sleep(700)
+        g.page.keyboard.down("w")                                          # out
+        g.wait(f"myPos().y <= {y + 1}", timeout=8000)
+        g.page.keyboard.up("w")
+        g.rest()
         ys = [r[1] for r in g.js(LOGGED)]
         jumps = [abs(b - a) for a, b in zip(ys, ys[1:])]
         assert max(jumps) < 20, ys                                          # (a step's bob is 3 to 9 px: it was 43 up, then 43 down)
