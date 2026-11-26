@@ -9,9 +9,13 @@ OUT = Path(os.environ.get("FACES_OUT", "faces"))
 pytestmark = pytest.mark.skipif(not os.environ.get("FACES_OUT"), reason="close-ups for the owner's look: FACES_OUT=<folder>")
 
 
+HIDE_HUD = "(() => { for (const e of document.body.children) if (e.tagName !== 'CANVAS' && !e.querySelector('canvas')) e.style.visibility = 'hidden'; return 1; })()"
+
+
 def shot(g, name, x, y, z, w=360, h=260):
-    """The picture round (x, y, z), w x h CSS px, at the page's own px."""
+    """The picture round (x, y, z), w x h CSS px, at the page's own px, nothing of the HUD over it."""
     OUT.mkdir(parents=True, exist_ok=True)
+    g.js(HIDE_HUD)
     p = g.js(f"HdLook.screenOf({x} + .5, {y} + .5, {z})")
     g.page.screenshot(path=str(OUT / f"{name}.png"), clip={"x": max(0, p[0] - w / 2), "y": max(0, p[1] - h / 2), "width": w, "height": h})
 
@@ -32,7 +36,11 @@ def test_faces_shots(browser, server, hill):
     rows = ["." * 17] * 17
     levels = [(lv * 17 if j < 12 else "".join(str(max(0, int(lv) - (j - 11))) for _ in range(17))) for j in range(17)]
     scene(g, rows, levels)
-    shot(g, f"{hill}-tops-fronts", x, y + 3, int(lv) - 1)
+    g.rpc("dev_teleport", x=x, y=y + 1, z=int(lv))
+    g.arrive()
+    g.rest()
+    g.frames(6)
+    shot(g, f"{hill}-tops-fronts", x, y + 4, int(lv) - 2, 420, 300)        # (the hill's top, then its south edge stepping down: tops, fronts, risers)
     room = [[x + i, y + j] for j in range(-2, 2) for i in range(-2, 3)]
     g.rpc("dev_col", tiles=room, col=[int(lv) - 4, int(lv) - 2, int(lv)])
     g.rest()
