@@ -1,0 +1,25 @@
+#!/bin/sh
+# Before a push: what CI's required jobs would turn red, checked here first so a push isn't a red run.
+#   the unit tests (CI's "Tests (Python 3.14)", test_smell included), the web client's undefined names (CI's web lint),
+#   and the squash subject: the PR's title + " (#N)" must fit 100 characters (the merger refuses longer ones).
+# Browser tests (tests/e2e) stay on CI. Skip all of it once: git push --no-verify.
+set -e
+root=$(git rev-parse --show-toplevel); cd "$root"
+base=$(git merge-base HEAD origin/main 2>/dev/null || echo HEAD~1)
+changed=$(git diff --name-only "$base" HEAD)
+if echo "$changed" | grep -qE '\.py$|^tests/|^src/|^tools/|pyproject.toml|uv.lock'; then
+  echo "pre-push: unit tests (as CI's Tests job)..."
+  nice -n 10 uv run --quiet pytest tests -q -x -n 4 --ignore=tests/e2e -p no:cacheprovider > /tmp/nexel-prepush-$$.txt 2>&1 \
+    || { tail -25 /tmp/nexel-prepush-$$.txt; rm -f /tmp/nexel-prepush-$$.txt; echo "pre-push: unit tests red (CI's Tests job would be red)"; exit 1; }
+  tail -1 /tmp/nexel-prepush-$$.txt; rm -f /tmp/nexel-prepush-$$.txt
+fi
+if echo "$changed" | grep -qE '^src/nexel_worlds/web/'; then
+  echo "pre-push: undefined names in the web client (as CI's web lint)..."
+  [ -d node_modules/eslint ] || npm install --silent --no-save --no-package-lock eslint@9.39.5 globals@16.5.0 >/dev/null
+  node tools/undef_check.mjs || { echo "pre-push: undefined names (CI's web lint would be red)"; exit 1; }
+fi
+title=$(gh pr view --json title,number -q '"\(.title) (#\(.number))"' 2>/dev/null || true)
+if [ -n "$title" ] && [ ${#title} -gt 100 ]; then
+  echo "pre-push: the PR's squash subject is ${#title} chars (max 100): shorten the title with gh pr edit --title"; exit 1
+fi
+exit 0

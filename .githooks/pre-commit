@@ -1,0 +1,5 @@
+#!/bin/sh
+# What is staged, checked as CI's lint jobs check it: ruff on the Python files.
+py=$(git diff --cached --name-only --diff-filter=ACMR -- '*.py')
+[ -z "$py" ] && exit 0
+echo "$py" | xargs uvx ruff@0.17.6 check --quiet || { echo "pre-commit: ruff found problems (as CI's Lint (ruff) would)"; exit 1; }
