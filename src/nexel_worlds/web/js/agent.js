@@ -86,19 +86,21 @@ const ERROR_TEXT = {
   need_tool: (d) => `Needs a ${label(d.tool).toLowerCase()} in hand` + (d.have === false ? ": you have none" : ""),
   missing_item: (d) => (d.food ? "Nothing it eats in your bag" : d.where === "chest" ? `No ${label(d.item).toLowerCase()} in the chest`
     : d.need > 1 ? `Takes ${d.need} ${label(d.item).toLowerCase()}: you have ${d.have}` : `No ${label(d.item).toLowerCase()} in your bag`),
-  occupied: (d) => ({body: "Someone is standing there", you: "You stand where it goes: step aside", thing: "Something is there"}[d.on] || `${label(d.on)} is there`),
+  occupied: (d) => (Object.hasOwn(IN_THE_WAY, d.on) ? IN_THE_WAY[d.on] : `${label(d.on)} is there`),
   bad_target: (d) => (Object.hasOwn(TARGET_WHY, d.why) ? TARGET_WHY[d.why](d) : "Not there"),
-  cannot_dig: (d) => (d.what ? `${label(d.what)} can't be dug` : {deepest: "This is as deep as it goes", enclosed: "Inside the land: dig to it from beside it", not_clear: "Stand on clear ground to dig down"}[d.why] || "That can't be dug"),
+  cannot_dig: (d) => (d.what ? `${label(d.what)} can't be dug` : (Object.hasOwn(NO_DIG, d.why) ? NO_DIG[d.why] : "That can't be dug")),
 };
+const NO_DIG = {deepest: "This is as deep as it goes", enclosed: "Inside the land: dig to it from beside it", not_clear: "Stand on clear ground to dig down"};
+const IN_THE_WAY = {body: "Someone is standing there", you: "You stand where it goes: step aside", thing: "Something is there"};
 const lcLabel = (n) => label(n).toLowerCase();
 const TARGET_WHY = {
   not_a_crop: () => "Water a growing crop in tilled soil", not_open_ground: () => "On open ground only", seed_soil: () => "Seeds grow in tilled soil: dig the ground first",
-  wrong_ground: (d) => `${label(d.item)} goes on ${d.goes_on.map(lcLabel).join(" or ")}`, cannot_place_on: (d) => `Not on ${lc(d.ground)}`, boat_water: () => "A boat goes on the water beside you",
+  wrong_ground: (d) => `${label(d.item)} goes on ${d.goes_on.map(lcLabel).join(" or ")}`, cannot_place_on: (d) => `Not on ${lcLabel(d.ground)}`, boat_water: () => "A boat goes on the water beside you",
   needs_dry: (d) => `${label(d.item)} needs dry land`, needs_ground: (d) => `${label(d.item)} needs the ground under it`, no_floor: () => "No floor there to stand it on",
   no_lean: () => "A ladder goes against something taller", no_higher: () => "Stairs go up to something higher beside them", no_room: () => "No room there for the stairs",
   ladder_ground: () => "A ladder's foot goes on the ground", nothing_built: () => "Nothing built there", block_on_top: () => "Take the block on top first",
   no_support: () => "A block goes against something solid", nothing_overhead: () => "Nothing over your head to dig",
-  self: () => "You can't hit yourself", untouchable: () => "Your hand goes through it", not_kind: (d) => `That is not a ${lc(d.kind)}`, wont_eat: (d) => `A ${lc(d.kind)} doesn't eat that`,
+  self: () => "You can't hit yourself", untouchable: () => "Your hand goes through it", not_kind: (d) => `That is not a ${lcLabel(d.kind)}`, wont_eat: (d) => `A ${lcLabel(d.kind)} doesn't eat that`,
   not_agent: () => "Give to someone, not a creature",
 };
 const errorText = (r) => (r.data && Object.hasOwn(ERROR_TEXT, r.error) ? ERROR_TEXT[r.error](r.data) : r.detail || r.error);
