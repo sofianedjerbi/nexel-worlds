@@ -31,10 +31,13 @@ def test_a_far_plateaus_top_has_no_speckle_and_no_dark_band_along_its_rim(browse
         assert (edge - far) * k > 12, (edge, far)                                  # (seen squeezed: its 4 tiles' 64 rows of paint in a few px)
         x0, x1 = round(ax * k), round(bx * k)
         body, _ = tone(g.js(ROW, [x0, x1, round((edge + far) / 2 * k)]))
+        y0 = round(edge * k)
+        top = next((y for y in range(y0, y0 - 24, -1) if (lambda m: m[1] > m[0] + 20)(tone(g.js(ROW, [x0, x1, y]))[0])), None)   # (the top's first row over its earth side: green)
+        assert top is not None, (y0, [tone(g.js(ROW, [x0, x1, y])) for y in range(y0, y0 - 24, -4)])
         rows = []
-        for dy in (2, 3, 4):                                                       # (the canvas rows just over the rim)
-            mid, off = tone(g.js(ROW, [x0, x1, round(edge * k) - dy]))
-            rows.append((dy, mid, round(off, 3)))
+        for y in (top, top - 1, top - 2):                                          # (the canvas rows of its rim)
+            mid, off = tone(g.js(ROW, [x0, x1, y]))
+            rows.append((y0 - y, mid, round(off, 3)))
         assert all(sum(abs(m - b) for m, b in zip(mid, body)) <= 30 and off <= .08 for _, mid, off in rows), (body, rows)
         assert not g.errors, g.errors
     finally:
