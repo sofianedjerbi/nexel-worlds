@@ -11,9 +11,95 @@
 // A server from before blocks says `roofs`, not `floors`: each of its roof tiles is shown as a roof block a storey
 // over its ground; nobody stands on those (FLOORS false).
 let FLOORS = false;
+// What is over your head (Floors): the lowest block over you and every tile that goes on from yours with one that high,
+// and how much of a tile's height is drawn.   FloorsOver(F) -> {mine, alpha}
+const FloorsOver = (F) => {
+  const {colOf, ver} = F;
+  let over = {key: "-", z: 99, tiles: new Set()};
+  // What is over your head: with a block over you, the lowest one over your height on your tile or the next (on the
+  // steps, the floor you are climbing to), and every tile that goes on from yours with a block that high or higher
+  function mine() {
+    const P = HdLevel.place, s = P && !P.free ? {x: P.tx, y: P.ty, z: P.L} : null, key = s ? [s.x, s.y, s.z, ver()].join() : "";   // (where your body is: hd_level.js place)
+    if (key === over.key) return over;
+    const zs = (x, y) => { const c = colOf(x, y); return c ? [...c.keys()] : []; }, tiles = new Set();
+    let z = 99;
+    if (s && zs(s.x, s.y).some((v) => v > s.z)) for (const [dx, dy] of [[0, 0], ...Object.values(DIRV)]) for (const v of zs(s.x + dx, s.y + dy)) if (v > s.z && v < z) z = v;
+    const line = z < 99 ? [[s.x, s.y]] : [];
+    if (line.length) tiles.add(s.x + "," + s.y);
+    for (let i = 0; i < line.length && i < 900; i++) for (const [dx, dy] of Object.values(DIRV)) {
+      const x = line[i][0] + dx, y = line[i][1] + dy, k = x + "," + y;
+      if (!tiles.has(k) && zs(x, y).some((v) => v >= z)) { tiles.add(k); line.push([x, y]); }
+    }
+    return (over = {key, z, tiles});
+  }
+  // How much of what is at height z of the tile is drawn: over you, or over the cursor's floor, as the view has it
+  // (cut away: none of it)
+  const alpha = (x, y, z) => ((mine().tiles.has(x + "," + y) && z >= over.z) || (Build.on && z > Build.level()) ? 0 : 1);
+  return {mine, alpha};
+};
+
+// The height a body is drawn at on a built tile (Floors).   FloorsBodies(F) -> {standOf, between, rise}
+const FloorsBodies = (F) => {
+  const {colOf, mine} = F;
+  // The height a body is drawn at on a tile: the land's, or, where something is built, its own (yours: caves.js keeps
+  // it as the server does; the others': the server says), where it stood a step ago, or where a step would land it
+  function standOf(p, x, y) {
+    if (!p.e || !(FLOORS && colOf(x, y) || hollow(x, y))) return standAt(x, y);   // (over a hollow too, a cave or a tunnel: on its roof or in it)
+    const mine = p.e.kind === "agent" && p.e.id === myId, at = mine ? myAt : p.zAt, was = mine ? myWas : p.zWas;
+    if (at && at.x === x && at.y === y) return at.z;
+    if (was && was.x === x && was.y === y) return was.z;
+    const z = at && Math.abs(at.x - x) + Math.abs(at.y - y) === 1 ? landAt(at.z, x, y, at.x, at.y) : null;
+    return z !== null ? z : at ? settleNear(x, y, at.z) : standAt(x, y);
+  }
+  // a body between two tiles: [ax, ay, bx, by, and their grounds for it] (jump.js, climbing.js, relief.js: once, here)
+  const between = (p) => { const ax = Math.floor(p.x), ay = Math.floor(p.y), bx = Math.ceil(p.x), by = Math.ceil(p.y); return [ax, ay, bx, by, standOf(p, ax, ay), standOf(p, bx, by)]; };
+  const rise = (p) => { const x = Math.round(p.x), y = Math.round(p.y); return FLOORS && colOf(x, y) ? standOf(p, x, y) - standAt(x, y) : 0; };   // how far over the land it stands
+
+  return {standOf, between, rise};
+};
+
+// What a block in hand, or a built tile, means for a click or a key (Floors, intent.js).   FloorsIntent(F) -> {intent}
+const FloorsIntent = (F) => {
+  const {STOREY, colOf, fits, get, no} = F;
+  // What a click or a key means with a block in hand, or on a tile whose ground at your height is a built block
+  // (intent.js asks first): said in a few words, with what does it. Nothing: the ground's own (intent.js goes on)
+  function intent(p, shift) {
+    const s = myPos(), it = selected && !shift ? selected : null, isMe = s.x === p.x && s.y === p.y;
+    const z = settleNear(p.x, p.y, myZ(s.x, s.y)), c = FLOORS ? get(p.x, p.y, z) : null, on = c ? c[1] : "", zArg = (zz) => (FLOORS ? {z: zz} : {});
+    const place = (zz, text) => ({text, ghost: it, ok: true, z: zz, run: (d) => act("place", {dir: d, item: it, ...zArg(zz)})});
+    const h = myZ(s.x, s.y);
+    // A block of the land in hand, aimed over ground lower than your own (past a cliff's edge, over a hole): it goes at your own level, the
+    // ground you stand on carried on in a straight line through the air, a block at a time, each held by the one before (the world's put_land).
+    // Not down onto the ground at the cliff's foot ("placing above a cliff shouldn't make the bloc go right down on the cliff"). (mouse.js
+    // points over such ground at your level too: tileAtScreen)
+    if (LAND_BLOCKS.has(it) && FLOORS && !isMe && topAt(p.x, p.y) < h) {
+      const why = Build.landFits(p.x, p.y, h, () => false);
+      return why ? no(why, {ghost: it, z: h}) : place(h, `Place ${label(it)}`);
+    }
+    const t = tile(p.x, p.y);                         // earth on open ground: the ground comes up a layer (as digging takes it down one)
+    if (LAND_BLOCKS.has(it) && FLOORS && t && ".,'".includes(t[1]) && (GROUND.has(t[0]) || t[0] === "f") && !isMe && !c && z === topAt(p.x, p.y) && colAt(p.x, p.y) === colSolid(z) && !colOf(p.x, p.y))
+      return entityAt(p) ? {text: "Someone is standing there", ghost: it, ok: false} : {text: "Raise the ground", ghost: it, ok: true, run: (d) => act("place", {dir: d, item: it})};
+                                                      // standing on a block, the air before you at your own height: the floor goes on
+    if (it === "plank" && FLOORS && get(s.x, s.y, h) && !isMe && !solidAt(p.x, p.y, h) && !fits(p.x, p.y, h)) return place(h, "Lay planks");
+    if (it === "roof" || (it === "plank" && c && !isMe)) {       // a block: a roof a storey over the tile; planks on the block you face
+      const zz = z + (it === "roof" ? STOREY : 1), why = fits(p.x, p.y, zz);
+      return why ? no(why, {ghost: it, z: zz}) : place(zz, it === "roof" ? "Lay roof" : "Put planks on top");
+    }
+    if (!c || isMe) return null;
+    if (it && PLACEABLE_BLOCK[it] && c[0] === "stairs") return {text: "Not on a step", ghost: it, ok: false, z};
+    if (it && PLACEABLE_BLOCK[it]) return on ? {text: "Something is there", ghost: it, ok: false, z} : tileOf(PLACEABLE_BLOCK[it]).upstairs ? place(z, `Place ${label(it)}`) : {text: "It needs the ground", ghost: it, ok: false, z};
+    if (on === "B" && !shift) return {text: "Sleep", z, run: (d) => act("sleep", {dir: d})};
+    if (on && !shift) return {text: label(CH[on]), info: true, quiet: true, z};      // (shift: X's verb, intent.js: E takes nothing down)
+    if (on) { const tool = TOOL_FOR[on], w = inHand(); return {text: (HARVEST[on] || "Take down " + label(CH[on])) + (tool && toolKind(w) !== tool ? " (slow)" : ""), z, run: (d) => act("dig", {dir: d, z, ...(w ? {with: w} : {})})}; }
+    if (shift) return {text: c[0] === "roof" ? "Take the roof block" : c[0] === "stairs" ? "Take up the step" : "Take up the planks", z, ground: true, run: (d) => act("dig", {dir: d, z})};
+    return {text: "Walk here", walk: true, run: () => act("move_to", {x: p.x, y: p.y, z})};
+  }
+  return {intent};
+};
+
 const Floors = (() => {
   const STOREY = RULES.storey, K = .03;
-  let ver = 0, over = {key: "-", z: 99, tiles: new Set()};
+  let ver = 0;
   const colOf = (x, y) => { const b = blockOf(x, y); return b && b.built ? b.built.get((y - b.by * B) * B + (x - b.bx * B)) : undefined; };   // z -> [kind, the char of what stands on it]
   const get = (x, y, z) => { const c = colOf(x, y); return c ? c.get(z) : undefined; };
   function put(b, i, z, kind, ch) { let c = b.built.get(i); if (!c) b.built.set(i, c = new Map()); c.set(z, [kind, ch === " " ? "" : ch || ""]); }
@@ -54,74 +140,12 @@ const Floors = (() => {
     return Object.values(DIRV).some(([dx, dy]) => solidAt(x + dx, y + dy, z) || planned(x + dx, y + dy, z)) ? null : "no_wall";
   }
 
-  // The height a body is drawn at on a tile: the land's, or, where something is built, its own (yours: caves.js keeps
-  // it as the server does; the others': the server says), where it stood a step ago, or where a step would land it
-  function standOf(p, x, y) {
-    if (!p.e || !(FLOORS && colOf(x, y) || hollow(x, y))) return standAt(x, y);   // (over a hollow too, a cave or a tunnel: on its roof or in it)
-    const mine = p.e.kind === "agent" && p.e.id === myId, at = mine ? myAt : p.zAt, was = mine ? myWas : p.zWas;
-    if (at && at.x === x && at.y === y) return at.z;
-    if (was && was.x === x && was.y === y) return was.z;
-    const z = at && Math.abs(at.x - x) + Math.abs(at.y - y) === 1 ? landAt(at.z, x, y, at.x, at.y) : null;
-    return z !== null ? z : at ? settleNear(x, y, at.z) : standAt(x, y);
-  }
-  // a body between two tiles: [ax, ay, bx, by, and their grounds for it] (jump.js, climbing.js, relief.js: once, here)
-  const between = (p) => { const ax = Math.floor(p.x), ay = Math.floor(p.y), bx = Math.ceil(p.x), by = Math.ceil(p.y); return [ax, ay, bx, by, standOf(p, ax, ay), standOf(p, bx, by)]; };
-  const rise = (p) => { const x = Math.round(p.x), y = Math.round(p.y); return FLOORS && colOf(x, y) ? standOf(p, x, y) - standAt(x, y) : 0; };   // how far over the land it stands
-
-  // What is over your head: with a block over you, the lowest one over your height on your tile or the next (on the
-  // steps, the floor you are climbing to), and every tile that goes on from yours with a block that high or higher
-  function mine() {
-    const P = HdLevel.place, s = P && !P.free ? {x: P.tx, y: P.ty, z: P.L} : null, key = s ? [s.x, s.y, s.z, ver].join() : "";   // (where your body is: hd_level.js place)
-    if (key === over.key) return over;
-    const zs = (x, y) => { const c = colOf(x, y); return c ? [...c.keys()] : []; }, tiles = new Set();
-    let z = 99;
-    if (s && zs(s.x, s.y).some((v) => v > s.z)) for (const [dx, dy] of [[0, 0], ...Object.values(DIRV)]) for (const v of zs(s.x + dx, s.y + dy)) if (v > s.z && v < z) z = v;
-    const line = z < 99 ? [[s.x, s.y]] : [];
-    if (line.length) tiles.add(s.x + "," + s.y);
-    for (let i = 0; i < line.length && i < 900; i++) for (const [dx, dy] of Object.values(DIRV)) {
-      const x = line[i][0] + dx, y = line[i][1] + dy, k = x + "," + y;
-      if (!tiles.has(k) && zs(x, y).some((v) => v >= z)) { tiles.add(k); line.push([x, y]); }
-    }
-    return (over = {key, z, tiles});
-  }
-  // How much of what is at height z of the tile is drawn: over you, or over the cursor's floor, as the view has it
-  // (cut away: none of it)
-  const alpha = (x, y, z) => ((mine().tiles.has(x + "," + y) && z >= over.z) || (Build.on && z > Build.level()) ? 0 : 1);
+  // (its parts, made in order: each takes what it uses from F)
+  const F = {STOREY, colOf, fits, get, no, ver: () => ver};
+  for (const part of [FloorsOver, FloorsBodies, FloorsIntent]) Object.assign(F, part(F));
+  const {standOf, between, rise, alpha, intent} = F;
   // A step of a flight, painted (climbing.js: its own picture). Planks and a roof are data the land's painter lays: hd_things.js block
   // (drawn with the land, not on a 2D canvas here)
   function cell(kind, x, y, z, sx, sy, S, a) { return Climb.drawStep(x, y, z, sx(x), syUp(sy, y, shOf(z) * zoom), a); }
-  // What a click or a key means with a block in hand, or on a tile whose ground at your height is a built block
-  // (intent.js asks first): said in a few words, with what does it. Nothing: the ground's own (intent.js goes on)
-  function intent(p, shift) {
-    const s = myPos(), it = selected && !shift ? selected : null, isMe = s.x === p.x && s.y === p.y;
-    const z = settleNear(p.x, p.y, myZ(s.x, s.y)), c = FLOORS ? get(p.x, p.y, z) : null, on = c ? c[1] : "", zArg = (zz) => (FLOORS ? {z: zz} : {});
-    const place = (zz, text) => ({text, ghost: it, ok: true, z: zz, run: (d) => act("place", {dir: d, item: it, ...zArg(zz)})});
-    const h = myZ(s.x, s.y);
-    // A block of the land in hand, aimed over ground lower than your own (past a cliff's edge, over a hole): it goes at your own level, the
-    // ground you stand on carried on in a straight line through the air, a block at a time, each held by the one before (the world's put_land).
-    // Not down onto the ground at the cliff's foot ("placing above a cliff shouldn't make the bloc go right down on the cliff"). (mouse.js
-    // points over such ground at your level too: tileAtScreen)
-    if (LAND_BLOCKS.has(it) && FLOORS && !isMe && topAt(p.x, p.y) < h) {
-      const why = Build.landFits(p.x, p.y, h, () => false);
-      return why ? no(why, {ghost: it, z: h}) : place(h, `Place ${label(it)}`);
-    }
-    const t = tile(p.x, p.y);                         // earth on open ground: the ground comes up a layer (as digging takes it down one)
-    if (LAND_BLOCKS.has(it) && FLOORS && t && ".,'".includes(t[1]) && (GROUND.has(t[0]) || t[0] === "f") && !isMe && !c && z === topAt(p.x, p.y) && colAt(p.x, p.y) === colSolid(z) && !colOf(p.x, p.y))
-      return entityAt(p) ? {text: "Someone is standing there", ghost: it, ok: false} : {text: "Raise the ground", ghost: it, ok: true, run: (d) => act("place", {dir: d, item: it})};
-                                                      // standing on a block, the air before you at your own height: the floor goes on
-    if (it === "plank" && FLOORS && get(s.x, s.y, h) && !isMe && !solidAt(p.x, p.y, h) && !fits(p.x, p.y, h)) return place(h, "Lay planks");
-    if (it === "roof" || (it === "plank" && c && !isMe)) {       // a block: a roof a storey over the tile; planks on the block you face
-      const zz = z + (it === "roof" ? STOREY : 1), why = fits(p.x, p.y, zz);
-      return why ? no(why, {ghost: it, z: zz}) : place(zz, it === "roof" ? "Lay roof" : "Put planks on top");
-    }
-    if (!c || isMe) return null;
-    if (it && PLACEABLE_BLOCK[it] && c[0] === "stairs") return {text: "Not on a step", ghost: it, ok: false, z};
-    if (it && PLACEABLE_BLOCK[it]) return on ? {text: "Something is there", ghost: it, ok: false, z} : tileOf(PLACEABLE_BLOCK[it]).upstairs ? place(z, `Place ${label(it)}`) : {text: "It needs the ground", ghost: it, ok: false, z};
-    if (on === "B" && !shift) return {text: "Sleep", z, run: (d) => act("sleep", {dir: d})};
-    if (on && !shift) return {text: label(CH[on]), info: true, quiet: true, z};      // (shift: X's verb, intent.js: E takes nothing down)
-    if (on) { const tool = TOOL_FOR[on], w = inHand(); return {text: (HARVEST[on] || "Take down " + label(CH[on])) + (tool && toolKind(w) !== tool ? " (slow)" : ""), z, run: (d) => act("dig", {dir: d, z, ...(w ? {with: w} : {})})}; }
-    if (shift) return {text: c[0] === "roof" ? "Take the roof block" : c[0] === "stairs" ? "Take up the step" : "Take up the planks", z, ground: true, run: (d) => act("dig", {dir: d, z})};
-    return {text: "Walk here", walk: true, run: () => act("move_to", {x: p.x, y: p.y, z})};
-  }
   return {STOREY, K, WHY, UNHELD, no, any: (x, y) => !!colOf(x, y), get, set, load, cells, built, thingAt, fits, standOf, between, rise, alpha, cell, intent, get ver() { return ver; }};
 })();
