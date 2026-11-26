@@ -9,11 +9,11 @@
 //              ground: a hole, a layer deeper each time (a pickaxe digs faster); in the ground: that block. Held: a row
 //   Q E        the cursor a layer down, and up (also PgDn, PgUp); Q by place: the key over A (A on an AZERTY)
 //   Esc        drop every plan (with none: out of the mode)
-// The cursor has a height. It starts on the block in front of you, at your own height ("show the most pertinent block first: in front of the player, direction where he's facing at his exact level"): a wall there, the block in front of your eyes ("default block to dig should be the one at player eye-level": it was the one in front of your legs; that one gone, of your legs); else the ground there (it rode the top of the land over the wall, a mountain's seventeen
-// layers up, and Q brought it down a layer a press). It rides the ground nearest your own (the floor you stand on); E lifts it a storey, into the air over a room or onto the floor above, and there it stays as it moves, until Q brings it down. Below your
+// The cursor has a height. It starts on the block in front of you, at your own height ("show the most pertinent block first: in front of the player, direction where he's facing at his exact level"): a wall there, the block in front of your eyes ("default block to dig should be the one at player eye-level"; that one gone, the one in front of your legs); else the ground there (at your height, not the top of the land over the wall, a mountain's seventeen
+// layers up). It rides the ground nearest your own (the floor you stand on); E lifts it a storey, into the air over a room or onto the floor above, and there it stays as it moves, until Q brings it down. Below your
 // own floor Q sinks it to what is under it: the floor under yours (the ground floor from upstairs), a cave's floor,
 // or, in the ground, a layer at a time: there it is on a block, and X digs that block and no other, where air is beside it; what is over it stays ("like minecraft ... this enforce me to dig huge columns": it dug the whole column over it; then the room to stand in, two blocks at once from the lower one: "why am i unable to break block at my eye level ? why do i
-// need to target the one down to dig both at once ?"). Blocks are planned as far ahead as you like: each where the one before it will have made room (it was refused until that one was dug). The block you stand on is dug from on it: you come down with it ("i should be able to break this block by putting myself in top of it then digging under my
+// need to target the one down to dig both at once ?"). Blocks are planned as far ahead as you like: each where the one before it will have made room (a plan counts the ones before it as dug). The block you stand on is dug from on it: you come down with it ("i should be able to break this block by putting myself in top of it then digging under my
 // feets"). How deep is written beside it. (Q, E: after R F and Shift ↑ ↓, "not natural".) What you plan
 // goes where the cursor is: a thing (a wall, a door, a bed) on what the cursor is on; a block (planks, a roof) on
 // top of it, or, the cursor in the air, in the cell it is in, where a wall under it or a block beside it holds it.
@@ -31,7 +31,7 @@ const Build = (() => {
   const swaps = (it, c) => !!SWAP[it] && SWAP[it].some((n) => CHAR[n] === c);
   const S = {on: false, at: null, plane: null, deep: null, plans: new Map(), hold: null, working: false, dir: null, timer: 0, pan: {x: 0, y: 0}};
   const now = () => performance.now(), UPMOST = 9, DEEPEST = 12, LOWEST = LOW;   // (how far over your own height the cursor goes: three floors; under it, layers; the deepest ground there is: the top of the bottom cell, sim/underground.py)
-  // The cursor's height: the plane it was lifted to, or the ground at its tile nearest your own height
+  // The cursor's height: the plane E lifted it to, or the ground at its tile nearest your own height
   const ride = (p) => { if (p.z !== undefined && solidAt(p.x, p.y, p.z)) return p.z; const s = myPos(); return settleNear(p.x, p.y, s ? myZ(s.x, s.y) : topAt(p.x, p.y)); };   // (p.z: the block the pointer is on, mouse.js rayHit: a side of a cliff, a ledge under an overhang)
   const under = (p, t) => (solidAt(p.x, p.y, t) ? t : settleAt(p.x, p.y, t));      // (sunk to t: in the ground there, or on what is under it)
   const level = (p = S.at) => (S.plane !== null ? S.plane : !p ? 0 : S.deep !== null ? under(p, S.deep) : ride(p));
@@ -43,7 +43,7 @@ const Build = (() => {
   const planned = (x, y, z) => { const j = S.plans.get(x + "," + y + "," + z); return !!j && !j.take && j.up && (BLOCK(j.item) || LAND_BLOCKS.has(j.item)) && j.state !== "bad"; };     // a block that is only planned yet
   // A block of the land (earth, stone) for the cell (x, y, z): why it cannot go there, or nothing (as the server's put_land: empty, something solid beside it; or a block planned there)
   const landFits = (x, y, z, soon = planned) => { const s = myPos(); return solidAt(x, y, z) ? "taken" : s && s.x === x && s.y === y && z > myZ(x, y) && z <= myZ(x, y) + 2 ? "you_there"
-    : ((N) => N.some(([i, j, k]) => solidAt(x + i, y + j, z + k) || soon(x + i, y + j, z + k)) && N.some(([i, j, k]) => !solidAt(x + i, y + j, z + k)))([[0, 0, -1], [0, 0, 1], ...Object.values(DIRV).map(([dx, dy]) => [dx, dy, 0])]) ? "" : "unheld"; };   // (held: something beside it, or planned there; reached: air beside it)     // (a few words: the ghost says it, red where it cannot go: buildghost.js. It was a red line across the screen: "Nothing holds it: put it against a block")
+    : ((N) => N.some(([i, j, k]) => solidAt(x + i, y + j, z + k) || soon(x + i, y + j, z + k)) && N.some(([i, j, k]) => !solidAt(x + i, y + j, z + k)))([[0, 0, -1], [0, 0, 1], ...Object.values(DIRV).map(([dx, dy]) => [dx, dy, 0])]) ? "" : "unheld"; };   // (held: something beside it, or planned there; reached: air beside it)     // (a few words: the ghost says it, red where it cannot go: buildghost.js, not a red line across the screen)
   const piece = () => (selected && meObs && meObs.self.inventory[selected] && placeable(selected) ? selected : null);
   const todo = () => [...S.plans.values()].filter((j) => j.state !== "bad");
 
@@ -222,8 +222,8 @@ const Build = (() => {
     const s = myPos(), me = myZ(s.x, s.y), r = ride(p), out = [];
     for (let t = Math.max(LOWEST, me - DEEPEST); t < r; t++) { const z = under(p, t); if (z < r && out[out.length - 1] !== z) out.push(z); }
     out.push(r);
-    const one = LAND_BLOCKS.has(piece());      // (earth, stone in hand: a level a press, the ghost goes up by one block. It went a storey: "E jumped to +2", no wall two high)
-    for (let z = r + 1; z <= me + UPMOST; z++) if (landSolid(p.x, p.y, z) || (FLOORS && (one ? z > r + 1 : (z - r) % Floors.STOREY === 0) && !landSolid(p.x, p.y, z + 1))) out.push(z);   // (over it: in the ground a layer at a time, as under it: a tunnel's roof, the block over that; in the air a storey at a time, where there is room over it. It was a storey at a time through the rock: E from a tunnel's floor went three layers up into it, "going up in tunnel really isn't intuitive")
+    const one = LAND_BLOCKS.has(piece());      // (earth, stone in hand: a level a press, the ghost goes up by one block, not a storey: no wall is two high)
+    for (let z = r + 1; z <= me + UPMOST; z++) if (landSolid(p.x, p.y, z) || (FLOORS && (one ? z > r + 1 : (z - r) % Floors.STOREY === 0) && !landSolid(p.x, p.y, z + 1))) out.push(z);   // (over it: in the ground a layer at a time, as under it: a tunnel's roof, the block over that; in the air a storey at a time, where there is room over it. Never a storey at a time through the rock: E from a tunnel's floor would go three layers up into it, "going up in tunnel really isn't intuitive")
     return out;
   }
   function lift(d) {
@@ -233,7 +233,7 @@ const Build = (() => {
     S.plane = to > r ? to : null; S.deep = to < r ? to : null;
     sfx("pick");
   }
-  // A key in build mode -> true: it was the mode's (the rest, the bar's numbers among them, go on as ever)
+  // A key in build mode -> true when the mode takes it (the rest, the bar's numbers among them, go on as ever)
   function onKey(k, e) {
     if (!S.on) return false;
     if (k === "b" || k === keyOf("build")) { if (!e.repeat) toggle(false); return true; }

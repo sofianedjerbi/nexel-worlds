@@ -1,5 +1,5 @@
-// A tool in the paw, gripped (the owner: "it should look like the player is really holding it, like the sword"). It was
-// its 8 px icon pasted at the paw. Here it is drawn from its grip: the hand (the sheet's swing hand, a ring of outline
+// A tool in the paw, gripped (the owner: "it should look like the player is really holding it, like the sword"), not
+// its 8 px icon pasted at the paw: it is drawn from its grip: the hand (the sheet's swing hand, a ring of outline
 // round its fur) over the handle, the tool out of it at the angle the pose gives, in whole art px (redrawn at each
 // angle as the swings draw their tools, never scaled or blurred). A sword and a spear are the attack's own
 // (swing_art.js frame), so the cut starts from where they are held.

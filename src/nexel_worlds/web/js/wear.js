@@ -12,7 +12,7 @@ const LOOK = {
 };
 const WearParts = (() => {
   const rgb0 = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
-  const RGB = new Map(), rgb = (h) => { let v = RGB.get(h); if (!v) RGB.set(h, v = rgb0(h)); return v; };   // (a colour's numbers, read once: they were parsed again for every px painted)
+  const RGB = new Map(), rgb = (h) => { let v = RGB.get(h); if (!v) RGB.set(h, v = rgb0(h)); return v; };   // (a colour's numbers, parsed once and kept, not for every px painted)
   // The player's own colours: outline, body, blush, shade, cheek, collar, bell.
   const BASE = {a: "#5c4e92", b: "#f3f2c0", c: "#e8b5ac", d: "#ddd5de", e: "#f3d8c5", f: "#766daa", g: "#eae178"};
   const CLASS = Object.fromEntries(Object.entries(BASE).map(([k, h]) => [rgb(h).join(), k]));
@@ -103,7 +103,7 @@ const WearParts = (() => {
   function analyse(d, row) {                      // d: one 48 x 48 frame's pixels
     // The head is measured on the body alone: the piece that wears the collar, not the tool, its arc or a hand apart
     // from the body (measured on everything, a raised axe was taken for the head, and a hat jumped onto it).
-    const px = classes(d), at = (x, y) => (x >= 0 && y >= 0 && x < CELL && y < CELL ? px[y * CELL + x] : null);   // (each px's class found once: it was a string made and looked up at every look, hundreds of thousands a sheet)
+    const px = classes(d), at = (x, y) => (x >= 0 && y >= 0 && x < CELL && y < CELL ? px[y * CELL + x] : null);   // (each px's class found once and kept: no string made and looked up at every look, hundreds of thousands a sheet)
     const body = new Uint8Array(CELL * CELL), stack = [];
     const mine = (x, y) => { const c = at(x, y); return c && c !== "?"; };
     for (let y = 0; y < CELL; y++) for (let x = 0; x < CELL; x++) if (at(x, y) === "f") { body[y * CELL + x] = 1; stack.push([x, y]); }

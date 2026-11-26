@@ -4,7 +4,7 @@
 
 const Races = (() => {
   const rgb0 = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
-  const RGB = new Map(), rgb = (h) => { let v = RGB.get(h); if (!v) RGB.set(h, v = rgb0(h)); return v; };   // (a colour's numbers, read once: they were parsed again for every px painted)
+  const RGB = new Map(), rgb = (h) => { let v = RGB.get(h); if (!v) RGB.set(h, v = rgb0(h)); return v; };   // (a colour's numbers, parsed once and kept, not for every px painted)
   const BASE = {a: "#5c4e92", b: "#f3f2c0", c: "#e8b5ac", d: "#ddd5de", e: "#f3d8c5", f: "#766daa", g: "#eae178"};
   const CLASS = Object.fromEntries(Object.entries(BASE).map(([k, h]) => [rgb(h).join(), k]));
   const DIRS = ["down", "up", "right", "left"];
@@ -98,7 +98,7 @@ const Races = (() => {
     // What is in the frame: the body, and on the swings a tool, its arc and sometimes a hand apart from the body. The
     // head is measured on the body alone (the piece that wears the collar). Measured on everything, a raised axe was
     // taken for the head: ears were put on it, the head came out as a slab, the tool above the head was wiped.
-    const px = classes(d), raw = (x, y) => (x >= 0 && y >= 0 && x < CELL && y < CELL ? px[y * CELL + x] : null);   // (each px's class found once: it was a string made and looked up at every look, hundreds of thousands a sheet)
+    const px = classes(d), raw = (x, y) => (x >= 0 && y >= 0 && x < CELL && y < CELL ? px[y * CELL + x] : null);   // (each px's class found once and kept: no string made and looked up at every look, hundreds of thousands a sheet)
     const body = new Uint8Array(CELL * CELL), stack = [];
     const own = (x, y) => { const c = raw(x, y); return c && c !== "?"; };
     for (let y = 0; y < CELL; y++) for (let x = 0; x < CELL; x++) if (raw(x, y) === "f") { body[y * CELL + x] = 1; stack.push([x, y]); }
