@@ -25,6 +25,9 @@ WHERE = """(() => { const a = window.__was, b = HdLook.read(0, 0, cv.width, cv.h
   return {bands: band.map((v) => +(v / (W * H / 8)).toFixed(4)), blue: n ? +(blue / n).toFixed(2) : 0}; })()"""
 
 # the pictures, before, after and where they differ (red), saved to E2E_SHOTS when the bound is broken: what changed shows in the run's artifact (#111)
+# the eye as a picture is taken (#111: once the picture before was sky down to 7/8 of the screen, no land in it, and every wait held):
+# the camera (pitch, want), the sky's line and the land's edge (canvas px), the eye's level, the screen's height
+EYE = "(() => { const s = HdLook.sky(0); return {cam: {...HdLook.cam}, line: s.line, edge: s.edge, level: HdLook.level, h: cv.height}; })()"
 PNG = """(which) => { const W = cv.width, H = cv.height, now = HdLook.read(0, 0, W, H).data, was = window.__was, c = document.createElement('canvas'); c.width = W; c.height = H;
   const x = c.getContext('2d'), im = x.createImageData(W, H), d = im.data;
   for (let i = 0; i < d.length; i += 4) { const diff = Math.abs(was[i] - now[i]) + Math.abs(was[i + 1] - now[i + 1]) + Math.abs(was[i + 2] - now[i + 2]) > 24;
@@ -66,7 +69,7 @@ def test_sprinting_about_every_face_keeps_its_own_paint(browser, server, screen)
     g.js("(() => { HdLook.landOnly = true; return 1; })()")
     g.frames(3)
     g.js(f"(() => {{ window.__was = HdLook.read(0, 0, cv.width, cv.height).data; window.__line = {LINE}; return 1; }})()")
-    box0 = g.js("[HdLook.box, HdLook.work]")
+    box0 = g.js(f"[HdLook.box, HdLook.work, {EYE}]")
     g.js("HdLook.forget()")                                        # the land made again, its paints from none
     g.rest()
     g.wait("!HdLook.busy && HdLook.bare() === 0", 15000)
@@ -77,6 +80,6 @@ def test_sprinting_about_every_face_keeps_its_own_paint(browser, server, screen)
         out.mkdir(parents=True, exist_ok=True)
         for which in ("was", "now", "diff"):
             (out / f"{which}.png").write_bytes(base64.b64decode(g.js(PNG, which).split(",", 1)[1]))
-        (out / "info.txt").write_text(repr((d, g.js(WHERE), box0, g.js("[HdLook.box, HdLook.work, myPos(), HdLook.hid, HdLook.why]"))))
-    assert d < .01, (d, g.js(WHERE), box0, g.js("[HdLook.box, HdLook.work]"))                                             # the same land, px for px (a face drawn with another paint: a tile's worth of px each)
+        (out / "info.txt").write_text(repr((d, g.js(WHERE), box0, g.js(f"[HdLook.box, HdLook.work, myPos(), HdLook.hid, HdLook.why, {EYE}]"))))
+    assert d < .01, (d, g.js(WHERE), box0, g.js(f"[HdLook.box, HdLook.work, {EYE}]"))                                             # the same land, px for px (a face drawn with another paint: a tile's worth of px each)
     assert not g.errors

@@ -165,8 +165,11 @@ def test_the_aim_on_a_cave_s_wall_is_on_the_cell_you_hit(browser, server):
     g.wait("HdLook.win.a === 1 && !HdLook.busy && HdLook.cam.pitch > HdLook.steep - .1", timeout=8000)
     g.hold_item("pickaxe")
     g.rest()                                                               # (settled before you turn: once turned, the aim is read at once)
+    # (and the way out shown, two seconds standing, before you turn to the wall: the turn puts it away (the test below). Turned a
+    # moment before the two seconds, the turn put nothing away and the way shown after it took the aim: {aim: None, way: 9})
+    g.wait("WayShow.cur && !WayShow.led", timeout=12000)
     AIM = "HdLook.aim && aimedTile() && aimedTile().it && aimedTile().it.cell === 2"
-    g.hold(["ArrowLeft"], 250)                                             # (the way out, shown after two seconds standing, is put away when you turn to a wall: the test below; this one failed with it shown: {aim: None, way: 9})
+    g.hold(["ArrowLeft"], 250)
     try:
         g.wait(AIM, timeout=4000)
     except Exception:                                                      # (what the page has when the aim is not there: it failed "under load" with nothing said)

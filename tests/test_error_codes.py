@@ -36,6 +36,13 @@ def test_what_is_in_the_way_is_said_by_what_it_is(world):
     assert (r["error"], r["data"]) == ("occupied", {"on": "body"}), r
 
 
+def test_a_wrong_target_says_why_by_a_code(world):
+    sim, a = world
+    r = run(sim, a, "attack", {"target": a.id})
+    assert (r["error"], r["data"]) == ("bad_target", {"why": "self"}), r
+    assert re.search(r"bad_target: \(d\) => \(Object\.hasOwn\(TARGET_WHY, d\.why\)", (JS / "agent.js").read_text())
+
+
 def test_what_cannot_be_dug_is_named():
     from nexel_worlds.sim.entities import ActionError, failure
     r = failure(ActionError("cannot_dig", "water cannot be dug", what="water"))
@@ -49,3 +56,13 @@ def test_the_page_shows_a_refusal_by_its_code():
             if "r.detail" in line and "const errorText" not in line]
     assert not hits, hits
     assert re.search(r"Object\.hasOwn\(ERROR_TEXT, r\.error\)", (JS / "agent.js").read_text())
+
+
+def test_every_reason_a_block_cannot_go_has_words_on_the_page():
+    """block_fits' codes (storeys.py, BLOCK_WHY) are said on the page by build mode's words (floors.js WHY) or agent.js'
+    TARGET_WHY; and "changed" (the world moved under you) is worded with no data sent."""
+    from nexel_worlds.sim.entities import BLOCK_WHY
+    js = (JS / "floors.js").read_text() + (JS / "agent.js").read_text()
+    missing = [c for c in BLOCK_WHY if not re.search(rf"\b{c}: (\(\) => )?\"", js)]
+    assert not missing, missing
+    assert re.search(r"changed: \(\) => \"", (JS / "agent.js").read_text())
