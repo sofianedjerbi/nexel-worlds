@@ -76,6 +76,13 @@ def test_what_stands_in_a_deep_room_is_as_dim_as_its_floor_and_you_are_not(brows
     assert me4 > .8 and me14 > .8, seen                                          # your own body: its own colours in both
 
 
+# the HD look's picture on the screen, the look live (HdView.read reads none of it while hidden: [0, 0, 0]. Not `drew`: a still
+# screen is not drawn again, and its picture stays)
+SHOWN = "HdLook.live && !!HdView.el && HdView.el.style.display === 'block'"
+# what a px read was taken from: the screen point, the canvases, the look's state
+WHERE = """([x, y, z]) => { const a = HdLook.screenOf(x, y, z), el = HdView.el, cv = document.getElementById('c');
+  return {at: a && a.map((v) => Math.round(v * devicePixelRatio)), el: el && [el.width, el.height, el.style.display], cv: cv && [cv.width, cv.height], live: HdLook.live, lost: HdLook.lost, drew: HdLook.drew}; }"""
+
 def test_no_px_is_drawn_from_a_paint_that_is_not_there_on_ten_walks_down_the_stair_and_back(browser, server):
     g = hd(browser, server)
     g.rpc("dev_time", phase=.3)
@@ -100,10 +107,14 @@ def test_no_px_is_drawn_from_a_paint_that_is_not_there_on_ten_walks_down_the_sta
     # and were the shown land's paints lost (they cannot be now: a full sheet no longer wipes them): the counter sees it, and the land is its mean colour, not one earth brown
     g.rest()
     spot = [x - 4.5, y + 2.5, 0]
+    # (each px read off a frame the look drew and shows: one read on main gave [0, 0, 0] twice, no picture at all, the land
+    # shown and drawn in the screenshot: run 45870743293. What the screen was then is said if it happens again)
+    g.wait(SHOWN, timeout=8000)
     grass = g.js(PX, spot)
     g.js("HdLook.blank()")
     g.wait("HdLook.raw() > 1000", timeout=8000)                                  # (the lost paints drawn: what the counter sees, not three frames)
+    g.wait(SHOWN, timeout=8000)
     lost = g.js(PX, spot)
     assert g.js("HdLook.raw()") > 1000, g.js("HdLook.raw()")
-    assert grass[1] > grass[0] and not (lost[0] > lost[1] + 12), (grass, lost)   # (it was (107, 82, 64) whatever the land)
+    assert grass[1] > grass[0] and not (lost[0] > lost[1] + 12), (grass, lost, g.js(WHERE, spot))   # (it was (107, 82, 64) whatever the land)
     assert not g.errors
