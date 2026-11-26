@@ -41,7 +41,6 @@ PHONE = {"viewport": {"width": 390, "height": 844}, "device_scale_factor": 3, "i
 SCREENS = {"desk": (DESK, None), "small": (SMALL, None), "phone": (PHONE, None), "small_tiny_sheet": (SMALL, 1024), "phone_tiny_sheet": (PHONE, 1024)}
 
 
-@pytest.mark.realtime
 @pytest.mark.parametrize("screen", list(SCREENS))
 def test_sprinting_about_every_face_keeps_its_own_paint(browser, server, screen):
     kw, aw = SCREENS[screen]

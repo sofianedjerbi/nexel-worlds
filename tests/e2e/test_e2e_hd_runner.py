@@ -32,7 +32,6 @@ def run(g, path):
     return seen, [r for r in seen if r["drawn"] is None], [r for r in seen if r["drawn"] is not None and r["drawn"] != r["g"]]
 
 
-@pytest.mark.realtime                                                       # (the game's own time: every frame of each step, not a quarter of them)
 def test_a_running_creature_is_drawn_on_every_frame_across_meadow_trees_and_a_hill_foot(browser, server):
     g = hd(browser, server)
     g.hour(.3, still=True)

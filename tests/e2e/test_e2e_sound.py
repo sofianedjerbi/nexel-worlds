@@ -6,7 +6,8 @@ import pytest
 from waits import until
 
 AUDIO = Path(__file__).parents[2] / "src" / "nexel_worlds" / "web" / "audio" / "sfx.json"
-pytestmark = pytest.mark.skipif(not AUDIO.exists(), reason="no sounds built: uv run --extra audio python tools/build_audio.py (CI builds them: ci.yml)")
+pytestmark = [pytest.mark.skipif(not AUDIO.exists(), reason="no sounds built: uv run --extra audio python tools/build_audio.py (CI builds them: ci.yml)"),
+              pytest.mark.realtime]   # (the sound card's clock: not a stepped page's)
 
 ALL_LOADED = """sounds.manifest && Object.values(sounds.manifest.sounds).flatMap((s) => s.files)
                 .every((f) => sounds.buffers.get(f) instanceof AudioBuffer)"""

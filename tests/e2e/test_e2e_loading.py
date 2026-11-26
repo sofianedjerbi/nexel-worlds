@@ -146,7 +146,6 @@ def bundled(tmp_path_factory):
     proc.wait(10)
 
 
-@pytest.mark.realtime
 def test_on_a_phone_the_bar_goes_on_by_small_steps(browser, bundled):
     """A phone on 4G (9 Mbit/s, 170 ms), its CPU four times slower, the page as a phone gets it (one script, one pack:
     web_bundle.py). The script's bytes are counted as they come (it was a tag: nothing of it counted till it had run, the bar

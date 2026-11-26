@@ -78,7 +78,6 @@ def test_an_earth_wall_shows_its_seam_on_every_level_a_cliff_has_none_and_nothin
     assert diff[0] > 1000 and diff[1] < .02 * diff[0], diff
 
 
-@pytest.mark.realtime
 def test_no_frame_shows_the_land_unpainted_after_a_teleport(browser, server):
     g = hd(browser, server)
     x, y = scene(g)

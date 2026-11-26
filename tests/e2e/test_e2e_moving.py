@@ -79,7 +79,6 @@ def test_walk_and_sprint_speeds(game):
     assert game.pos() == (game.server()["x"], game.server()["y"])
 
 
-@pytest.mark.realtime
 def test_taps_move_one_tile_and_never_snap_back(game):
     # (each tap one tile, when the page had the key down less than a stride of the game's time. The key's up comes from the
     # test: on a runner drawing every 50 ms it reached the page after a stride, and that tap rightly went a second tile, the
@@ -157,7 +156,6 @@ def stops(rec, ms=60, wait=None):
     return out
 
 
-@pytest.mark.realtime
 def test_swimming_never_goes_tile_by_tile(game):
     """Nobody sprints in water. Sprint held (a phone's stick pushed far), your screen swam at sprint speed, got a
     tile ahead of the server and waited for it, at every tile."""
@@ -172,7 +170,6 @@ def test_swimming_never_goes_tile_by_tile(game):
     assert game.pos() == (game.server()["x"], game.server()["y"])
 
 
-@pytest.mark.realtime
 def test_late_ticks_do_not_stop_you(game):
     """The server's word comes late and in lumps (a phone, a slow line): you walk on at your own pace (you were only
     ever allowed a tile ahead of its last word: sprinting, you stopped at every tile), and you end where it has you."""
@@ -208,7 +205,6 @@ def test_late_ticks_do_not_stop_you(game):
     assert game.pos() == (game.server()["x"], game.server()["y"])
 
 
-@pytest.mark.realtime
 def test_two_keys_never_slide_diagonally(game):
     way = {"d": (1, 0), "a": (-1, 0), "w": (0, -1), "s": (0, 1)}
     for first, second in (("d", "w"), ("s", "a")):
@@ -242,7 +238,6 @@ def test_walls_stop_you_and_turn_you(game):
     assert game.js("ents.get('agent' + myId).fx") == 1    # but you now face it
 
 
-@pytest.mark.realtime
 def test_higher_ground_is_drawn_higher_and_clicks_find_it(game):
     # a terrace three layers up just north of you: drawn three blocks higher (relief.js, RELIEF_STEP art px a layer), you on it too
     game.clear_area(30)                                        # (the land round you the meadow: a ridge another test left 15 to 20 tiles north of you (hd_sky) was drawn where the click landed)

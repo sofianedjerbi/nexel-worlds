@@ -49,7 +49,6 @@ HELLO = """(msg) => new Promise((done) => { const ws = new WebSocket(wsBase + '/
   ws.onopen = () => ws.send(JSON.stringify({id: 1, op: 'hello', ...msg})); ws.onmessage = (m) => { done(JSON.parse(m.data)); ws.close(); }; })"""
 
 
-@pytest.mark.realtime
 def test_you_log_in_with_a_code_mailed_to_you(browser, door):
     url, service = door
     ctx = browser.new_context(viewport={"width": 1280, "height": 760})

@@ -52,7 +52,6 @@ def turns(r):
     return sum(1 for a, b in zip(d, d[1:]) if a * b < 0)
 
 
-@pytest.mark.realtime
 def test_down_a_covered_stair_the_window_is_open_on_every_frame_and_your_body_is_steady(browser, server):
     g = hd(browser, server)
     g.rpc("dev_time", phase=.3)

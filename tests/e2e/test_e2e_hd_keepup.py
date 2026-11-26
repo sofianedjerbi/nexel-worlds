@@ -3,7 +3,10 @@ waking); the far land's patches lie on the world's grid, so a step makes only th
 read back from their canvas once, not at every change of pose (hd_level.js runsOf). A phone's CPU is the tests' own
 slowed by Chrome (Emulation.setCPUThrottlingRate), as tools/phone_sim.py does."""
 
+import pytest
 from test_e2e_hd_sun import hd
+
+pytestmark = pytest.mark.realtime   # (a slow machine's frames, slowed on purpose: the machine's time, not a stepped page's)
 
 # each frame till you are at x `to` (or 3000 frames): [the picture held (the last one kept), your x]. A distance, not a
 # count of frames: a sprint goes on in the game's time, and 90 frames of a renderer with no GPU were a sprint of 34 tiles

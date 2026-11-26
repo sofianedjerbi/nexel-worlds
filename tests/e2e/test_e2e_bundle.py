@@ -28,7 +28,6 @@ def bundled(tmp_path_factory):
     proc.wait(10)
 
 
-@pytest.mark.realtime
 def test_a_phone_plays_on_the_one_script_and_keeps_it(browser, bundled):
     ctx = browser.new_context(viewport={"width": 390, "height": 844}, has_touch=True, is_mobile=True, device_scale_factor=3)
     page, errors, asked = ctx.new_page(), [], []

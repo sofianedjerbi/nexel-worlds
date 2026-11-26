@@ -101,7 +101,6 @@ def test_every_tool_has_its_own_swing(game):
 SWINGS = os.environ.get("SWING_SHOTS")       # a folder to keep each frame of each attack in, as the game draws it
 
 
-@pytest.mark.realtime
 def test_a_sword_cuts_across_and_a_spear_is_thrust(game):
     """An attack with a sword or a spear was the sheet's chop, which reads as breaking a block. swing_art.js draws the
     weapon over the standing body: the sword crosses from one side of you to the other, the spear goes out and back.

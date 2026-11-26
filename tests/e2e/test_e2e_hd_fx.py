@@ -70,7 +70,6 @@ DYING = """([x, y, z]) => { window.__dy = []; window.__on = true; const k = devi
   if (__on) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""
 
 
-@pytest.mark.realtime
 def test_a_creature_killed_flashes_white_and_lifts_before_it_is_gone(browser, server):
     """A cow killed: for half a second its own body is still there, white at first, lifting and fading in its smoke
     (effects.js dying). Only the classic picture drew that: in the HD look the body was gone in one frame."""

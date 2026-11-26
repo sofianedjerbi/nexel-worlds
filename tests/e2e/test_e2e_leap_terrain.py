@@ -10,7 +10,6 @@ from test_e2e_leap import agree, frames
 pytestmark = pytest.mark.e2e
 
 
-@pytest.mark.realtime
 @pytest.mark.parametrize("run", [False, True])
 def test_a_jump_that_comes_down_against_a_step_goes_on_up_it(game, run):
     """"when sprinting + jumping the player is getting hit by the block AFTER jumping and it loses all his velocity"
@@ -46,7 +45,6 @@ def test_a_jump_that_comes_down_against_a_step_goes_on_up_it(game, run):
     assert not game.errors, game.errors
 
 
-@pytest.mark.realtime
 @pytest.mark.parametrize("run", [False, True])
 def test_up_a_flight_of_steps_every_jump_clears_the_next_edge(game, run):
     """"when climbing (walking stairs up) it is bad because i hit the block above when automatically jumping": up eight
@@ -76,7 +74,6 @@ def test_up_a_flight_of_steps_every_jump_clears_the_next_edge(game, run):
     assert not game.errors, game.errors
 
 
-@pytest.mark.realtime
 @pytest.mark.parametrize("how", ["jump", "walk", "tunnel"])
 def test_off_a_high_ledge_the_fall_is_smooth_on_the_screen(game, how):
     """"weird issues when jumping from high heights": off a ledge six high, running with the jump key or walking off it,
@@ -118,7 +115,6 @@ def test_off_a_high_ledge_the_fall_is_smooth_on_the_screen(game, how):
     assert not game.errors, game.errors
 
 
-@pytest.mark.realtime
 def test_walking_off_a_high_ledge_into_water_the_jump_s_fall_takes_you_down(game):
     """Off a ledge six high into a pond: the jump's own fall (leap.js ledge), the world with you. It was left to the old
     fall, which drew nothing (the body 60 px down the screen in a frame), and the world waited at the edge a second for
@@ -153,7 +149,6 @@ def test_walking_off_a_high_ledge_into_water_the_jump_s_fall_takes_you_down(game
     assert game.server()["swimming"] and not game.errors, game.errors
 
 
-@pytest.mark.realtime
 @pytest.mark.parametrize("prof", ["hill", "stairs"])
 def test_running_uphill_with_the_jump_key_never_meets_a_step_s_face(game, prof):
     """"sprinting uphill still do the same issue as before": running up a hill of uneven steps (or a flight a tile deep)

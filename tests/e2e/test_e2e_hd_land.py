@@ -47,7 +47,6 @@ AT_ = """([x, y, z]) => { const p = HdLook.screenOf(x, y, z), k = cv.width / inn
   return Array.from(HdLook.read(Math.round(p[0] * k), Math.round(p[1] * k), 1, 1).data).slice(0, 3); }"""
 
 
-@pytest.mark.realtime
 def test_a_cliff_throws_its_shadow_on_the_low_land_away_from_the_sun(browser, server):
     g = hd(browser, server)
     x, y = g.pos()
@@ -74,7 +73,6 @@ def test_a_cliff_throws_its_shadow_on_the_low_land_away_from_the_sun(browser, se
     assert not g.js(f"HdSun.landAt({x - 3}, {y - 3}) || HdSun.landAt({x + 3}, {y - 3})")      # none at night
 
 
-@pytest.mark.realtime
 def test_under_a_roof_an_xray_window_shows_your_floor_and_every_px_outside_it_is_the_whole_land_s(browser, server):
     g = hd(browser, server)
     g.js("setOpt('clouds', 0); setOpt('rays', 0); setOpt('shimmer', 0)")
@@ -154,7 +152,6 @@ FEET = """(() => { window.__d = []; window.__on = true; const f = () => { const 
   __d.push([Math.round(p.x), HdLook.cam.pitch]); if (__on) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; })()"""
 
 
-@pytest.mark.realtime
 def test_walking_into_a_trench_the_eye_tips_once(browser, server):
     """(the owner: "when entering the stairs down, the game think the player is still out of it so it gets no xray, a lil delay".) Walking from the meadow into a trench two deep the eye
     tips to look from above, once, one way, as soon as your feet are two under the land round you: no frame goes back up."""
@@ -179,7 +176,6 @@ def test_walking_into_a_trench_the_eye_tips_once(browser, server):
     assert first <= x + 3, (first, x)                                 # (not before the trench)
 
 
-@pytest.mark.realtime
 def test_deep_in_a_room_the_eye_is_steep_land_fills_the_screen_and_others_are_at_your_level(browser, server):
     for w, h, touch, zoom in ((1440, 900, False, 3), (390, 844, True, 2), (844, 390, True, 2)):
         ctx = browser.new_context(viewport={"width": w, "height": h}, device_scale_factor=3 if touch else 2, has_touch=touch, is_mobile=touch)

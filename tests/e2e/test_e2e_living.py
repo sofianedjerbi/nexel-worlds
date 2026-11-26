@@ -20,7 +20,6 @@ def test_eating_takes_three_bites_and_stops_when_full(game):
         assert "full" in game.toast()
 
 
-@pytest.mark.realtime
 def test_eating_your_hands_are_full(game):
     """While you eat you can walk, nothing else: X on a tree beside you asks for nothing and shows no swing, F
     picks nothing up, and the tree stands; once it is eaten the same keys work. (A player chopped and punched with
@@ -62,7 +61,6 @@ def test_eating_your_hands_are_full(game):
 SETTLED = "!walking && !pred && (() => { const p = ents.get('agent' + myId); return !!p && p.e.x === Math.round(p.x) && p.e.y === Math.round(p.y); })()"   # (the walk over, and the world come to where you are)
 
 
-@pytest.mark.realtime
 def test_you_eat_while_you_walk(game):
     """Eating is done with the hands: E on the move doesn't stop you, the bites show on a walking you (to others
     too), and setting off doesn't end a meal begun standing. (You stood still for every bite.)"""
@@ -211,7 +209,6 @@ def test_loot_next_to_you_comes_to_you(game):
     assert game.inv("meat") == 1 and game.pos() == (x, y)
 
 
-@pytest.mark.realtime
 def test_ten_hearts_and_ten_pieces_in_halves_and_no_sprint_when_hungry(game):
     """Health is 20 half hearts and food 20 half pieces (they were 0 to 100): the bar shows them a half at a time, a
     blow is said in hearts, and with three pieces of food or fewer the Shift key does not sprint."""
