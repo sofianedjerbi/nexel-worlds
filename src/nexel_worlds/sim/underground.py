@@ -63,7 +63,7 @@ class Underground:
             return self.take_block(a, x, y, z, self.held(a, args))
         if not self.world.solid(x, y, z):
             raise ActionError("bad_target", f"nothing over your head to dig. For a step up: dig the block in front of you at "
-                                            f"your head's height (dig with dir and z={z}), then jump onto the block under it")
+                                            f"your head's height (dig with dir and z={z}), then jump onto the block under it", why="nothing_overhead")
         return self._lower(a, x, y, z, self.pickaxe(a, args), inside=True)
 
     def take_land(self, a: Agent, x: int, y: int, z: int, cause: str = "dig", keep: bool = True) -> str:

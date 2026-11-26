@@ -150,16 +150,16 @@ class Storeys:
         """Stand a thing of the pack on the built block at (x, y, z)."""
         block = PLACEABLE.get(item)
         if block not in UPSTAIRS:
-            raise ActionError("bad_target", f"a {item.replace('_', ' ')} needs the ground under it")
+            raise ActionError("bad_target", f"a {item.replace('_', ' ')} needs the ground under it", why="needs_ground", item=item)
         if not a.count(item):
             raise ActionError("missing_item", f"you have no {item}", item=item, have=0)
         self.reach(a, x, y, z=z)
         for again in (False, True):
             cell = self.floors.get(x, y, z)
             if cell is None or self.world.solid(x, y, z + 1) or cell[0] == "stairs":
-                raise ActionError("bad_target", "there is no floor there to stand it on")
+                raise ActionError("bad_target", "there is no floor there to stand it on", why="no_floor")
             if block == "ladder" and not self.leans(x, y, z):
-                raise ActionError("bad_target", "a ladder goes against something taller beside it")
+                raise ActionError("bad_target", "a ladder goes against something taller beside it", why="no_lean")
             if cell[1] != "none":
                 raise ActionError("occupied", f"there is a {cell[1].replace('_', ' ')} there", on=cell[1])
             if BLOCKS[B[block]].solid and any(self.height(b) == z for b in self.bodies_on(x, y)):
@@ -175,7 +175,7 @@ class Storeys:
         """Take back what is built at height z of the tile: what stands on the block first, then the block."""
         cell = self.floors.get(x, y, z)
         if cell is None:
-            raise ActionError("bad_target", "nothing is built there")
+            raise ActionError("bad_target", "nothing is built there", why="nothing_built")
         self.reach(a, x, y, z=z)
         kind, thing = cell
         if kind == "stairs":
@@ -195,7 +195,7 @@ class Storeys:
             if self.floors.get(x, y, z) != cell:
                 raise ActionError("changed", "something changed there")
             if self.world.solid(x, y, z + 1):
-                raise ActionError("bad_target", "take the block on top of it first")
+                raise ActionError("bad_target", "take the block on top of it first", why="block_on_top")
             if not again:
                 yield from self.wait(a, 0.3)
         a.add(kind)
@@ -208,7 +208,7 @@ class Storeys:
         for again in (False, True):
             top = self.world.top(x, y)
             if self.world.col(x, y) != col_solid(top) or top >= HIGH:
-                raise ActionError("bad_target", "earth goes on open ground")
+                raise ActionError("bad_target", "earth goes on open ground", why="not_open_ground")
             if self.world.block(x, y) not in ("none", "flower"):
                 raise ActionError("occupied", f"there is a {self.world.block(x, y).replace('_', ' ')} there", on=self.world.block(x, y))
             if self.bodies_on(x, y):
@@ -235,7 +235,7 @@ class Storeys:
             if not LOW < z <= HIGH or w.solid(x, y, z) or self.floors.get(x, y, z) is not None:
                 raise ActionError("occupied", "that cell is not empty", on="thing")
             if not any(w.solid(x + i, y + j, z + k) or self.floors.get(x + i, y + j, z + k) is not None for i, j, k in near):
-                raise ActionError("bad_target", "a block goes against something solid: the ground, a wall, another block")
+                raise ActionError("bad_target", "a block goes against something solid: the ground, a wall, another block", why="no_support")
             if z == w.top(x, y) + 1 and (w.block(x, y) != "none" or w.ground(x, y) not in T.LAND):
                 raise ActionError("occupied", "something is on that ground (or it is water: place without z fills it)", on="thing")
             if any(self.height(b) < z <= self.height(b) + 2 for b in self.bodies_on(x, y)):
@@ -265,7 +265,7 @@ class Storeys:
         s = self.surface(a, x, y, args.get("z"))         # (the height it is about: named, or the ground nearest your own)
         on_land = self.floors.get(x, y, s) is None       # ...which is the land's own, not a built block
         if item == "ladder" and on_land and not self.leans(x, y, s):
-            raise ActionError("bad_target", "a ladder goes against something taller beside it")
+            raise ActionError("bad_target", "a ladder goes against something taller beside it", why="no_lean")
         if item in EARTH:
             if not a.count(item):
                 raise ActionError("missing_item", f"you have no {item}", item=item, have=0)
@@ -294,5 +294,5 @@ class Storeys:
         x, y = self.target(a, args, flat=True)
         z = min((c for c in self.floors.at.get((x, y), {}) if c > self.height(a)), default=None)
         if z is None:
-            raise ActionError("bad_target", "nothing is built over that tile")
+            raise ActionError("bad_target", "nothing is built over that tile", why="nothing_built")
         return (yield from self.take_block(a, x, y, z, self.held(a, args)))

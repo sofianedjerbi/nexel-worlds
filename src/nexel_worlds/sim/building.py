@@ -148,7 +148,7 @@ class Building:
             if b != "none":
                 raise ActionError("occupied", f"{args.get('dir') or 'that tile'} has {b}", on=b)
             if g not in options:
-                raise ActionError("bad_target", f"{item} goes on {', '.join(sorted(options))}, not {g}")
+                raise ActionError("bad_target", f"{item} goes on {', '.join(sorted(options))}, not {g}", why="wrong_ground", item=item, ground=g, goes_on=sorted(options))
             yield from self.wait(a, 0.3)
             if self.world.ground(x, y) != g or self.world.block(x, y) not in ("none", "flower"):
                 raise ActionError("changed", "the tile changed")
@@ -168,11 +168,11 @@ class Building:
             raise ActionError("occupied", f"{args.get('dir') or 'that tile'} has {b}", on=b)
         if block == "boat":
             if g not in T.DEPTH:
-                raise ActionError("bad_target", "boats go on water next to you")
+                raise ActionError("bad_target", "boats go on water next to you", why="boat_water")
         elif not GROUNDS[T.G[g]].walkable:
-            raise ActionError("bad_target", f"cannot place on {g}")
+            raise ActionError("bad_target", f"cannot place on {g}", why="cannot_place_on", ground=g)
         if item == "seed" and g not in T.SEED_GROUNDS:
-            raise ActionError("bad_target", "seeds only grow in tilled soil (dig the ground first)")
+            raise ActionError("bad_target", "seeds only grow in tilled soil (dig the ground first)", why="seed_soil")
         if BLOCKS[T.B[block]].solid and self.entity_at(x, y):
             raise ActionError("occupied", "someone is standing there", on="body")
         yield from self.wait(a, 0.3)
@@ -204,7 +204,7 @@ class Building:
                 raise ActionError("cliff_edge", f"the {block.replace('_', ' ')} has to stand on one level, clear of the edge")
             g = GROUNDS[self.world.get(tx, ty)[0]]
             if not g.walkable or g.liquid:
-                raise ActionError("bad_target", f"{block.replace('_', ' ')} needs dry land ({tx},{ty} is {g.name})")
+                raise ActionError("bad_target", f"{block.replace('_', ' ')} needs dry land ({tx},{ty} is {g.name})", why="needs_dry", item=block, ground=g.name)
             if self.world.block(tx, ty) not in ("none", "flower"):
                 raise ActionError("occupied", f"({tx},{ty}) has {self.world.block(tx, ty)}", on=self.world.block(tx, ty))
             if BLOCKS[T.B[block]].solid and self.entity_at(tx, ty):
