@@ -16,6 +16,7 @@ from waits import ANSWERED, MADE, QUIET, Waits
 
 
 SERVER_LOG = None        # the test server's log (conftest.py)
+HOURED = set()           # the tests whose first page has set the hour (Game.join): a test's later pages leave it
 _names = itertools.count(1)
 # what the tests on this worker's world laid out (dev_stamp, dev_col): [x0, y0, x1, y1] boxes, for the next HD test to lay
 # its place out again over them (test_e2e_hd_sun.py hd)
@@ -82,11 +83,12 @@ class Game(Waits):
                 said = [ln[:200] for ln in lines if name in ln or "Traceback" in ln or "ERROR" in ln or "Error" in ln][-12:] + ["...the log's end:"] + [ln[:160] for ln in lines[-14:]]
             raise AssertionError(f"{name} did not get in: {state}; page errors: {self.errors}; server: {said}") from e
         self.js(clock.DAY)
-        # (morning, but not a day on: dev_time only goes forward, so a second page joining moments after the first set
-        # .3 sent the world on to tomorrow's .3, 12000 ticks, mid-test: a Nyxwing summoned 4 s before had come 1199.6 s ago
-        # for the late page. Already just past .3, the world is left as it is)
-        self.tick(1)                                         # (the world's own clock: the page's is .3 till its first tick)
-        if not self.js("clock.phase >= .3 && clock.phase < .33"):
+        # (morning, set by the test's first page only: dev_time only goes forward, so a second page of the same test set it
+        # again and sent the world on to tomorrow's .3, 12000 ticks, mid-test: a Nyxwing summoned 4 s before had come 1199.6 s
+        # ago for the late page. Whatever hour the test is at, its later pages leave the world's day as it is)
+        test = os.environ.get("PYTEST_CURRENT_TEST", "").split(" ")[0]
+        if test not in HOURED:
+            HOURED.add(test)
             self.rpc("dev_time", phase=.3)
         # (awake: the land there and drawn; and the picture all there, not still coming in over the first screen's: that
         # takes 0.7 s, and a test that looked at the canvas's animations meanwhile counted it with its own)
