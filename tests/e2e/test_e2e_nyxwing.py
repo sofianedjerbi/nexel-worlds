@@ -37,7 +37,7 @@ def test_nyxwing_comes_down_fights_and_breaks_into_stars(game):
     assert not game.errors
 
 
-NYX = "[...ents.values()].find((q) => q.e && q.e.kind === 'nyxwing')"
+NYX = "ents.get('nyxwing{}')"       # (this test's own, by its id: on a full run's server another one may be about, mid-fight)
 
 
 def test_a_player_who_comes_late_sees_its_entrance_where_it_is(game, browser, server):
@@ -45,14 +45,15 @@ def test_a_player_who_comes_late_sees_its_entrance_where_it_is(game, browser, se
     saw it, so it showed them the start of the descent and played the song from its start, out of step with the fight.
     Now the server says how long ago it came (views.py `came`): the late page's entrance began that long ago."""
     game.clear_area(12)
-    game.spawn("nyxwing", 6, 0)
-    game.wait(f"(() => {{ const q = {NYX}; return q && q.e.act === 'arrive' && q.e.came >= 4; }})()", 30000)
+    cid = game.spawn("nyxwing", 6, 0)
+    nyx = NYX.format(cid)
+    game.wait(f"(() => {{ const q = {nyx}; return q && q.e.act === 'arrive' && q.e.came >= 4; }})()", 30000)
     x, y = game.pos()
     late = open_game(browser, server)
     try:
         late.rpc("dev_teleport", x=x, y=y + 1)
-        late.wait(f"(() => {{ const q = {NYX}; return q && Nyx.began(q.e) !== undefined; }})()", 15000)
-        ago, came, act = late.js(f"(() => {{ const q = {NYX}; return [(performance.now() - Nyx.began(q.e)) / 1000, q.e.came, q.e.act]; }})()")
+        late.wait(f"(() => {{ const q = {nyx}; return q && Nyx.began(q.e) !== undefined; }})()", 15000)
+        ago, came, act = late.js(f"(() => {{ const q = {nyx}; return [(performance.now() - Nyx.began(q.e)) / 1000, q.e.came, q.e.act]; }})()")
         assert came >= 4 and abs(ago - came) < .6, (ago, came, act)     # (it was the time since this page first saw it: about 0)
         assert not late.errors, late.errors
     finally:
