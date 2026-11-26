@@ -89,7 +89,7 @@ def test_no_px_is_drawn_from_a_paint_that_is_not_there_on_ten_walks_down_the_sta
                     if g.js(done):
                         break
                     g.page.keyboard.press("Space")
-                    g.page.wait_for_timeout(100)
+                    g.frames(1)                                                  # (a press a frame drawn, not one every 100 ms of the machine's: #47)
             g.wait(done, timeout=20000)
             g.page.keyboard.up(key)
     n, raw = g.js("(() => { __on = false; return [__n, __raw]; })()")
@@ -102,7 +102,7 @@ def test_no_px_is_drawn_from_a_paint_that_is_not_there_on_ten_walks_down_the_sta
     spot = [x - 4.5, y + 2.5, 0]
     grass = g.js(PX, spot)
     g.js("HdLook.blank()")
-    g.frames(3)
+    g.wait("HdLook.raw() > 1000", timeout=8000)                                  # (the lost paints drawn: what the counter sees, not three frames)
     lost = g.js(PX, spot)
     assert g.js("HdLook.raw()") > 1000, g.js("HdLook.raw()")
     assert grass[1] > grass[0] and not (lost[0] > lost[1] + 12), (grass, lost)   # (it was (107, 82, 64) whatever the land)

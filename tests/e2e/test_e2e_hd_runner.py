@@ -43,7 +43,9 @@ def test_a_running_creature_is_drawn_on_every_frame_across_meadow_trees_and_a_hi
     # row 6 in one tick, and on a slow runner the page still slid down it as the run along row 6 began: across the hill's
     # corner, a frame drawn at the meadow's level on the hill's tile, {x: 0.87, y: 5.31, g: 3, drawn: 0})
     seen, lost, wrong = run(g, [(i, 3) for i in range(-6, 7)] + [(i, 3) for i in range(6, -7, -1)] + [(-6, 4), (-6, 5)] + [(i, 6) for i in range(-6, 7)] + [(6, 6)] * 4)
-    assert len(seen) > 60, len(seen)
+    # (seen along its path: the tiles it was drawn on, not a count of frames, which a runner drawing a frame a tick halves: #47)
+    tiles = {(round(r["x"]), round(r["y"])) for r in seen}
+    assert len(tiles) >= 24, (len(tiles), len(seen))                         # (of its path's 28: both rows, the turn between them)
     assert {r["g"] for r in seen} >= {0, 3}, "it ran over the hill"
     assert not lost, f"{len(lost)} of {len(seen)} frames in view with no chicken drawn: {lost[:6]}"     # (it was 5 of 265: half a step off the hill's foot)
     assert not wrong, f"{len(wrong)} frames drawn at another level than the ground under it: {wrong[:6]}"
