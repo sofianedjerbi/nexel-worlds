@@ -92,7 +92,7 @@ if (TOUCH) {
   pad.addEventListener("pointerdown", (e) => {
     if (!me || stick) return;
     e.preventDefault(); pad.setPointerCapture(e.pointerId);
-    stick = {id: e.pointerId, x: e.clientX, y: e.clientY, dir: null, t: performance.now(), pinch: fingers.size === 1 && performance.now() - worldAt < PINCH_MS};
+    stick = {id: e.pointerId, x: e.clientX, y: e.clientY, dir: null, t: e.timeStamp, pinch: fingers.size === 1 && e.timeStamp - worldAt < PINCH_MS};   // (the times a finger went down and up: the events' own, not when a busy page got to them)
     if (stick.pinch) { fingers.set(e.pointerId, e); return; }
     base.style.left = knob.style.left = e.clientX + "px"; base.style.top = knob.style.top = e.clientY + "px";
     pad.classList.add("on"); inputMode = "keys";
@@ -119,7 +119,7 @@ if (TOUCH) {
     const s = stick; stick = null; pad.classList.remove("on"); setDir(null, false); fingers.delete(e.pointerId); pinch = null;
     // a short touch that pushed nothing: a tap on the tile under it, as anywhere else on the world (the stick's side is
     // the left of the screen: held upright, no tile left of you could be tapped)
-    if (me && e.type === "pointerup" && !s.pinch && !s.went && performance.now() - s.t < 350) { const q = tileAtScreen(s.x, s.y); if (!q) { /* (the sky: nothing) */ } else if (Build.on) Build.click(q, false); else clickTile(q, "tap"); }      // (a tap: what A does there, else what B does: intent.js clickIntent)
+    if (me && e.type === "pointerup" && !s.pinch && !s.went && e.timeStamp - s.t < 350) { const q = tileAtScreen(s.x, s.y); if (!q) { /* (the sky: nothing) */ } else if (Build.on) Build.click(q, false); else clickTile(q, "tap"); }      // (a tap: what A does there, else what B does: intent.js clickIntent)
   };
   for (const ev of ["pointerup", "pointercancel"]) pad.addEventListener(ev, release);
 
@@ -145,7 +145,7 @@ if (TOUCH) {
 
   cv.addEventListener("pointerdown", (e) => {
     if (e.pointerType !== "touch") return;
-    fingers.set(e.pointerId, e); worldAt = performance.now();
+    fingers.set(e.pointerId, e); worldAt = e.timeStamp;
     if (stick && !stick.pinch && !stick.dir && worldAt - stick.t < PINCH_MS) { stick.pinch = true; pad.classList.remove("on"); fingers.set(stick.id, {clientX: stick.x, clientY: stick.y}); }
   });
   cv.addEventListener("pointermove", pinched);
