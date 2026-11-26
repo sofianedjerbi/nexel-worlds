@@ -84,6 +84,7 @@ def test_a_creature_killed_flashes_white_and_lifts_before_it_is_gone(browser, se
     g.rest()
     g.js(DYING, [x + 1, y, 0])
     g.wait("__dy.length >= 3", 8000)                     # (frames of it alive first: what white and lifted are measured from)
+    n0 = g.js("__dy.length")                             # (those before the first blow: a blow flashes it white too, characters.js, 120 ms)
     for _ in range(40):
         if not g.js(f"ents.has('cow{cow}')"):
             break
@@ -92,7 +93,7 @@ def test_a_creature_killed_flashes_white_and_lifts_before_it_is_gone(browser, se
     # (its dying over, begun and gone (effects.js dying), not 0.9 s of the machine's: #47)
     g.wait("__dy.some((q) => q[0]) && dying.length === 0", 10000)
     r = g.js("(() => { __on = false; return __dy; })()")
-    alive = [q for q in r if not q[0]][:10]
+    alive = [q for q in r[:n0] if not q[0]]                # (untouched: the first ten frames on a runner's 100 ms frames held a blow's flash, white 1830)
     dying = [q for q in r if q[0]]
     assert len(dying) >= 5, (len(r), len(dying))
     white0, body0 = max(q[1] for q in alive), min(q[2] for q in alive)
