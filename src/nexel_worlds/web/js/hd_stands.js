@@ -10,7 +10,7 @@ const HdStands = (K) => {
   function stands(F) {
     const {p, tx, ty, L, Lf, w, h, now, dt, list, roof, wet, H0, fill, until} = F;
     let {left, nw} = F;
-    const {api, eng, ent, seen, solidAt, south, sprs, standAt, thing, topAt, warm, R, gen, EDGE, byY} = K;
+    const {api, eng, ent, seen, solidAt, south, sprs, standAt, thing, topAt, warm, R, gen, EDGE, byY, cutOff, winMap, winRect} = K;
     const stood = (c, x, y, z, gh, m) => {      // a thing that stands: furniture as its card (hd_things.js: px for px, its top leaning with where it is on the screen), the rest a billboard
       if (c === "l") { const k = [x, y, z, landVer, Floors.ver].join(), ln = Climb.lean(x, y, z); let lc = lads.get(k); if (!lc) { if (lads.size > 60) lads.clear(); const LH = Math.ceil((shOf(ln ? ln.top - z : 2) + 48) / 16) * 16, R0 = LH - 32, a = HdThings.painted(48, LH, () => Climb.drawLadder(x, y, z, (X) => 16 + (X - x) * 16, (Y) => R0 + (Y - y) * 16 + shOf(z), 16, 1)); lc = document.createElement("canvas"); lc.width = 48; lc.height = LH;
         const q = lc.getContext("2d"); q.drawImage(a, 0, 0, 48, R0 - 10, 0, 12, 48, R0 - 10); q.drawImage(a, 0, R0 + 2, 48, LH - R0 - 2, 0, R0 + 2, 48, LH - R0 - 2); lads.set(k, lc); }   // (the game's picture of it runs 12 px on, a tile's depth in the classic picture: here it stood over the rim. Three rungs taken out of its middle; its canvas as tall as the wall it leans on: a deep shaft's ladder was cut at 128 px)   // (a ladder: a standing face of the land, a px of it a px of the land's own fronts: as tall as the wall it leans on at any pitch. Upright px for px it stood three tiles over the rim of a shaft)
