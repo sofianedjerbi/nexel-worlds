@@ -4,7 +4,10 @@
 # a try. Never the whole suite (GitHub runs that): one test id, up to n times (10 if not said), stopping at its first red.
 #   tools/e2e_local.sh 'tests/e2e/test_e2e_leap_terrain.py::test_a_jump_that_comes_down_against_a_step_goes_on_up_it[True]' 20
 # Two loops on the Mac at most (CLAUDE.md: keep it usable): two lock slots, and none taken while the load is 8 or more; at nice 10.
-# E2E_RUNNER_LIKE: the CPU slowdown (30: frames ~100-120 ms on an M-series Mac, as the runners'); PYTHON: the interpreter (the worktree's .venv).
+# E2E_RUNNER_LIKE: the page's CPU slowdown (20), on the efficiency cores (taskpolicy -c background): frames ~100 ms, as the
+# runners' 117, and the land made as a runner makes it. (30x on the fast cores drew frames as slow, but made the land so slowly
+# that it was not at rest after 20 s, 1536 tiles to draw: never in 126 CI job logs. A runner is slow in its drawing, not 30x in
+# its JS.) PYTHON: the interpreter (the worktree's .venv).
 set -u
 [ $# -ge 1 ] || { echo "usage: $0 <test id> [n]" >&2; exit 2; }
 id=$1 n=${2:-10}
@@ -24,10 +27,11 @@ echo $$ > "$lock/pid"; echo "$id" > "$lock/what"
 tree() { for c in $(pgrep -P "$1"); do tree "$c"; kill "$c" 2>/dev/null; done; }   # (the test's server and Chrome too: shut, not left running)
 trap 'tree $$; rm -rf "$lock"' EXIT
 trap 'exit 130' INT TERM
+ecores=$(command -v taskpolicy >/dev/null && echo "taskpolicy -c background")   # (macOS: the efficiency cores)
 out=$(mktemp -d)
 red=0
 for k in $(seq 1 "$n"); do
-  E2E_RUNNER_LIKE=${E2E_RUNNER_LIKE:-30} nice -n 10 "$py" -m pytest -m e2e -n 0 -p no:randomly -p no:cacheprovider -q --timeout=300 "$id" > "$out/$k.txt" 2>&1
+  E2E_RUNNER_LIKE=${E2E_RUNNER_LIKE:-20} nice -n 10 $ecores "$py" -m pytest -m e2e -n 0 -p no:randomly -p no:cacheprovider -q --timeout=300 "$id" > "$out/$k.txt" 2>&1
   r=$?
   frame=$(grep -o 'a frame of the game: [0-9]* ms' "$out/$k.txt" | grep -o '[0-9]*')
   if [ $r -eq 0 ]; then echo "run $k: pass (frame ${frame:-?} ms)"; else red=$((red + 1)); echo "run $k: FAIL (frame ${frame:-?} ms): $out/$k.txt"; grep -m1 -E '^E ' "$out/$k.txt" | cut -c1-300; break; fi
