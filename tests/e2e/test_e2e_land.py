@@ -74,7 +74,7 @@ def test_land_coming_in_at_a_sprint_takes_little_of_a_frame(browser, server):
     page.on("pageerror", lambda e: errors.append(str(e)))
     page.goto(f"{server}/?zoom=2&follow=nobody")                 # (a link that follows someone: no first screen, the world's own land; no one by that name: the view stays at its middle)
     page.wait_for_function("typeof TitleScene !== 'undefined' && !TitleScene.on && blocks.size > 0 && !arrivingNow", timeout=20000)
-    page.wait_for_function("dirtyTiles.length === 0 && [...blocks.values()].every((b) => Voxels.made(b))", timeout=20000)   # (the land round you made, not 1.5 s)
+    page.wait_for_timeout(1500)                                  # (a settle only: what is measured is the glide's, six seconds AND 66 frames. "Every block made" never came: blocks holds far land, made only when it is in view)
     # (a frame's ms measure the machine as much as the code, README.md rule 6: with three browsers at work the 99th
     # frame in a hundred took 8.2 to 11 ms, one whole run in four. The best of three glides, each on into new land;
     # one is enough on a quiet machine)
