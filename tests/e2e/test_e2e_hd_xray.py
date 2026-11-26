@@ -3,6 +3,10 @@ the window is your WHOLE space, a cave's every branch as far as the screen goes 
 in whole art px, no checker (HdLook.edge "B": the kept land's last 3 px over your space in solid steps of opacity); under the open sky no dark arc at its top (a gorge's far cliff); a pit's floor shaded by its own walls, no
 flat squares of corner shade; down a passage a level floor has no band across it, a step up shows its riser, a step down its lip."""
 
+import base64
+import os
+from pathlib import Path
+
 from test_e2e_hd_sun import LIGHT, hd
 from test_e2e_hd_window import PX
 
@@ -20,6 +24,26 @@ SCR = "(([x, y, z]) => HdLook.screenOf(x, y, z))"
 ROWS = """async ([e, x0, y0, x1, y1]) => { HdLook.edge = e; const frame = () => new Promise(requestAnimationFrame); for (let i = 0; i < 4; i++) await frame();
   const k = devicePixelRatio, z = zoom, out = []; for (let y = Math.round(y0 / z) * z + z / 2; y < y1; y += z) { const r = []; for (let x = Math.round(x0 / z) * z + z / 2; x < x1; x += z) r.push([...HdLook.read(Math.round(x * k), Math.round(y * k), 1, 1).data.slice(0, 3)]); out.push(r); }
   HdLook.edge = "B"; for (let i = 0; i < 3; i++) await frame(); return out; }"""
+# the whole picture with the window and without it, as PNG data URLs (kept in the run's shots when the gorge's arc is
+# seen: #138, an arc drawn on some runs only, not by land changing between the pictures)
+PICS = """async () => { const frame = () => new Promise(requestAnimationFrame), W = cv.width, H = cv.height, out = [];
+  for (const off of [false, true]) { HdLook.nowin = off; for (let i = 0; i < 90 && (HdLook.win.a !== (off ? 0 : 1) || HdLook.busy); i++) await frame(); for (let i = 0; i < 4; i++) await frame();
+    const d = HdLook.read(0, 0, W, H).data, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'), im = x.createImageData(W, H);
+    im.data.set(d); for (let i = 3; i < d.length; i += 4) im.data[i] = 255; x.putImageData(im, 0, 0); out.push(c.toDataURL('image/png')); }
+  HdLook.nowin = false; return out; }"""
+
+
+def keep(g, name, info):
+    """The pictures with the window and without, and what was seen, into the run's shots (E2E_SHOTS) for the artifact."""
+    if not os.environ.get("E2E_SHOTS"):
+        return
+    out = Path(os.environ["E2E_SHOTS"]) / name
+    out.mkdir(parents=True, exist_ok=True)
+    for view, url in zip(("window", "no_window"), g.js(PICS), strict=True):
+        (out / f"{view}.png").write_bytes(base64.b64decode(url.split(",", 1)[1]))
+    (out / "info.txt").write_text(repr(info))
+
+
 calm = lambda g: [g.hour(.3, still=True)] + [g.js(f"setOpt('{o}', 0)") for o in ("clouds", "rays", "shimmer")]
 far = lambda a, b: sum(abs(p - q) for p, q in zip(a, b))
 lum = lambda c: .3 * c[0] + .59 * c[1] + .11 * c[2]
@@ -109,6 +133,9 @@ def test_in_a_gorge_the_window_has_no_dark_arc_at_its_top(browser, server):
     px = [d[4 * (r * W + c):4 * (r * W + c) + 3] for r, row in enumerate(ch) for c, v in enumerate(row) if v == "1" and 4 * (r * W + c) + 3 <= len(d)]
     brown = [c for c in px if c[0] > c[2] + 25 and c[0] > c[1] and lum(c) < 110]
     black = [c for c in px if lum(c) < 40]
+    if not (len(brown) < 20 and len(black) < 40):
+        keep(g, "gorge_arc", {"box": [a, b], "k": k, "brown": len(brown), "black": len(black), "rows_changed": sum(r.count("1") for r in ch),
+                              "state": g.js("[HdLook.win, HdLook.busy, HdLook.why, clock.phase]")})
     assert len(brown) < 20 and len(black) < 40, (len(brown), len(black), brown[:5], black[:5])
 
 
