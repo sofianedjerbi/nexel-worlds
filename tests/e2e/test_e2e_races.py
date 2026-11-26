@@ -121,10 +121,14 @@ def test_a_sword_cuts_across_and_a_spear_is_thrust(game):
         for way, (dx, dy) in {"down": (0, 1), "up": (0, -1), "right": (1, 0), "left": (-1, 0)}.items():
             game.face(dx, dy)
             for f in range(6):
-                drawn = game.js(f"""new Promise((done) => {{ const p = ents.get('agent' + myId), P = CanvasRenderingContext2D.prototype, d0 = P.drawImage, out = [];
+                # (what your body's picture is drawn from, frame by frame. The HD look draws a body on a canvas of its own through
+                # hd_level.js drawsOf, which keeps that context's own drawImage: a hook on the prototype saw none of it, "[]")
+                drawn = game.js(f"""new Promise((done) => {{ const p = ents.get('agent' + myId), H = HdLevel, D0 = H.drawsOf, out = [];
                   p.fx = {dx}; p.fy = {dy}; p.swing = {{get t0() {{ return performance.now() - {f * 50 + 45}; }}, with: '{kind}'}};
-                  P.drawImage = function (img, ...r) {{ if (r.length === 8 && r[2] === 48 && r[3] === 48 && (img.height === 192 || img.height > 1000)) out.push([img.height, r[0] / 48, r[1] / 48]); return d0.call(this, img, ...r); }};
-                  requestAnimationFrame(() => requestAnimationFrame(() => {{ P.drawImage = d0; done(out); }})); }})""")
+                  H.drawsOf = function (c, g, draw) {{ if (!g._kept) return D0.call(this, c, g, draw); const own = g.drawImage;
+                    g.drawImage = function (img, ...r) {{ if (r.length === 8 && r[2] === 48 && r[3] === 48 && (img.height === 192 || img.height > 1000)) out.push([img.height, r[0] / 48, r[1] / 48]); return own.call(this, img, ...r); }};
+                    try {{ return D0.call(this, c, g, draw); }} finally {{ g.drawImage = own; }} }};
+                  let n = 0; const f = () => {{ if (out.some(([h]) => h > 1000) || ++n > 30) {{ H.drawsOf = D0; done(out); }} else requestAnimationFrame(f); }}; requestAnimationFrame(f); }})""")   # (until a frame has drawn you)
                 row = {"down": 0, "up": 1, "right": 2, "left": 3}[way]
                 assert [192, f, row] in drawn, (kind, way, f, drawn)                   # the weapon's frame, for the way faced
                 assert any(h > 1000 and r == row for h, c, r in drawn), drawn          # over the standing body, not the chop

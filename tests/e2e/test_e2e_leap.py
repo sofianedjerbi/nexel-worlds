@@ -10,11 +10,11 @@ import pytest
 pytestmark = pytest.mark.e2e
 
 # every frame drawn: [ms, x, y, body over the level drawn from (art px), pose, the level drawn from, the world's x, its z, feet on the screen (art px), a fixed place of the land (art px), your level, the land's top there, the eye's pitch,
-#  the tile you are going to (x, y), how far ahead of the world you are (tiles: walk.js leadOf), which jump (the hop's start, the step's key, in the air)]
+#  the tile you are going to (x, y), how far ahead of the world you are (tiles: walk.js leadOf; in the air, from the tile the world has you on), which jump (the hop's start, the step's key, in the air)]
 FRAMES = """([ox, oy, oz]) => { window.__fr = []; window.__frOn = true; if (!window.__frHook) { window.__frHook = true; const show = HdView.show;
   HdView.show = (...A) => { const r = show(...A); if (window.__frOn) { const p = ents.get('agent' + myId), lv = HdLook.level, a = HdLook.art(); if (p && a) {
     const now = lastT, j = jumping(p, now), b = HdLook.screenOf(p.x + .5, p.y + .5, lv[2]), o = HdLook.screenOf(window.__o[0] + .5, window.__o[1] + .5, window.__o[2]);
-    __fr.push([now, p.x, p.y, j ? Math.round(j.body) : 0, j && j.pose || '', lv[2], p.e.x, p.e.z, Math.round(b[1] / a.u) - (j ? Math.round(j.body) : 0), o[1] / a.u, myAt ? myAt.z : null, topAt(Math.round(p.x), Math.round(p.y)), HdLook.cam.pitch, p.tx, p.ty, walking ? leadOf(p, now) : 0, (() => { const s = BodyPlace.state(p), q = jumpOf(p); return s.hop + '/' + (q ? q.key : '') + '/' + !!Leap.state; })()]); } } return r; }; }
+    __fr.push([now, p.x, p.y, j ? Math.round(j.body) : 0, j && j.pose || '', lv[2], p.e.x, p.e.z, Math.round(b[1] / a.u) - (j ? Math.round(j.body) : 0), o[1] / a.u, myAt ? myAt.z : null, topAt(Math.round(p.x), Math.round(p.y)), HdLook.cam.pitch, p.tx, p.ty, walking ? leadOf(p, now) : Math.abs(p.x - p.e.x) + Math.abs(p.y - p.e.y), (() => { const s = BodyPlace.state(p), q = jumpOf(p); return s.hop + '/' + (q ? q.key : '') + '/' + !!Leap.state; })()]); } } return r; }; }
   window.__o = [ox, oy, oz]; return 1; }"""
 
 
@@ -57,7 +57,13 @@ def test_sprinting_down_six_steps_is_smooth_and_never_put_back(game):
     game.stamp(-1, -1, ["." * 12] * 3, levels=["665432100000"] * 3)
     game.rpc("dev_teleport", x=game.pos()[0], y=game.pos()[1], z=6); game.arrive(); game.face(1, 0)
     x, _ = game.pos()
-    rec = frames(game, lambda: game.hold(["Shift", "d"], 1300), z0=6)
+    def run_down():     # (held until at the foot and on, x + 9: not for a time, which a loaded runner's game runs behind)
+        for k in ("Shift", "d"):
+            game.page.keyboard.down(k)
+        game.wait(f"ents.get('agent' + myId).x >= {x + 9}", 6000)
+        for k in ("d", "Shift"):
+            game.page.keyboard.up(k)
+    rec = frames(game, run_down, z0=6)
     smooth(rec)
     assert game.server()["z"] == 0 and game.pos()[0] >= x + 8, game.server()
     agree(game)
@@ -183,7 +189,15 @@ def test_sprinting_over_steps_up_and_down_keeps_its_speed(game):
     game.stamp(-1, -1, ["." * 22] * 3, levels=["0001111000110000111000"] * 3)
     x, _ = game.pos()
     game.face(1, 0)
-    rec = frames(game, lambda: game.hold(["Shift", "d"], 1900))
+    # (the keys held until you are past the course's end, x + 19, not for a time: a loaded runner's game runs behind its
+    # clock, and keys let go at 1.9 s of it stopped you on the course, read as speed lost)
+    def run_over():
+        for k in ("Shift", "d"):
+            game.page.keyboard.down(k)
+        game.wait(f"ents.get('agent' + myId).x >= {x + 19}", 8000)
+        for k in ("d", "Shift"):
+            game.page.keyboard.up(k)
+    rec = frames(game, run_over)
     run = [r for r in rec if x + 1 <= r[1] <= x + 18]
     # (over three frames, a twentieth of a second: one frame of a landing went 0.132 of a tile in 16.6 ms, 7.96 tiles a
     # second against 8, one run in six: the body put back on its way as it comes down, not a speed that is lost. Where
@@ -204,7 +218,7 @@ def test_sprinting_over_steps_up_and_down_keeps_its_speed(game):
             continue
         b = run[j]
         v = (b[1] - a[1]) / (game_ms[id(b)] - game_ms[id(a)]) * 1000
-        assert v >= 8, ("slowed", round(v, 1), [(round(game_ms[id(r)]), round(r[1], 2), r[4], round(r[15], 2), r[16]) for r in run[max(0, i - 2):j + 3]])
+        assert v >= 8, ("slowed", round(v, 1), game.js("Leap.landed"), [(round(game_ms[id(r)]), round(r[1], 2), r[4], round(r[15], 2), r[16]) for r in run[max(0, i - 2):j + 3]])
     assert "crouch" not in {r[4] for r in rec} and "rise" in {r[4] for r in rec}
     smooth(rec)
     agree(game)
