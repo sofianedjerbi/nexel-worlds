@@ -226,8 +226,8 @@ def pace(request):
     if "browser" in request.fixturenames:                 # (a page left open is a player left awake in the next test's world: pages.py)
         rep = getattr(request.node, "rep_call", None)
         request.getfixturevalue("browser").shut(failed=bool(rep and rep.failed))
-    if clock.step and "server" in request.fixturenames:  # (a stepped page set the world's pace to its own: set again by the next test)
-        _world_pace.pop(request.getfixturevalue("server"), None)
+    if clock.step and "server" in request.fixturenames:  # (a stepped page set the world's pace to its own, 0.15 on a slow runner: unknown now, so the
+        _world_pace[request.getfixturevalue("server")] = None   # next test sets it whatever its pace, 1 too: dropped, it read as 1 and a test at 1 kept 0.15)
     clock.now, clock.step = 1.0, False
 
 
