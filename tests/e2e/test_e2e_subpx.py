@@ -20,9 +20,11 @@ DPRS = [1, 2, 1.25, 1.75]
 # on the land's pixel, and how many of the bubble's px on the screen (the game's canvas, from the bubble's corner) are not as
 # in the frame before: by more than 24 in a channel (the canvas, read each frame, is drawn by the CPU after a while: its
 # letters' soft px then differ by 1)
-REC = """(name) => { window.__pr = []; let ref = null, mine = null; const f0 = frame, o0 = outlined; window.__prOff = () => { frame = f0; outlined = o0; };
+REC = """(name) => { window.__pr = []; let ref = null, mine = null; const f0 = frame, o0 = outlined, d0 = drawBubbles; let drew = false; window.__prOff = () => { frame = f0; outlined = o0; drawBubbles = d0; };
+  drawBubbles = (...a) => { drew = true; return d0(...a); };   // (a frame the look kept its last picture: no words drawn, b.at as it was: hd.js `held`, `fill`)
   outlined = (text, x, y, c) => { if (text === me) mine = [x, y]; return o0(text, x, y, c); };   // (your own name, where it is written)
-  frame = function (now) { mine = null; f0(now); const p = [...ents.values()].find((q) => q.e && q.e.name === name), b = bubbles.find((b) => b.name === name && b.at); if (!p || !b) return;
+  frame = function (now) { mine = null; drew = false; for (const b of bubbles) if (b.name === name) b.t = performance.now() / 1000 - 2;   // (written out, never fading: a slow runner's walk outlasted its 5 s)
+    f0(now); if (!drew) return; const p = [...ents.values()].find((q) => q.e && q.e.name === name), b = bubbles.find((b) => b.name === name && b.at); if (!p || !b) return;
     const s = HdLook.screenOf(p.x + .5, p.y + .5, HdLook.drawnAt(p) ?? 0); if (!s) return;
     const d = ctx.getImageData(Math.round(b.at[0] * DPR), Math.round(b.at[1] * DPR), Math.round(b.w * DPR), Math.round(b.h * DPR)).data; if (!ref || ref.length !== d.length) ref = d; let off = 0;
     for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - ref[i]) > 24 || Math.abs(d[i + 1] - ref[i + 1]) > 24 || Math.abs(d[i + 2] - ref[i + 2]) > 24 || Math.abs(d[i + 3] - ref[i + 3]) > 24) off++;
@@ -141,6 +143,7 @@ def test_a_bubble_looks_the_same_on_every_step_of_a_walk(browser, server, dpr):
         try:
             for _ in range(6):
                 g.wait(f"[...ents.values()].some((p) => p.e && p.e.name === {other.name!r} && p.x > {x + 2} + {len(shots) * .5})", 10000)
+                g.js(f"(() => {{ for (const b of bubbles) if (b.name === {other.name!r}) b.t = performance.now() / 1000 - 2; return 1; }})()")   # (its age kept: a slow runner's six steps outlasted its 5 s, "no bubble drawn")
                 g.js(FREEZE)
                 g.js(FRAMES, 2)                                                        # (frame() asks for the next one first: that one still draws, the bubble a step on)
                 at = g.js(BUBBLE_AT, other.name)
