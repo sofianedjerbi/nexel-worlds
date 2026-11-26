@@ -170,6 +170,24 @@ jobs:
           path: ${{ runner.temp }}/shots
           if-no-files-found: ignore
 
+  e2e-all:
+    # The one name branch protection can require (#47): each browser job is named by its shard's files, which change
+    # with durations.json and a pull request's changes. Red if the plan or a browser job failed or was cancelled; green
+    # when they ran and passed, or were skipped (no `e2e` label, no browser test affected). While `e2e` is
+    # continue-on-error (#120 takes it out), a failing shard still reads as success here.
+    name: Browser tests (all)
+    needs: [e2e-plan, e2e]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          PLAN: ${{ needs.e2e-plan.result }}
+          E2E: ${{ needs.e2e.result }}
+        run: |
+          echo "plan: $PLAN, browser tests: $E2E"
+          case "$PLAN" in success|skipped) ;; *) exit 1 ;; esac
+          case "$E2E" in success|skipped) ;; *) exit 1 ;; esac
+
   commits:
     name: Conventional Commits
     runs-on: ubuntu-latest
