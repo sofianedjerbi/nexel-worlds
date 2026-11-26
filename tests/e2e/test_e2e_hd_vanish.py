@@ -7,7 +7,7 @@ import pytest
 
 from test_e2e_hd_behind import calm, go
 from test_e2e_hd_sun import hd
-from test_e2e_hd_xray import CHANGED
+from test_e2e_hd_xray import CHANGED   # (the px the window changes, against a second picture without it: what changes by itself not counted)
 
 
 @pytest.mark.realtime

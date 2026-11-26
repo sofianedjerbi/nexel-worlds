@@ -62,12 +62,12 @@ class Climbing:
         if self.floors.get(x, y, h) is not None:
             return (yield from self.put_on(a, x, y, h, LADDER))
         if not a.count(LADDER):
-            raise ActionError("missing_item", "you have no ladder")
+            raise ActionError("missing_item", "you have no ladder", item="ladder", have=0)
         for again in (False, True):
             if h != self.world.level(x, y) or GROUNDS[self.world.get(x, y)[0]].liquid:
                 raise ActionError("bad_target", "a ladder's foot needs the tile's own ground")
             if self.world.block(x, y) not in ("none", "flower"):
-                raise ActionError("occupied", f"there is a {self.world.block(x, y).replace('_', ' ')} where you stand")
+                raise ActionError("occupied", f"there is a {self.world.block(x, y).replace('_', ' ')} where you stand", on=self.world.block(x, y))
             if (a.x, a.y, self.height(a)) != (x, y, h) or not self.leans(x, y, h):
                 raise ActionError("changed", "something changed there")
             if not again:
@@ -126,9 +126,9 @@ class Climbing:
     def lay_stairs(self, a, x, y):
         steps = self.flight(a, x, y)
         if a.count(STAIRS) < len(steps):
-            raise ActionError("missing_item", f"the flight takes {len(steps)} stairs: you have {a.count(STAIRS)}")
+            raise ActionError("missing_item", f"the flight takes {len(steps)} stairs: you have {a.count(STAIRS)}", item=STAIRS, have=a.count(STAIRS), need=len(steps))
         if any(self.bodies_on(sx, sy) for sx, sy, _, _ in steps):
-            raise ActionError("occupied", "someone is standing where the stairs go")
+            raise ActionError("occupied", "someone is standing where the stairs go", on="body")
         yield from self.wait(a, 0.3 * len(steps))
         if self.flight(a, x, y) != steps or a.count(STAIRS) < len(steps):
             raise ActionError("changed", "something changed there")

@@ -20,10 +20,10 @@ class Wear:
         if item not in WEAR:
             raise ActionError("not_wearable", "that is not something to wear")
         if not a.count(item):
-            raise ActionError("missing_item", f"you have no {item}")
+            raise ActionError("missing_item", f"you have no {item}", item=item, have=0)
         yield from self.wait(a, 0.4)
         if not a.count(item):
-            raise ActionError("missing_item", "it's gone")
+            raise ActionError("missing_item", "it's gone", item=item, have=0)
         slot = WEAR[item]
         old = a.worn.get(slot)
         a.add(item, -1)

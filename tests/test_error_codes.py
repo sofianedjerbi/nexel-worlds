@@ -19,6 +19,23 @@ def test_a_tool_missing_is_said_by_its_name_and_whether_you_have_one(world):
     assert "pickaxe" in r["detail"]                                                          # (the agents' words, as they were)
 
 
+def test_an_item_missing_is_said_by_the_item_and_how_many(world):
+    sim, a = world
+    r = run(sim, a, "drop", {"item": "plank", "n": 2})
+    assert (r["error"], r["data"]) == ("missing_item", {"item": "plank", "have": 0, "need": 2}), r
+    a.add("plank", 1)
+    assert run(sim, a, "drop", {"item": "plank", "n": 2})["data"] == {"item": "plank", "have": 1, "need": 2}
+
+
+def test_what_is_in_the_way_is_said_by_what_it_is(world):
+    sim, a = world
+    bob = sim.login("Bob", "tok2")
+    bob.x, bob.y = a.x + 1, a.y
+    a.add("wood_wall", 1)
+    r = run(sim, a, "place", {"dir": "E", "item": "wood_wall"})
+    assert (r["error"], r["data"]) == ("occupied", {"on": "body"}), r
+
+
 def test_what_cannot_be_dug_is_named():
     from nexel_worlds.sim.entities import ActionError, failure
     r = failure(ActionError("cannot_dig", "water cannot be dug", what="water"))
