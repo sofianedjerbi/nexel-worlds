@@ -14,33 +14,34 @@
 // what changed is made again with what is drawn from it (`changed`, `flush`: voxels.js). What is worked out is kept a
 // chunk at a time, made once (`grids`), forgotten only round a tile that changed.
 // Off: none of this; the water is water.js's picture on one face.
-const WaterBed = (() => {
-  const REACH = 2, FAR = 4, SMALL = 12, LOOK = 6, cfg = {clear: false, dark: 4};      // (cfg: the engine's cfg.water; LOOK: how far a tile's change is looked for in the beds)
-  // The tint over a bed, by its depth (0: none; 1 to 3 levels): water.js's own hues, thicker: a pond one level deep is
-  // water at every hour, never a pit of pale sand. BAND: the first row of a wall under water, that much of its colour: a shelf's line, not a box's edge
-  const TINT = [[176, 236, 226, .08], [104, 204, 208, .52], [70, 174, 204, .66], [44, 132, 188, .8]], BAND = .93;
-  let tint = null, wtn = null, pad = null, legs = null, floats = null;      // (floats: the shapes of what floats, water_objects 8, 9, 10, 11, 6, 7, 0: 16 x 16 bytes each, 1 where it is)
+// THE KEPT GRIDS
   // What is worked out, kept a chunk (B x B tiles) at a time in typed arrays, made as it is first asked for and kept
   // until a tile near it changes (not when other land comes: a sprint into new land threw it all away every block):
   // d the bed's depth, r its depth before smoothing, s is that land a piece that only stands in the water (1) or a bank
   // (0), sh the depth it is painted with (-1: none of it, unknown, not painted), w is it water (1, 0; -1 unknown), col its column (an array: the engine's)
-  const grids = new Map(), gk = (bx, by) => bx * 4194304 + by, N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-  let hx = NaN, hy = NaN, hg = null, gi = 0;
-  function G(x, y) {                                            // -> the grid of tile (x, y), its index in gi
+function WaterBedGrid() {
+  const grids = new Map(), gk = (bx, by) => bx * 4194304 + by;
+  let hx = NaN, hy = NaN, hg = null;
+  function G(x, y) {                                            // -> the grid of tile (x, y), its index in G.i
     const bx = Math.floor(x / B), by = Math.floor(y / B);
     if (bx !== hx || by !== hy) { hx = bx; hy = by; hg = grids.get(gk(bx, by)); if (!hg) grids.set(gk(bx, by), hg = {d: new Int8Array(B * B).fill(-1), r: new Int8Array(B * B).fill(-1), s: new Int8Array(B * B).fill(-1), sh: new Int8Array(B * B).fill(-1), w: new Int8Array(B * B).fill(-1), col: new Array(B * B)}); }
-    gi = (y - by * B) * B + (x - bx * B); return hg;
+    G.i = (y - by * B) * B + (x - bx * B); return hg;
   }
-  const pending = [];                                            // tiles drawn again since the last look: x, y, x, y...
+  G.grids = grids; G.gk = gk; G.fresh = () => { hx = NaN; };   // (fresh: the grid last asked for is asked for again: grids were dropped)
+  return G;
+}
+// THE BANKS: is a tile water, does its land only stand in the water, how far is a bank (kept in G's grids)
+function WaterBedBanks(G, {SMALL}) {
+  const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
   const isWater = (x, y) => { const g = gndAt(x, y); return !!g && (wet(g) || g === ":"); };
   // Land that only stands in the water: its piece of land is SMALL tiles or fewer (worked out once a piece: each tile of it is told)
   function stands(x, y) {
     if (!gndAt(x, y) || isWater(x, y)) return false;
-    let g = G(x, y), s = g.s[gi];
+    let g = G(x, y), s = g.s[G.i];
     if (s < 0) {
       const q = [x, y], seen = new Set([(x + 32768) * 65536 + y + 32768]);
       for (let i = 0; i < q.length && q.length <= SMALL * 2; i += 2) for (const [dx, dy] of N4) { const a = q[i] + dx, b = q[i + 1] + dy, k = (a + 32768) * 65536 + b + 32768; if (!seen.has(k) && !isWater(a, b)) { seen.add(k); q.push(a, b); } }
-      s = q.length <= SMALL * 2 ? 1 : 0; for (let i = 0; i < q.length; i += 2) { g = G(q[i], q[i + 1]); g.s[gi] = s; }
+      s = q.length <= SMALL * 2 ? 1 : 0; for (let i = 0; i < q.length; i += 2) { g = G(q[i], q[i + 1]); g.s[G.i] = s; }
     }
     return s === 1;
   }
@@ -50,6 +51,10 @@ const WaterBed = (() => {
     for (let r = 1; r < R; r++) for (let k = -r; k < r; k++) if (land(x + k, y - r) || land(x + r, y + k) || land(x - k, y + r) || land(x - r, y - k)) return r;
     return R;
   }
+  return {isWater, stands, bank, N4};
+}
+// THE BED'S DEPTH: where a water tile's bed lies, by its banks, its kind and the tiles round it (kept in G's grids)
+function WaterBedDepth(cfg, G, {REACH, FAR}, {isWater, bank, N4}) {
   // A tile shallower than the water round it (5 of the 8 deeper): its bed is raised, a mound; it lies as deep as its kind
   // says, the basin's floor and the smoothing do not take it back down (earth put in mid water: the bed rose a level
   // and the picture did not change, the basin is 2 deep wherever it is 2 from a bank; a7 T3)
@@ -68,7 +73,7 @@ const WaterBed = (() => {
     return Math.max(bank(x, y, REACH), own);
   }
   function raw(x, y) {
-    const g = G(x, y), i = gi; let d = g.r[i];
+    const g = G(x, y), i = G.i; let d = g.r[i];
     if (d < 0) g.r[i] = d = rawOf(x, y, gndAt(x, y));
     return d;
   }
@@ -88,7 +93,7 @@ const WaterBed = (() => {
   }
   // A water tile's column under its face: its bed (kept until the land near it changes)
   function bed(x, y) {
-    let g = G(x, y), i = gi, c = g.col[i];
+    let g = G(x, y), i = G.i, c = g.col[i];
     if (!c || g.d[i] < 0) { const d = work(x, y); g = G(x, y); g.d[i] = d; g.col[i] = c = [topAt(x, y) - d]; }
     return c;
   }
@@ -97,23 +102,15 @@ const WaterBed = (() => {
   const would = (x, y, kind) => (cfg.clear && wet(kind) ? work(x, y, kind) : 0);
   function column(x, y) {                                       // (asked for every tile and its neighbours as a chunk's faces are made: is it water, kept)
     if (!cfg.clear) return colAt(x, y);
-    const g = G(x, y); let w = g.w[gi]; if (w < 0) w = g.w[gi] = isWater(x, y) ? 1 : 0;
+    const g = G(x, y); let w = g.w[G.i]; if (w < 0) w = g.w[G.i] = isWater(x, y) ? 1 : 0;
     return w ? bed(x, y) : colAt(x, y);
   }
-  // The bed's paint: water.js's bottom of that depth
-  function paintBed(x, y, z, px, at, stride) {
-    if (!pad) { const c = document.createElement("canvas"); c.width = c.height = 16; pad = c.getContext("2d", {willReadFrequently: true}); }
-    const d = topAt(x, y) - z; G(x, y).sh[gi] = d;
-    bedTile(pad, x, y, Math.max(1, Math.min(4, d)), 0, 0, () => 0, () => false);
-    const img = pad.getImageData(0, 0, 16, 16).data, data = new Uint32Array(img.buffer), f = floatAt(x, y);
-    // what floats on it (tiles.js floatAt: shore water's pads, reeds and rocks) shades the bed: its own shape, a px east, baked
-    // (the bed is drawn a level's px down the picture for each level it lies deep: so is the shade)
-    if (f >= 0) {
-      const on = floats ? floats[f] : null;      // (read once, view: a block of land is made drawing on no canvas)
-      if (on) for (let j = 0; j < 16; j++) for (let i = 0; i < 15; i++) if (on[j * 16 + i]) { const q = (j * 16 + i + 1) * 4; img[q] *= .74; img[q + 1] *= .8; img[q + 2] *= .86; }
-    }
-    for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) px[at + j * stride + i] = data[j * 16 + i] | 0xff000000;
-  }
+  return {isWater, depth, would, column};
+}
+// A TILE CHANGED: the beds near it are looked at again, and what changed is made again (`changed`, `flush`: voxels.js)
+function WaterBedChange(cfg, G, {isWater, depth}, {SMALL, LOOK}) {
+  const grids = G.grids, gk = G.gk;
+  const pending = [];                                            // tiles drawn again since the last look: x, y, x, y...
   // A tile is drawn again: the beds within reach of it may have changed (looked at in `flush`). What is kept of the
   // tile itself is forgotten at once: is it water, its bed. The land is made again from it before the next flush
   // (the HD look's chunk of it at once, hd.js; flush waits for the tiles drawn to run out): else a tile turned to water
@@ -141,11 +138,11 @@ const WaterBed = (() => {
       pending.length = 0;
       for (const [x0, y0, x1, y1] of box.values()) { forget(x0, y0, x1, y1, SMALL, "s"); forget(x0, y0, x1, y1, LOOK, "d"); }
       if (grids.size > 400) for (const k of [...grids.keys()]) { const bx = Math.round(k / 4194304), by = k - bx * 4194304; if (!blocks.has(bkey(bx, by))) grids.delete(k); }      // (chunks gone from the world kept: let go)
-      hx = NaN;
+      G.fresh();
     }
     const t0 = performance.now(), again = new Set();
     while (check.length && performance.now() - t0 < MS) {
-      const y = check.pop(), x = check.pop(), g = G(x, y), i = gi, was = g.sh[i];
+      const y = check.pop(), x = check.pop(), g = G(x, y), i = G.i, was = g.sh[i];
       if (was < 0) continue;
       if (isWater(x, y) && depth(x, y) === was) continue;
       if (!isWater(x, y)) G(x, y).sh[i] = -1;
@@ -153,10 +150,33 @@ const WaterBed = (() => {
     }
     for (const k of again) touch(Math.floor(k / 65536) - 32768, (k % 65536) - 32768);
   }
+  const reset = () => { pending.length = 0; check.length = 0; };   // (the setting turned: nothing is waiting)
+  return {changed, flush, reset};
+}
+// THE PICTURE: the bed's paint, the tint over it (the engine's view.wlook) and a swimmer under the surface
+function WaterBedPaint(cfg, G, {depth}, reset) {
+  // The tint over a bed, by its depth (0: none; 1 to 3 levels): water.js's own hues, thicker: a pond one level deep is
+  // water at every hour, never a pit of pale sand. BAND: the first row of a wall under water, that much of its colour: a shelf's line, not a box's edge
+  const TINT = [[176, 236, 226, .08], [104, 204, 208, .52], [70, 174, 204, .66], [44, 132, 188, .8]], BAND = .93;
+  let tint = null, wtn = null, pad = null, legs = null, floats = null;      // (floats: the shapes of what floats, water_objects 8, 9, 10, 11, 6, 7, 0: 16 x 16 bytes each, 1 where it is)
+  // The bed's paint: water.js's bottom of that depth
+  function paintBed(x, y, z, px, at, stride) {
+    if (!pad) { const c = document.createElement("canvas"); c.width = c.height = 16; pad = c.getContext("2d", {willReadFrequently: true}); }
+    const d = topAt(x, y) - z; G(x, y).sh[G.i] = d;
+    bedTile(pad, x, y, Math.max(1, Math.min(4, d)), 0, 0, () => 0, () => false);
+    const img = pad.getImageData(0, 0, 16, 16).data, data = new Uint32Array(img.buffer), f = floatAt(x, y);
+    // what floats on it (tiles.js floatAt: shore water's pads, reeds and rocks) shades the bed: its own shape, a px east, baked
+    // (the bed is drawn a level's px down the picture for each level it lies deep: so is the shade)
+    if (f >= 0) {
+      const on = floats ? floats[f] : null;      // (read once, view: a block of land is made drawing on no canvas)
+      if (on) for (let j = 0; j < 16; j++) for (let i = 0; i < 15; i++) if (on[j * 16 + i]) { const q = (j * 16 + i + 1) * 4; img[q] *= .74; img[q + 1] *= .8; img[q + 2] *= .86; }
+    }
+    for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) px[at + j * stride + i] = data[j * 16 + i] | 0xff000000;
+  }
   // The setting, each frame: turned on or off, all of the land's faces and paint are made again. -> the engine's view.wlook
   function view(engine, t) {
     const on = !!opt("clearwater");
-    if (on !== cfg.clear) { cfg.clear = on; grids.clear(); hx = NaN; pending.length = 0; check.length = 0; engine.forget(() => false); }
+    if (on !== cfg.clear) { cfg.clear = on; G.grids.clear(); G.fresh(); reset(); engine.forget(() => false); }
     if (!on) return null;
     if (!floats && IMG.water_objects && IMG.water_objects.complete && IMG.water_objects.naturalWidth) {
       const c = document.createElement("canvas"); c.width = 16 * 12; c.height = 16; const g = c.getContext("2d", {willReadFrequently: true}); g.drawImage(IMG.water_objects, 0, 0, 16 * 12, 16, 0, 0, 16 * 12, 16);
@@ -179,5 +199,10 @@ const WaterBed = (() => {
     legs.globalCompositeOperation = "source-atop"; legs.fillStyle = `rgba(${Math.round(r * 255)},${Math.round(g * 255)},${Math.round(bl * 255)},${Math.min(.85, al + .25)})`; legs.fillRect(0, 0, w, h);
     ctx.globalAlpha = Math.max(.25, .8 - .18 * d); ctx.drawImage(legs.canvas, 0, 0, w, h, x, y, w * z, h * z); ctx.globalAlpha = 1;
   }
-  return {cfg, column, paintBed, changed, flush, view, under, depth, would, get on() { return cfg.clear; }};
+  return {paintBed, view, under};
+}
+const WaterBed = (() => {
+  const K = {REACH: 2, FAR: 4, SMALL: 12, LOOK: 6}, cfg = {clear: false, dark: 4};      // (cfg: the engine's cfg.water; LOOK: how far a tile's change is looked for in the beds)
+  const G = WaterBedGrid(), D = WaterBedDepth(cfg, G, K, WaterBedBanks(G, K)), C = WaterBedChange(cfg, G, D, K), P = WaterBedPaint(cfg, G, D, C.reset);
+  return {cfg, column: D.column, paintBed: P.paintBed, changed: C.changed, flush: C.flush, view: P.view, under: P.under, depth: D.depth, would: D.would, get on() { return cfg.clear; }};
 })();
