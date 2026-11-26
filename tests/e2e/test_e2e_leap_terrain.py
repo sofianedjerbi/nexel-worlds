@@ -1,6 +1,8 @@
 """Jumping over the land as it is: up a step and a flight of them, up a hill with the jump key, off a high ledge (web/js/
 leap.js: stairArc, hits, dropDue; the eye, cam). The jump itself: test_e2e_leap.py."""
 
+import json
+
 import pytest
 
 from test_e2e_leap import agree, frames
@@ -32,9 +34,13 @@ def test_a_jump_that_comes_down_against_a_step_goes_on_up_it(game, run):
         game.wait(f"myAt && myAt.z === 1 && myPos().x > {x + 6}", 5000)
         for k in reversed(keys):
             game.page.keyboard.up(k)
+    # (every landing and what it decided, leap.js land: past, bump, can, up, to, room; shown whole, as JSON, when you
+    #  are sent back: which of them sends you to the tile's middle, #162)
+    game.js("""() => { window.__lands = []; let last = null; const f = () => { const l = Leap.landed;
+      if (l && l !== last) { last = l; __lands.push({...l, t: Math.round(lastT)}); } if (window.__lands) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }""")
     rec = frames(game, act)
     back = [(a[:5], b[:5]) for a, b in zip(rec, rec[1:]) if b[1] < a[1] - 1e-3]
-    assert not back, (back, game.js("Leap.landed"))     # (with what its last landing decided: leap.js land)
+    assert not back, json.dumps([back, game.js("__lands")])
     assert game.server()["z"] == 1 and game.server()["x"] > x + 6, (game.server(), x)
     agree(game)
     assert not game.errors, game.errors

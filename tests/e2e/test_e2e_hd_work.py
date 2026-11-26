@@ -63,6 +63,29 @@ def test_walking_back_the_far_land_is_not_made_again(browser, server):
         {"made": (f0, f1, f2), "forgot on the way back": k2 - k1, "blocks come on the way back": came, "work": g.js("HdLook.work"), "far": g.js("HdLook.far")}   # (the way back: its patches were made on the way there)
 
 
+
+@pytest.mark.realtime
+def test_made_at_other_tiles_on_the_way_back_the_far_land_is_kept(browser, server):
+    """(#240) The land is made at some of the tiles you walk, not all (which, the frames say): here 8 tiles apart going
+    east, between them coming back (each move over 6 tiles: a shorter one your body walks, the land made on the way).
+    The far patches beside the box and at the far edge were cut from where the box was, keyed by it: each place it had
+    not been made at made them anew in every row (188 of 466, runner-like). On the world's grid, the way back makes next
+    to none at a place no patch was made at before (`fresh`, vox_land_far.js: 26 of 466). Counted so, not net of what a
+    changed tile let go: that hangs on the run, the blocks drawn at each new place let go of hundreds, made again later."""
+    g = hd(browser, server)
+    g.clear_area(20)                                         # (a meadow under every place it is made at)
+    x, y = g.pos()
+
+    def made_at(k):                                          # (you there, its far land come, the land made round you there)
+        g.rpc("dev_teleport", x=x + k, y=y, z=0); g.arrive()
+        g.wait(FAR, 15000); g.rest()
+        g.wait(f"!HdLook.busy && (HdLook.box[0] + HdLook.box[2]) / 2 === {x + k}", 15000)
+        return g.js("HdLook.work.fresh")
+    way = [made_at(k) for k in (0, 8, 16, 9, 1)]
+    there, back = [way[1] - way[0], way[2] - way[1]], [way[3] - way[2], way[4] - way[3]]
+    assert all(n > 0 for n in there) and sum(back) < sum(there) / 4, {"fresh": way, "there": there, "back": back, "work": g.js("HdLook.work")}   # (each step east: far land new; back: next to none)
+
+
 def test_a_persons_sheet_is_made_between_frames(browser, server):
     g = hd(browser, server)
     r = g.js("""(async () => { let idle = 0; const ric = window.requestIdleCallback; window.requestIdleCallback = (f, o) => ric((d) => { idle++; f(d); }, o);
