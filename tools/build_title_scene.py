@@ -200,9 +200,9 @@ def build():
     for by in range(H // 32):
         for bx in range(W // 32):
             r = gs.region(bx * 32, by * 32, 32, 32)
-            blocks.append({k: r[k] for k in ("x", "y", "w", "h", "rows", "ground", "levels", "cols", "floors") if k in r})
+            blocks.append({k: r[k] for k in ("x", "y", "w", "h", "sea", "rows", "ground", "levels", "cols", "floors") if k in r})
     sea = gs.region(W, 0, 32, 32)
-    sea = {k: sea[k] for k in ("rows", "ground", "levels")}
+    sea = {k: sea[k] for k in ("sea", "rows", "ground", "levels")}      # (sea: what the heights' chars count from, tiles.js onRegion)
     gs.sim.close()
     return {"w": W, "h": H, "blocks": blocks, "sea": sea, "cast": cast}
 
