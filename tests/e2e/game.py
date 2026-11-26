@@ -82,7 +82,12 @@ class Game(Waits):
                 said = [ln[:200] for ln in lines if name in ln or "Traceback" in ln or "ERROR" in ln or "Error" in ln][-12:] + ["...the log's end:"] + [ln[:160] for ln in lines[-14:]]
             raise AssertionError(f"{name} did not get in: {state}; page errors: {self.errors}; server: {said}") from e
         self.js(clock.DAY)
-        self.rpc("dev_time", phase=.3)
+        # (morning, but not a day on: dev_time only goes forward, so a second page joining moments after the first set
+        # .3 sent the world on to tomorrow's .3, 12000 ticks, mid-test: a Nyxwing summoned 4 s before had come 1199.6 s ago
+        # for the late page. Already just past .3, the world is left as it is)
+        self.tick(1)                                         # (the world's own clock: the page's is .3 till its first tick)
+        if not self.js("clock.phase >= .3 && clock.phase < .33"):
+            self.rpc("dev_time", phase=.3)
         # (awake: the land there and drawn; and the picture all there, not still coming in over the first screen's: that
         # takes 0.7 s, and a test that looked at the canvas's animations meanwhile counted it with its own)
         self.js("(() => { for (const a of cv.getAnimations()) a.finish(); return 1; })()")
