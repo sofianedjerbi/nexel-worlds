@@ -160,8 +160,12 @@ def test_out_of_your_own_shaft_with_the_thumbs_and_a_pickaxe_alone(browser, serv
                 X, z = g.js("[myAt.x, myAt.z]")
         assert said == ["Dig a step", "Dig up", "Dig a step"], said             # (the last step is a hop: the sky is over it)
         g.wait("!walking && (!pred || performance.now() > pred.until)", 4000)
+        try:                                                                  # (the server's word on it, once it has come: on a runner's 83 ms
+            g.wait("meObs && meObs.self.z === 0", 3000)                      #  frames it was read a tick before, still on the step, z -1)
+        except Exception:
+            pass
         s = g.server()
-        assert (s["y"], s["z"]) == (y, 0) and s["x"] >= x + 3
+        assert (s["y"], s["z"]) == (y, 0) and s["x"] >= x + 3, (s["x"] - x, s["y"] - y, s["z"], g.js("[myAt.x - %d, myAt.z]" % x))
         assert not g.errors, g.errors
     finally:
         ctx.close()
