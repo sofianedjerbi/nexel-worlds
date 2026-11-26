@@ -17,6 +17,8 @@ HOLD = """(() => { const add = DOMTokenList.prototype.add; window.__hold = true;
   window.__p = 0; Object.defineProperty(window, 'ASSETS_OF', {get: () => 100, set: () => {}}); Object.defineProperty(window, 'ASSETS_IN', {get: () => window.__p * 100, set: () => {}}); })();"""
 # the bar's fill in art px (what shows of it: it slides in from the left of its track), and the art px in screen px
 BAR = "(() => { const b = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bootpx')), f = document.getElementById('bootfill'); return [(f.getBoundingClientRect().right - f.parentElement.getBoundingClientRect().left) / b, b * devicePixelRatio]; })()"
+SLIDING = "document.getElementById('bootfill').getAnimations().length > 0"
+FRAMES = "(n) => new Promise((ok) => { const f = () => (n-- > 0 ? requestAnimationFrame(f) : ok(1)); f(); })"
 RUNNING = "document.getAnimations().filter((a) => a.playState === 'running' && a.effect.target.closest('#boot')).length"
 
 
@@ -38,12 +40,11 @@ def test_the_wait_runs_before_any_script_and_its_bar_never_goes_back(browser, se
     js = page.evaluate
     page.wait_for_function("typeof titleDraw === 'function'", timeout=20000)
     js("window.__p = .5")
-    page.wait_for_function(f"{BAR}[0] >= 20", timeout=5000)
-    page.wait_for_timeout(150)                                     # (its slide in: 90 ms)
+    page.wait_for_function(f"{BAR}[0] >= 20 && !{SLIDING}", timeout=5000)   # (at rest: its slide in, 90 ms, done)
     n = js(BAR)[0]
     assert abs(n - round(n)) < .01, n                              # (whole art px)
     js("window.__p = .1")                                          # what is told goes back: the bar does not
-    page.wait_for_timeout(300)
+    js(FRAMES, 10)                                                 # (ten of the page's frames to go back in, if it did)
     assert js(BAR)[0] >= n - .01
     js("window.__hold = false; document.body.classList.add('scene')")
     page.wait_for_function("!document.getElementById('boot')", timeout=5000)    # the island painted: the wait is gone
@@ -186,10 +187,21 @@ def test_an_island_that_never_comes_does_not_hold_the_wait_for_ever(browser, ser
     page.goto(server)
     page.wait_for_function("typeof titleDraw === 'function'", timeout=20000)
     page.evaluate("window.__p = 1; if (typeof HdLook === 'object') Object.defineProperty(HdLook, 'part', {get: () => .1, set: () => {}, configurable: true})")   # (the island stands still)
-    t0 = time.monotonic()
-    page.wait_for_function("!document.getElementById('boot')", timeout=15000)
-    assert time.monotonic() - t0 < 12 and not page.evaluate("document.body.classList.contains('scene')")   # (gone with no island: the give-up, not the island's end)
+    page.evaluate(STILL)
+    page.wait_for_function("window.__gone", timeout=30000)
+    moved = page.evaluate("window.__moved")
+    stall = max(b - a for a, b in zip(moved, moved[1:]))
+    assert 7000 < stall < 10000, (stall, moved)                    # 8 s of the page's own with nothing new, then it goes (timed from the test's start on a slow machine, where the island's parts came in later: 12.7 s)
+    assert not page.evaluate("document.body.classList.contains('scene')")   # (gone with no island: the give-up, not the island's end)
     page.close()
+
+
+# the page's own times at which the bar moved, from now till the wait went: its longest pause is the stall the page gives up on
+STILL = """(() => { const f = document.getElementById('bootfill'), w = () => { const r = f.parentElement.getBoundingClientRect(); return (f.getBoundingClientRect().right - r.left) / r.width; };
+  let was = w(); window.__moved = [performance.now()];
+  const go = () => { const now = w(); if (now !== was) __moved.push(performance.now()); was = now;
+    if (!document.getElementById('boot')) { __moved.push(performance.now()); window.__gone = 1; return; } requestAnimationFrame(go); };
+  requestAnimationFrame(go); return 1; })()"""
 
 
 # every frame from the press of Enter: [the world's picture shown, the HD look live, you on the page], until your world is drawn
