@@ -34,6 +34,11 @@ E2E = "tests/e2e/"
 UI_SET = ("test_e2e_ui.py", "test_e2e_menu.py", "test_e2e_title.py", "test_e2e_title_scene.py", "test_e2e_phone.py",
           "test_e2e_phone_taps.py", "test_e2e_hd_phone.py", "test_e2e_touch.py", "test_e2e_help.py")
 SERVER_E2E = ("test_e2e_world.py", "test_e2e_edits.py")
+# how you move (a walk, a jump, a fall, your body's place): a change to one runs the movement suite whole. body_trace
+# names none of their globals (it pins BodyPlace's record) and caught #222's one-frame shift that the rest missed
+MOVE_JS = ("leap.js", "jump.js", "walk.js", "body_place.js", "render.js")
+MOVE_SET = ("test_e2e_body_trace.py", "test_e2e_leap.py", "test_e2e_leap_terrain.py", "test_e2e_leap_view.py",
+            "test_e2e_jump.py", "test_e2e_jump_camera.py", "test_e2e_jump_feel.py")
 AUDIO_JS = JS + "audio.js"                       # what plays it: its globals name the tests that play sound
 SOUND_PIPELINE = ("tools/build_audio.py", ".github/workflows/ci.yml")                # (and music/**)
 TOP = re.compile(r"^(?:const|let|var)\s+([A-Za-z_$][\w$]*)|^(?:async\s+)?function\*?\s+([A-Za-z_$][\w$]*)|^class\s+([A-Za-z_$][\w$]*)"
@@ -146,6 +151,10 @@ def affected(changed, root: Path = ROOT, why=None):
                 add(unit, f, "changed")
             continue
         if f.startswith(JS) and name.endswith(".js"):
+            if name in MOVE_JS:
+                for t in MOVE_SET:
+                    if E2E + t in E:
+                        add(e2e, E2E + t, f"{name}: how you move")
             names = globals_of((root / f).read_text(errors="replace")) if (root / f).exists() else set()
             for t, text in E.items():
                 hit = mentions(text, names) or ([name] if named(text, name) else [])
