@@ -19,7 +19,11 @@ def test_a_fall_takes_the_time_of_a_fall_and_lands_in_dust(game):
       window.__hurt = []; const h = fallHurts; fallHurts = (p, now, mine) => { if (BodyPlace.state(p).hurt) __hurt.push(now); h(p, now, mine); }; return 1; })()""")
     g = game.js("JUMP.g")
     T = (2 * 8 / g) ** .5 * 1000                                                                 # ms in the air from eight layers, by the jump's weight
-    game.hold(["d"], 450)
+    # (walked off the edge: the key held until you are in the air. It was held 450 ms, a tile and a half at the walk's
+    # pace: on a machine whose first frames are slow you stopped on the tower's last tile, and nothing fell)
+    game.page.keyboard.down("d")
+    game.wait("__f.some((r) => r[1] === 1)", timeout=5000)
+    game.page.keyboard.up("d")
     game.wait("fallQuake !== null && flashes.has('agent' + myId)", timeout=3000)                # it hurt: the ground shakes, you flash
     assert any(f["text"] == "-2.5" for f in game.js("floats"))                                  # (8 layers: 5 over what is safe, half a heart each)
     game.sleep(1200)                                                                             # (the world's own `fall` event in by then)
@@ -27,11 +31,19 @@ def test_a_fall_takes_the_time_of_a_fall_and_lands_in_dust(game):
     down = next(r[0] for r in rec if r[1] == 0 and any(q[1] == 1 for q in rec if q[0] < r[0]))     # the frame you are down
     hurt = game.js("__hurt")
     assert len(hurt) == 1 and hurt[0] - down < 40, (hurt, down)                                  # what it cost shown as you land, once: it came most of a second after (the world's word, then 0.7 s more)
-    air = [r for r in rec if r[1] == 1 and r[2] < 8 - 1e-6]                                     # (off the edge: under the tower's top)
-    assert .78 * T < air[-1][0] - air[0][0] + 17 < 1.22 * T, (air[-1][0] - air[0][0], T)        # by the fall's own time, not a step's 0.2
+    # (the game's time of a frame: the frame's own, 0.1 s at the most, render.js update. Judged by frames of 17 ms on the
+    # Mac; on a machine drawing on the CPU (the runners) a fall is five frames of 70 to 180 ms, which a frame's drops
+    # compared one to the next cannot tell from a slow one)
+    game_ms = lambda i: min(rec[i][0] - rec[i - 1][0], 100)
+    first = next(i for i, r in enumerate(rec) if r[1] == 1 and r[2] < 8 - 1e-6)                 # (off the edge: under the tower's top)
+    last = rec.index(next(r for r in rec[first:] if r[1] == 0))                                 # the frame you are down
+    air = rec[first:last]
+    flown = sum(game_ms(i) for i in range(max(first, 1), last + 1))                                   # from the frame on the edge to the one on the ground
+    frame = max(game_ms(i) for i in range(max(first, 1), last + 1))
+    assert .78 * T - frame < flown < 1.22 * T + frame, (flown, T, frame)                        # by the fall's own time, not a step's 0.2
     heights = [r[2] for r in air]
-    drops = [a - b for a, b in zip(heights, heights[1:])]
-    assert heights[0] > 7.5 and all(d > 0 for d in drops) and drops[-1] > 2.5 * drops[1], heights   # from eight levels up, faster and faster
+    speeds = [(rec[i - 1][2] - rec[i][2]) / game_ms(i) for i in range(first + 1, last)]          # (layers a ms of the game's time, frame by frame)
+    assert heights[0] > 7.5 and all(b > a for a, b in zip(speeds, speeds[1:])) and speeds[-1] > 2 * speeds[0], (heights, speeds)   # from eight levels up, faster and faster
     assert max(r[4] for r in air) == 1 and game.js("wind") is None                               # the wind while you fall, gone once you are down
     assert any(r[1] == 1 for r in rec) and max(r[3] for r in rec) >= 12                         # dust where you land
     k = len(air) // 2
