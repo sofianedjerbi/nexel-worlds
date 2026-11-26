@@ -7,6 +7,8 @@ no window under the open sky: from above its own south wall hides what is behind
 the meadow, "a drawer pulled out"); the eye tilts by one rule (your feet two levels under the land round you); a tunnel is not opened from afar nor from the hill over it; a fire under the
 land does not light the meadow; under a roof who stands on the land over you is not seen (no mob through the ceiling), who is in your room is."""
 
+import pytest
+
 from test_e2e_hd_land import AT_
 from test_e2e_hd_sun import hd
 
@@ -57,7 +59,11 @@ def test_on_a_small_hill_and_behind_it_no_window_opens_and_behind_it_you_show_th
     tidy(g, x, y)
 
 
+@pytest.mark.stepped   # (go()'s 700 ms, the window's hold and the eye's tilt, are 42 frames of 1/60 s: the eye at rest when you are read, whatever a frame takes, #47)
 def test_behind_a_wall_you_built_your_body_is_behind_it_not_on_it(browser, server):
+    """Behind it, its top edge crosses you at your middle: below that edge you are behind it, not drawn whole over its top
+    with its edge running out on both sides of you ("player and block look fused", #281: you were one depth, your head's,
+    vox_style_sprites.js); your head over it, whole."""
     g = hd(browser, server)
     calm(g)
     x, y = g.pos()
@@ -69,7 +75,13 @@ def test_behind_a_wall_you_built_your_body_is_behind_it_not_on_it(browser, serve
     whole = go(g, x, y)
     assert whole["seen"] > .9 and whole["n"] == 0, whole                   # in front of it: all of you
     s = go(g, x, y - 2)                                                    # behind it
-    assert s["n"] == 0 and s["pitch"] < 36.1 and .3 < s["seen"] < .9, s    # your head over the wall whole, the rest through it (it was 1: the whole cat, feet on the wall's top)
+    assert s["n"] == 0 and s["pitch"] < 36.1 and s["seen"] < .9, s         # no window, and not the whole cat, feet on the wall's top
+    edge = g.js(f"HdLook.screenOf({x} + .5, {y - 1}, 1)[1]")              # (its top, its north edge: CSS px)
+    seen, out, below, n = g.js("(b) => HdLook.catSeen(b, true)", [0, 0, 10000, edge])
+    head = (seen * n - out) / max(n - below, 1)                            # (of your px over its edge, the share seen as drawn)
+    print("PROBE #281", {"seen": seen, "drawn whole below the edge": out, "yours below it": below, "yours": n, "head seen": head})
+    assert below > 20 and out / below < .6, (out, below, seen)             # below its edge: behind it, not drawn over it
+    assert n - below > 10 and head > .9, (n, below, head)                  # your head over it, whole (a share of all of you, > .3, was under it with all of the head seen when the edge sat high)
     lv = go(g, x, y - 1, 1)                                                # ON it
     assert lv["seen"] > .9 and lv["n"] == 0, lv
     tidy(g, x, y)
