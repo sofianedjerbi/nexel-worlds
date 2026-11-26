@@ -15,7 +15,7 @@ OPEN = "typeof TitleScene !== 'undefined' && TitleScene.on && document.body.clas
 STILL = "(() => { TitleScene.stop(); document.getElementById('joinbox').style.display = ''; TitleScene.start(5); clearInterval(TitleScene.S.timer); })()"
 # the water tiles on the screen whose place is not in the water's picture: [x, y]. Those of the land the HD look makes round its eye (hd.js
 # box, the one the picture is laid over: voxels.js still); past it the far land is drawn without the picture. (It read a window of 23 rows
-# round the camera, not the box, which is round the eye's own tile: on a loaded runner 62 tiles of its north rows were counted, #89's run)
+# round the camera: the box, round the eye's own tile, is the land the picture is for)
 UNCOVERED = """() => { const out = [], v = waterView, c = waterCv, [x0, y0, x1, y1] = HdLook.box || [0, 0, -1, -1];
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
     const b = blockOf(x, y); if (!b || !Voxels.made(b) || !b.water.any || !Voxels.host.water(x, y)) continue;
@@ -48,12 +48,20 @@ def test_the_water_picture_lies_on_all_the_water_the_island_shows(browser, serve
         # (the land round the new place may come after those pictures: !busy above was read before any frame saw the move, and the
         #  picture is laid over the land the look made last, hd.js box. So: until a picture covers it all; one over the flat view's
         #  rectangle, as it was, never does. It was read 100 ms after: on a slow runner the north rows still the old place's, 81 tiles)
+        assert page.evaluate("!!HdLook.box")                 # (the land the look makes, read: else nothing was looked at)
         try:
             page.wait_for_function(f"!({UNCOVERED})().length", timeout=8000)
         except NotYet:
             pass
-        assert page.evaluate("!!HdLook.box")                 # (the land the look makes, read: else nothing was looked at)
+        # (left uncovered across two pictures more: land made since the last picture is uncovered until the next, a tenth of a
+        #  second, and on a loaded runner land round the new place is still being made seconds on: 11 tiles of a block just made,
+        #  inside the picture's place a moment after. A picture's edge stretched, or laid on less than the box, stays uncovered)
         left = page.evaluate(UNCOVERED)
+        if left:
+            ver = page.evaluate("Voxels.wver")
+            page.wait_for_function(f"Voxels.wver > {ver} + 1", timeout=5000)
+            still = {tuple(t) for t in page.evaluate(UNCOVERED)}
+            left = [t for t in left if tuple(t) in still]
         if left:
             off[(x, y)] = (len(left), left[:4], page.evaluate("[HdLook.box, Math.round(cam.x), Math.round(cam.y), waterView, waterCv && [waterCv.width, waterCv.height]]"))
     page.close()
