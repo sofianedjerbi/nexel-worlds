@@ -5,6 +5,8 @@ import json
 
 import pytest
 
+from nexel_worlds.sim.constants import sec
+
 from test_e2e_leap import agree, frames
 
 pytestmark = pytest.mark.e2e
@@ -133,10 +135,13 @@ def test_walking_off_a_high_ledge_into_water_the_jump_s_fall_takes_you_down(game
         # (__lp: how long the jump's fall drew you, ms. It counted frames, more than 10: on the runners a frame is 70 to
         # 130 ms, and a fall of six layers four of them)
         game.js("(() => { window.__lp = 0; let t = null; const f = (n) => { if (Leap.on()) { if (t !== null) __lp += n - t; t = n; } if (myAt.z > 5.5 || Leap.on()) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; })()")
-        game.page.keyboard.down("d"); game.wait("myAt.z < .5", 4000); t = game.js("performance.now()")
+        game.page.keyboard.down("d"); game.wait("myAt.z < .5", 4000); t = game.rpc("ping")["tick"]
         game.page.keyboard.up("d")
-        game.wait("meObs.self.z < .5", 1500)                                # (the world down too, soon after)
-        assert game.js("performance.now()") - t < 1500 and game.js("__lp") > 160, game.js("__lp")
+        # (the world down too, soon after: within a second of the world's own time, by its ticks. The bug was the world
+        #  waiting a second at the edge for a jump (sim/movement.py at_ledge, sec(1.0)). It was 1500 ms of the machine's
+        #  time for the page's word on it, a runner's busy second more than the game's)
+        down = game.until_world(lambda s: s["z"] < .5)
+        assert down["z"] < .5 and game.rpc("ping")["tick"] - t < sec(1.0) and game.js("__lp") > 160, (down["z"], game.rpc("ping")["tick"] - t, game.js("__lp"))
     finally:
         game.js("setOpt('shake', 1)")
     game.rest()
