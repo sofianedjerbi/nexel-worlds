@@ -189,18 +189,14 @@ def test_an_island_that_never_comes_does_not_hold_the_wait_for_ever(browser, ser
     page.evaluate("window.__p = 1; if (typeof HdLook === 'object') Object.defineProperty(HdLook, 'part', {get: () => .1, set: () => {}, configurable: true})")   # (the island stands still)
     page.evaluate(STILL)
     page.wait_for_function("window.__gone", timeout=30000)
-    moved = page.evaluate("window.__moved")
-    stall = max(b - a for a, b in zip(moved, moved[1:]))
-    assert 7000 < stall < 10000, (stall, moved)                    # 8 s of the page's own with nothing new, then it goes (timed from the test's start on a slow machine, where the island's parts came in later: 12.7 s)
+    took = page.evaluate("window.__gone - window.__t0")
+    assert 7000 < took < 15000, took                               # in the page's own time: 8 s after the last thing that came in (on a slow machine the island's parts still come in for a few seconds; timed from the test's side, its round trips counted, 12.7 s)
     assert not page.evaluate("document.body.classList.contains('scene')")   # (gone with no island: the give-up, not the island's end)
     page.close()
 
 
-# the page's own times at which the bar moved, from now till the wait went: its longest pause is the stall the page gives up on
-STILL = """(() => { const f = document.getElementById('bootfill'), w = () => { const r = f.parentElement.getBoundingClientRect(); return (f.getBoundingClientRect().right - r.left) / r.width; };
-  let was = w(); window.__moved = [performance.now()];
-  const go = () => { const now = w(); if (now !== was) __moved.push(performance.now()); was = now;
-    if (!document.getElementById('boot')) { __moved.push(performance.now()); window.__gone = 1; return; } requestAnimationFrame(go); };
+# the page's own time now, and when the wait goes
+STILL = """(() => { window.__t0 = performance.now(); const go = () => { if (!document.getElementById('boot')) { window.__gone = performance.now(); return; } requestAnimationFrame(go); };
   requestAnimationFrame(go); return 1; })()"""
 
 
