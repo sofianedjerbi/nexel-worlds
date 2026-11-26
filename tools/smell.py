@@ -79,11 +79,13 @@ def functions(name, lines):
         yield j - i + 1, chars, ifs, next(g for g in m.groups() if g and not g.startswith("//")), name, i + 1
 
 
-def wrapper(f, big):
-    """A function that is little more than one long function in it (a factory round it: hd_marks.js HdMarks round
-    written): that one is counted, not both."""
+def wrapper(f, funcs):
+    """A function that is little more than the functions in it (a factory round them: hd_marks.js HdMarks round
+    written, hd_stands.js HdStands round things, ground, bodies): they are counted, not it too."""
     lines, chars, _, _, file, at = f
-    return any(g is not f and g[4] == file and at < g[5] < at + lines and g[1] > .8 * chars for g in big)
+    inner = [g for g in funcs if g is not f and g[4] == file and at < g[5] < at + lines]
+    outer = [g for g in inner if not any(h is not g and h[5] < g[5] < h[5] + h[0] for h in inner)]   # (not one inside another)
+    return sum(g[1] for g in outer) > .8 * chars
 
 
 def special(lines):
@@ -102,7 +104,7 @@ def report():
     per = {name: special(lines) for name, lines in src.items()}
     patches = {name: sum(len(PATCH.findall(line)) for line in lines) for name, lines in src.items()}
     big = [f for f in funcs if f[0] > 60 or f[1] > 6000]
-    long = sorted((f for f in big if not wrapper(f, big)), key=lambda f: -f[1])
+    long = sorted((f for f in big if not wrapper(f, funcs)), key=lambda f: -f[1])
     counts = {
         "patch_comments": sum(patches.values()),
         "literal_16": sum(len(SIXTEEN.findall(NOTE.sub("", line))) for lines in src.values() for line in lines),
