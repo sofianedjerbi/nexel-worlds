@@ -77,8 +77,11 @@ def test_build_mode_by_thumbs(browser, server):
         g.touch("touchEnd")
         assert g.pos() == me                                                          # (the cursor went, not you)
         g.wait("$('tBuild').textContent === 'Done' && getComputedStyle($('tUp')).display !== 'none'", 3000)
+        c = g.js("[Build.S.at.x, Build.S.at.y]")
         a = g.js(MID, "#tA"); g.touch("touchStart", *a); g.sleep(80); g.touch("touchEnd")
-        g.wait("Build.S.plans.size >= 1", 3000)
+        # (A planned it, and the plan was built: a wall where the cursor is. The plan itself is there a moment: a busy
+        # runner had built it before a frame of the test's wait, "Break wooden wall" under the cursor, 3 walls of 4 left)
+        g.wait(f"combAt({c[0]}, {c[1]}) === CHAR.wood_wall", 10000)
         g.page.touchscreen.tap(*g.js(MID, "#tBuild")); g.wait("!Build.on", 3000)
         assert not g.errors, g.errors
     finally:
