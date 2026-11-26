@@ -152,3 +152,15 @@ def test_animals_eat_what_grows_not_eggs_or_meat(world):
         assert run(sim, a, "feed", {"target": hen.id, "item": food})["ok"] is False
     a.add("wheat", 1)
     assert run(sim, a, "feed", {"target": hen.id, "item": "wheat"})["ok"]
+
+
+def test_a_cow_eats_a_carrot(world):
+    """The world's half of tests/e2e/test_e2e_living.py::test_e_eats_what_you_hold_unless_what_you_face_takes_it:
+    facing a cow with a carrot in hand, it is fed, and the carrot is gone."""
+    sim, a = world
+    from nexel_worlds.sim import Creature
+    cow = Creature(sim.next_creature, "cow", a.x, a.y + 1, 30, cooldown=10 ** 6); sim.next_creature += 1
+    sim.creatures[cow.id] = cow
+    a.add("carrot", 1)
+    assert run(sim, a, "feed", {"target": cow.id, "item": "carrot"})["ok"]
+    assert a.count("carrot") == 0
