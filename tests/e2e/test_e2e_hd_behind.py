@@ -23,7 +23,7 @@ def calm(g):
 
 def go(g, x, y, z=None, wait="!HdLook.busy"):
     g.rpc("dev_teleport", **({"x": x, "y": y} if z is None else {"x": x, "y": y, "z": z}))
-    g.arrive()
+    g.arrive()                                                  # (fails only if you stop getting there: a room 14 down with a fire draws seconds a frame on a runner's lavapipe, #67)
     g.wait(wait, timeout=8000)
     g.sleep(700)                                                           # (the window's hold and the eye's tilt: 300 + 400 ms of the game's time, whichever way they go)
     g.rest()

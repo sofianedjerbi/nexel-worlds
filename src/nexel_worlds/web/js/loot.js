@@ -17,7 +17,7 @@ const smallCanvas = (name) => {                // a fresh one each time (the HUD
   const cv = document.createElement("canvas"), px = smallPx(name); cv.width = cv.height = DROP;
   cv.getContext("2d").putImageData(px, (DROP - px.width) >> 1, (DROP - px.height) >> 1); return cv;
 };
-const ghostIcon = (n) => ghosts.get(n) || (ghosts.set(n, smallCanvas(n)), ghosts.get(n));     // the one the land draws from
+const ghostIcon = (n) => ghosts.get(n) || (ghosts.set(n, Object.assign(smallCanvas(n), {_v: 0})), ghosts.get(n));     // the one the land draws from (painted once: _v 0, sent to the sprites' sheet once, vox_style.js)
 function smallPx(name) {
   if (smalls11.has(name)) return smalls11.get(name);
   const cube = CubeIcon.is(name) && CubeIcon.px(name, DROP); if (cube) { smalls11.set(name, cube); return cube; }      // a block: its cube, made at this size (cube_icons.js)

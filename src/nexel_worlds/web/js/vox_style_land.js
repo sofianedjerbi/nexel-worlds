@@ -27,11 +27,11 @@
 //      face's own paint (flags in e, vox_style_glsl.js), never another paint in its place.
 // Where the code still breaks it (to route through the rule, then strike from this list): the cut's section takes stone or earth from the
 // surface's top cell and your height, not from each cell it shows (vox_style.js sectAt, flag 8388608); its first line is the land's own
-// top px, grass on a meadow (vox_style_glsl.js wn 11); a riser and a window's side edge "A"
-// are one tone whatever their rock (vox_style_glsl.js); a far patch's skirt is one tile's rock; a model face wider or deeper than a tile is
-// its 16 px stretched (model).
+// top px, grass on a meadow (vox_style_glsl.js wn 11);
+// a fence's 12 rows of paint over a whole level's height (hd_fences.js, 4/3); a roof's rows over its pitched face, longer than
+// they are (hd_blocks.js: flat roofs, or roof art with a row for each px of the slope).
 const VoxStyleLand = (() => {
-  const H = VoxStyleGLSL.H, C = 16, N = 10, CH = 8, KINDS = ["main", "model", "shade", "water"];
+  const H = VoxStyleGLSL.H, C = 16, N = 10, CH = 8, KINDS = ["main", "model", "shade", "water"], TRI = [0, 1, 2, 0, 2, 3];   // (TRI: a quad's two triangles)
   const gp = (x, y, z) => [x, z * H, y];
   const FACES = [
     {n: [0, 0, 1], k: 1, q: [[0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1]]},
@@ -70,20 +70,11 @@ const VoxStyleLand = (() => {
     const F = dst.f; let n = dst.n; F[n++] = a; F[n++] = b; F[n++] = c; F[n++] = d; F[n++] = e; F[n++] = f; F[n++] = g; F[n++] = h; F[n++] = i; F[n++] = j; dst.n = n; };
   const solidC = (c, z) => { if (!c) return false; for (let i = 0; i < c.length; i += 2) if (z <= c[i]) return i === 0 || z > c[i - 1]; return false; };
   function create(host, cfg, P) {
-    const SL = P.SL, store = new Map(), tops = new Map(), late = new Set(), farOf = new Map(), farDirty = []; let msh = null, making = false, stamp = 0, farN = 0, into = null, wantK = null, fars = 0, partN = 0, partOf = 0;   // (farOf: the far land's patches made, by where they are: "bx,by" (8 tiles) -> "x,y,w,h" -> faces; farDirty: boxes of tiles changed since)
+    const SL = P.SL, store = new Map(), tops = new Map(), late = new Set(), far = VoxLandFar({P, CH}); let making = false, stamp = 0, into = null, wantK = null, partN = 0, partOf = 0;   // (far: the far land's patches, kept: vox_land_far.js)
     const slot = (k, paint) => { const s = P.slot(k, paint); if (into && P.mk) into.push(s); return s; };   // (into: the places of the paints a chunk or a far patch being made names: kept with it, P.use)
     const lim = (z) => Math.max(cfg.levels[0], Math.min(cfg.levels[1], z)), ck = (x, y) => Math.floor(x / CH) + "," + Math.floor(y / CH);
-    // what stands in the land as boxes (host.models: a bridge's deck and posts): a top and a south front each, its paint from the host's sheet px for px into a slot; each face lit as the land's own face that way is (FACES k: it had its own .85, .68, .74)
-    const paintOf = new WeakMap(), QC = new Float64Array(12);   // (model: a uv's paint name and painter; a face's four corners)
-    const sheet = () => { if (!msh) { const q = host.modelSheet(); msh = q.px ? q : {px: new Uint32Array(q.getContext("2d").getImageData(0, 0, q.width, q.height).data.buffer), w: q.width}; } return msh; };
-    const model = (x, y, b, dst) => { const X = x + b.x / C, Y = y + b.y / C, X1 = X + b.w / C, Y1 = Y + b.d / C, Z0 = b.z / cfg.up, Z1 = (b.z + b.h) / cfg.up, Zn = Z1 + (b.tilt ? b.tilt[0] / cfg.up : 0), Zs = Z1 + (b.tilt ? b.tilt[1] / cfg.up : 0);
-      const face = (uv, w, h, k) => { if (!uv) return; w = Math.min(C, w); h = Math.min(C, h); const wi = b.win ? b.win[0] : 0, wj = b.win ? b.win[1] : 0, ins = b.shade ? .02 : 0, pw = b.win ? C : w, ph = b.win ? C : h, id = b.sheet ? b.sheet.id : "";
-        const ob = typeof uv === "object"; let pk = ob ? paintOf.get(uv) : null; if (!pk || pk.id !== id || pk.pw !== pw || pk.ph !== ph) { const ms = b.sheet; pk = {id, pw, ph, k: "m" + id + uv + "," + pw + "," + ph, paint: (px, at, st) => { const m = ms || sheet(); for (let j = 0; j < ph; j++) for (let i = 0; i < pw; i++) px[at + j * st + i] = m.px[(uv[2] ? uv[1] : uv[1] + j) * m.w + (uv[2] ? uv[0] : uv[0] + i)]; }}; if (ob) paintOf.set(uv, pk); }   // (its paint's name and painter, made once per uv and kept: a shadow's faces share them, frame to frame)
-        const sl = slot(pk.k, pk.paint), u0 = (sl % SL) * C + wi, v0 = (sl / SL | 0) * C + wj, kind = b.shade ? 10 : b.ghost ? 9 : 8;
-        for (let t = 0; t < 6; t++) { const n = TRI[t], o = n * 3; emit(dst, QC[o], QC[o + 2] * H, QC[o + 1], u0 + (n === 0 || n === 3 ? ins : w - ins), v0 + (n < 2 ? ins : h - ins), k, 1, kind, Z1, 0); } };   // (corners in QC: x, y, z each)
-      const cq = (a, b2, c, d, e, f, g, h, i, j, k, l) => { QC[0] = a; QC[1] = b2; QC[2] = c; QC[3] = d; QC[4] = e; QC[5] = f; QC[6] = g; QC[7] = h; QC[8] = i; QC[9] = j; QC[10] = k; QC[11] = l; };
-      cq(X, Y, Zn, X1, Y, Zn, X1, Y1, Zs, X, Y1, Zs); face(b.top, b.w, b.d, b.k || 1); const fh = b.fh || b.h; if (b.h) { cq(X, Y1, Zs, X1, Y1, Zs, X1, Y1, Z0, X, Y1, Z0); face(b.front, b.w, fh, FACES[2].k);
-        cq(X, Y, Zn, X, Y1, Zs, X, Y1, Z0, X, Y, Z0); face(b.west, b.d, fh, FACES[5].k); cq(X1, Y1, Zs, X1, Y, Zn, X1, Y, Z0, X1, Y1, Z0); face(b.east, b.d, fh, FACES[4].k); } };   // (b.sheet: a paint sheet of its own, {px, w, id}; west, east: its sides, d x h px; fh: its front and sides are that many rows of paint over its height; win: [i, j]: its paint is 16 x 16 px and the face shows it from px (i, j) on; a shade's paint is read a hair inside its edges: at an edge it took a px of the paint beside it in the atlas, a thin dark line on the ground; tilt: [n, s]: its top a slope: px its north and its south edge are over its height (a roof's pitch); k: its top's light)
+    // what stands in the land as boxes (host.models): vox_land_model.js
+    const model = VoxLandModel({host, cfg, slot, SL, C, emit, TRI, FACES});
     // a top's paint: the host's; the px it leaves see-through (a cap's inset sides and tucked corners: the classic picture shows the wall there) take the block's own wall tone, stone on stone
     // (not one earth brown for every block: that shows a brown strip down the west side of each stone step, brown corners, a mountain's terraces a lattice)
     const tones = new Map(), tmp = new Uint32Array(C * C);
@@ -96,63 +87,22 @@ const VoxStyleLand = (() => {
     function touch(x, y) {
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const t = (x + dx) + "," + (y + dy), l = tops.get(t); if (l) { for (const k of l) P.unslot(k); tops.delete(t); } }
       for (let dy = -6; dy <= 6; dy += 6) for (let dx = -6; dx <= 6; dx += 6) { const k = ck(x + dx, y + dy); store.delete(k); if (making) late.add(k); }
-      stamp++; farDirty.push([x, y, x, y]);
+      stamp++; far.dirty(x, y, x, y);
     }
     // every tile of a box touched, once: its paints and those round it, the chunks within six tiles of it (a block of land come in at once)
     function touchBox(x0, y0, x1, y1) {
       for (let y = y0 - 1; y <= y1 + 1; y++) for (let x = x0 - 1; x <= x1 + 1; x++) { const t = x + "," + y, l = tops.get(t); if (l) { for (const k of l) P.unslot(k); tops.delete(t); } }
       for (let by = Math.floor((y0 - 6) / CH); by <= Math.floor((y1 + 6) / CH); by++) for (let bx = Math.floor((x0 - 6) / CH); bx <= Math.floor((x1 + 6) / CH); bx++) { const k = bx + "," + by; store.delete(k); if (making) late.add(k); }
-      stamp++; farDirty.push([x0, y0, x1, y1]);
+      stamp++; far.dirty(x0, y0, x1, y1);
     }
     // water that ran into a tile (flow.js): its chunk is made again, and the chunk beside it where it lies on a chunk's edge (the sides of the water beside it look at it)
     function wet(x, y) { for (const k of new Set([[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => ck(x + dx, y + dy)))) { store.delete(k); if (making) late.add(k); } stamp++; }
-    // WATER, STILL OR RUNNING, DRAWN ONE WAY. A tile's water is its wet cells (wetOf: cell z -> level 1 to 8): the still water's (the sea, a river, a pond: its bed up to its face,
-    // full) and what runs (flow.js: 1 to 7, 8 full). Over a still face the cells are water as high as the water beside it is full, and up to running water over it (flow.py keeps
-    // nothing there: over the sea it is the sea. Filled, a river in a flood is no trench, a pond under it no second face, no light box).
-    // A cell's water stands to z - 1 + v / 8 (full: to its top), so running water steps down a level's eighth a level (2 art px). Its faces: ONE top where the cell over it is
-    // not water, and a side (south, east, west) down to the water or the cell's floor beside it, where that stands lower: no gap at a step, no face inside other water; the
-    // painter leaves out a side turned from the eye (vox_style_glsl.js: s, its uv's u). So every px shows ONE face of water over what is under it (no tints stacked, no dark
-    // sliver where an east or west side is missing).
-    // Its tint (e) by how deep it is, its face over the floor, as the still water's: never under a level's (a film of running water is water, not a pale box; the levels
-    // show by its height, the colour stays), and never over a pond's (2): the deeper bands are the still water's own, 3 a lake's, 4 the open sea's dark, OPAQUE (a pit filled 5 deep
-    // under a river, a flood over the meadow: a flat navy slab). A still tile keeps its own depth; risen under a flood, a lake's at most.
-    // Still water keeps its look: a side of its own only where running water lies beside it lower. Drawn as the sea's face, kind 3
-    const wq = (dst, q, lv, e, s = 0, oc = 0) => { for (const t of TRI) { const p = q[t]; emit(dst, p[0], p[2] * H, p[1], s, oc, 1, 1, 3, lv, e); } };
-    const SIDES = [[0, 1, 1, (x, y, a, b) => [[x, y + 1, a], [x + 1, y + 1, a], [x + 1, y + 1, b], [x, y + 1, b]]], [1, 0, 2, (x, y, a, b) => [[x + 1, y + 1, a], [x + 1, y, a], [x + 1, y, b], [x + 1, y + 1, b]]], [-1, 0, 3, (x, y, a, b) => [[x, y, a], [x, y + 1, a], [x, y + 1, b], [x, y, b]]]];
-    const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-    function wetOf(x, y, col) {
-      const fw = host.flow && host.flow(x, y), still = host.water && host.water(x, y); if (!fw && !still) return null; const w = new Map(fw || []);
-      if (still) { const wz = host.waterTop ? host.waterTop(x, y) : 0, c = col(x, y), bt = c && c.length ? c[c.length - 1] : wz - 1; let hi = wz; for (const z of w.keys()) if (z > hi) hi = z;
-        for (let z = Math.min(wz, Math.max(bt + 1, wz - 8)); z <= wz; z++) w.set(z, 8);   // (its bed to its face, full: the face's own cell at least (clear water off, the bed is the ground))
-        for (let z = wz + 1; z < wz + 64; z++) { if (w.has(z)) continue; if (z < hi || N4.some(([dx, dy]) => { const n = host.flow && host.flow(x + dx, y + dy); return n && n.get(z) === 8; })) w.set(z, 8); else break; } }
-      return w; }
-    // (the face of the water a cell is in: from cell z up to the last wet cell over it)
-    const surf = (w, z) => { while (w.has(z + 1)) z++; return z - 1 + w.get(z) / 8; };
-    // A TOP SEEN THROUGH THE WATER BESIDE IT: where the water south, east, west, south-east or south-west of a top stands higher, the eye sees the near part of this top through that water
-    // too (two tints: a lighter band along every step down away from you). Each top says by how much each of the five stands over it (oc: eighths of a level, its uv's v); the painter
-    // leaves out a px of it that the top beside it covers on the screen (vox_style_glsl.js): every px is seen through one face of water.
-    function waterFaces(dst, x, y, col, solidAt, fromZ) { const w = wetOf(x, y, col); if (!w) return 0; let n = 0; const still = host.water && host.water(x, y), oc0 = still ? col(x, y) : null, own = still && oc0 && oc0.length ? (host.waterTop ? host.waterTop(x, y) : 0) - oc0[oc0.length - 1] : 0, runs = !!host.flow && (!!host.flow(x, y) || N4.some(([dx, dy]) => host.flow(x + dx, y + dy))),
-        nb = SIDES.map(([dx, dy]) => (runs ? wetOf(x + dx, y + dy, col) : null)), nd = runs ? [wetOf(x + 1, y + 1, col), wetOf(x - 1, y + 1, col)] : [null, null];   // (the sea, a pond with nothing running by: its face alone, as it ever was, and as cheap)
-      for (const [z, v] of w) { if (z < fromZ) continue; const full = w.has(z + 1), top = z - 1 + (full ? 1 : v / 8); let f = z; while (w.has(f - 1)) f--; const e = Math.max(1, Math.min(top - (f - 1), still ? Math.max(3, own) : 2));
-        if (!full) { let oc = 0; [...nb, ...nd].forEach((o, i) => { if (!o) return; let c = z; if (!o.has(c)) { c = [...o.keys()].filter((k) => k > z).sort((a, b) => a - b)[0]; if (c === undefined) return; }
-            oc += Math.max(0, Math.min(i < 3 ? 31 : 15, Math.round((surf(o, c) - top) * 8))) * (i < 3 ? 32 ** i : 32768 * 16 ** (i - 3)); });   // (south, east, west 5 bits each; south-east, south-west 4: 23 bits, whole in a float)
-          wq(dst, [[x, y, top], [x + 1, y, top], [x + 1, y + 1, top], [x, y + 1, top]], z + 1, e, 0, oc); n++; }
-        SIDES.forEach(([dx, dy, s, q], i) => { const X = x + dx, Y = y + dy; if (solidAt(X, Y, z) || (still && !(host.flow && host.flow(X, Y)))) return;
-          const o = nb[i], ov = o && o.get(z), b = Math.max(z - 1, ov ? (o.has(z + 1) ? z : z - 1 + ov / 8) : z - 1);
-          if (b < top - .01) { wq(dst, q(x, y, top, b), z + 1, e, s); n++; } }); }
-      return n; }
-    // the far land's patches a changed tile reaches (what they read: the tiles round them, a tile's paint by its rock five tiles off) are made again; a patch is 8 tiles at most
-    const farForget = () => { for (const [x0, y0, x1, y1] of farDirty) for (let by = Math.floor((y0 - 16) / CH); by <= Math.floor((y1 + 7) / CH); by++) for (let bx = Math.floor((x0 - 16) / CH); bx <= Math.floor((x1 + 7) / CH); bx++) { const m = farOf.get(bx + "," + by); if (m) { farN -= m.size; farOf.delete(bx + "," + by); } } farDirty.length = 0; };
-    const farClear = () => { farOf.clear(); farDirty.length = 0; farN = 0; };
-    // THE SHEET FULL (vox_style.js evict): the far patches of the land being made name their paints' places (farBox: where its
-    // patches lie): kept, as its chunks' are, and only the patches that name a place given away go. (Letting every far patch go
-    // at once, walking 8 tiles and back fills the sheet twice, and the way back makes 1063 patches again of 1218)
-    let farBox = null;
-    const farKeep = () => { if (!farBox) return; const [a, b, c, d] = farBox; for (const [bk, m] of farOf) { const [bx, by] = bk.split(",").map(Number); if (bx >= a && bx <= c && by >= b && by <= d) for (const f of m.values()) P.use(f[2]); } };
-    const farFree = (kept) => { for (const [bk, m] of farOf) { for (const [fk, f] of m) if (f[2].some((v) => !kept(v))) { m.delete(fk); farN--; } if (!m.size) farOf.delete(bk); } };
+    // WATER, STILL OR RUNNING, DRAWN ONE WAY: vox_land_water.js (a tile's water faces: waterFaces)
+    const waterFaces = VoxLandWater(host, emit, TRI);
+    // the far land's patches, kept, and when they go (a tile changed, the sheet full): vox_land_far.js
     // (each face's corners: the three cells beside a corner that darken it, worked out once and kept, not made as small arrays for every corner of every face)
     const AOV = FACES.map((F) => F.q.map((q) => { const ax = F.n.map((a) => (a ? 0 : 1)), d = [q[0] * 2 - 1, q[1] * 2 - 1, q[2] * 2 - 1].map((v, j) => v * ax[j]);
-      const t = [0, 1, 2].filter((j) => ax[j]), a = [0, 0, 0], b = [0, 0, 0]; a[t[0]] = d[t[0]]; b[t[1]] = d[t[1]]; return [a, b, [a[0] + b[0], a[1] + b[1], a[2] + b[2]]]; })), AOK = [1, .84, .72, .62], TRI = [0, 1, 2, 0, 2, 3], vq = new Float64Array(40);
+      const t = [0, 1, 2].filter((j) => ax[j]), a = [0, 0, 0], b = [0, 0, 0]; a[t[0]] = d[t[0]]; b[t[1]] = d[t[1]]; return [a, b, [a[0] + b[0], a[1] + b[1], a[2] + b[2]]]; })), AOK = [1, .84, .72, .62], vq = new Float64Array(40);
     function quad(out, x, y, z, F, k, sky, kind, lv, e, s, solid, isTop) {
       const u0 = (s % SL) * C, v0 = (s / SL | 0) * C, top = isTop ? 0 : C - cfg.up, I = .01, A = AOV[FACES.indexOf(F)], ox = x + F.n[0], oy = y + F.n[1], oz = z + 1 + F.n[2];   // (read a hair inside its paint: at an edge a row of px took the paint beside it in the sheet: a bright line across a stone terrace)
       for (let i = 0; i < 4; i++) {
@@ -163,10 +113,10 @@ const VoxStyleLand = (() => {
       if (!sky) { const m = (vq[5] + vq[15] + vq[25] + vq[35]) / 4; vq[5] = vq[15] = vq[25] = vq[35] = m; }   // (a face of a cave: one tone a face. Its corners' shade ran in steps across each face: rows of dark spikes, a comb, along every cut edge)
       for (const i of TRI) for (let j = i * 10; j < i * 10 + 10; j++) out.push(vq[j]);
     }
-    // YOUR SPACE AND THE WINDOW ON IT (o.win: {reach, walk: on the surface, for a cave's mouth or a hole beside you: where you can walk and drop to, not the floors you came down from}). The land is made WHOLE, always: under the land you are seen through a window, a mask the painter makes from a few boxes
+    // YOUR SPACE AND THE WINDOW ON IT (o.win: {reach: steps out, none under the land: as far as the box of land made round you goes (inBox), the whole cave however it winds (#8, the owner: "the whole cave should show up to the player, not a small radius"), walk: on the surface, for a cave's mouth or a hole beside you: where you can walk and drop to, not the floors you came down from}). The land is made WHOLE, always: under the land you are seen through a window, a mask the painter makes from a few boxes
     // (vox_style_win.js), not through a hole cut in these faces: no chunk hangs on where you are. Here only the boxes are found: the tiles walked to from yours (reach steps), each from its floor to its ceiling.
     function* steps(cx, cy, L, o) {
-      const cols = new Map(), r = o.r, deep = o.deep, pt = o.win || null, fresh = new Map(); let made = 0; farBox = [Math.floor((cx - r - 48) / CH), Math.floor((cy - r - 48) / CH), Math.floor((cx + r + 48) / CH), Math.floor((cy + r + 48) / CH)];
+      const cols = new Map(), r = o.r, deep = o.deep, pt = o.win || null, fresh = new Map(); let made = 0; far.box(cx, cy, r);
       const cached = (m, fn) => (x, y) => { const k = x * 1048576 + y; let c = m.get(k); if (c === undefined) { c = fn(x, y); m.set(k, c); } return c; };
       // real: the land as it is (where you can walk, what covers you, the window, the light); col: as it is drawn, its faces: under the land, the cut (cutH) leaves out
       // its cells over your space, and south of it those high enough to hide it from the eye (the owner: "underground view should show the real blocks around the player")
@@ -202,7 +152,7 @@ const VoxStyleLand = (() => {
       // a quarter of the px). Only the LIGHT tells them apart (cls -> the painter's light of the space, vox_style.js: 1 warm, 2 dimmer, 3 cold), and that eases. A tile has ONE level: a floor under the land
       // before one under the sky (the meadow over a room is of your space too, by the stair's mouth: found first it kept the room shut till you were near), else the first found; the flood goes on through its other floors (treads over a passage)
       let sky0 = false; if (pt) { let L0 = L; const c0 = real(cx, cy); if (c0 && !(host.water && host.water(cx, cy))) for (let n = 0; n < 8 && !solidC(c0, L0); n++) L0--;   // (in the air, a jump, a fall: your space is the floor's under you. From a level in mid air the flood found another space for the frames of a fall: the picture flashed)
-        sky0 = topOf(cx, cy) <= L0; const i0 = at(cx, cy), lim = pt.reach, nodes = [[cx, cy, L0, 0]], seenN = new Set([i0 * 2048 + L0 + 1024]); reachA[i0] = L0; clsA[i0] = 1; nearA[i0] = 1; reached.push(i0);
+        sky0 = topOf(cx, cy) <= L0; const i0 = at(cx, cy), lim = pt.reach ?? Infinity, nodes = [[cx, cy, L0, 0]], seenN = new Set([i0 * 2048 + L0 + 1024]); reachA[i0] = L0; clsA[i0] = 1; nearA[i0] = 1; reached.push(i0);
         for (const pass of pt.walk ? [1, 2] : [1, 2, 3]) { let fr = nodes.slice();
           for (let d = 1; d <= lim && fr.length; d++) { const nx = []; for (const [x, y, f0, o] of fr) { if (o > 4) continue; for (const [dx, dy] of DIR) { const X = x + dx, Y = y + dy, i = at(X, Y); if (i < 0) continue; const f1 = floorOf(x, y, X, Y, f0), l = pass > 2 ? upsOf(x, y, X, Y, f0) : [];   // (o: steps under the open sky since the last floor under the land: the flood stops five out on a meadow: it ran over the whole surface, 8 ms of one frame, for nothing: only what is under land is looked into)
             if (f1 !== null && (pass > 1 || f1 % 1 === 0)) l.push(Math.floor(f1));
@@ -224,8 +174,8 @@ const VoxStyleLand = (() => {
         for (let d = 0; d < 3 && fr.length; d++) { const nx = []; for (const [x, y, lo, hi] of fr) for (const [dx, dy] of DIR) { const X = x + dx, Y = y + dy, k = X + "," + Y, c = own.has(k) || !inBox(X, Y) ? null : real(X, Y); if (!c) continue;
           for (let j = 0; j + 2 < c.length; j += 2) if (c[j] >= lo - 4 && c[j] <= hi + 6) { own.add(k); const t = [X, Y, c[j], Math.min(c[j] + 6, c[j + 1])]; win.push(t); nx.push(t); break; } } fr = nx; } }
       // THE CUT (the owner's pick, the mockup page: "under the land, the real blocks round you"; "the whole cave should show up to the player, not a small
-      // radius"): covered by the land, it is not drawn over YOUR SPACE (the window's boxes: every floor you can walk or drop to, the whole cave, 24 tiles
-      // out) and the tile of land round each, at that floor's head: every wall of your cave a block of its own earth or stone, two levels high
+      // radius"): covered by the land, it is not drawn over YOUR SPACE (the window's boxes: every floor you can walk or drop to, the whole cave, as far
+      // as the land made round you: the view's) and the tile of land round each, at that floor's head: every wall of your cave a block of its own earth or stone, two levels high
       // NOTHING HIDDEN IS SHOWN (the owner: "x-ray should not allow to see ores in wall"): the cut shows the land's cells as land, earth or stone, never
       // what is in them; what stands on the land cut is not drawn (hd.js cutOff): an ore over your tunnel is not seen from under it. Ore in a wall, when the
       // land has it, is seen where a face of it opens onto your space, not on the cut
@@ -292,7 +242,7 @@ const VoxStyleLand = (() => {
       // past the box, to the horizon, in patches: the sea's flat face where the sea is (or nothing is known); where land is, the land at its height, a skirt south, west and east of it: no sea inland.
       // Their px are the land's own at the land's own size (the shader, kind 7): a top an 8 x 8 quarter of a tile's paint, which quarter and which way round by the tile it lies on; a skirt its rock's front (e: 9 a top, 10 a south skirt, 11 a west or east one). Not the paint's mean colour: that reads as flat slabs.
       // Patches are 4 tiles across for the first 16 tiles past the box, 8 beyond (8 everywhere: a mountain's flank one smooth slab a patch wide); a top's paint is a tile of the patch at its height with its four neighbours as high (its middle tile was often a rim: a stripe of the rim's brown and green over the whole patch)
-      // THE PATCHES LIE ON THE WORLD'S OWN GRID (4 and 8 tiles: x, y multiples of them), cut only at the box's edges and the far edge: walking, the patches are the ones made a step before, kept (farOf).
+      // THE PATCHES LIE ON THE WORLD'S OWN GRID (4 and 8 tiles: x, y multiples of them), cut only at the box's edges and the far edge: walking, the patches are the ones made a step before, kept (vox_land_far.js).
       // (Not counted from you: then a step east puts every patch 1 tile off the last one's, all made again, 3 steps in 4, with their tops' paints: half of a land's making at a sprint, and
       //  the far land changes at each step, each patch's height read from other tiles: the far hills shimmer as you walk)
       function* patches() { const fl = [], fs = []; if (o.sea === undefined) return [new Float32Array(0), new Float32Array(0)];
@@ -303,9 +253,8 @@ const VoxStyleLand = (() => {
         const rows = cut(cy - r - 40, Math.floor((cy - r - 16) / 8) * 8, 8).map((q) => [...q, out]).concat(cut(Math.floor((cy - r - 16) / 8) * 8, cy - r, 4).map((q) => [...q, out]), cut(cy - r, cy + r + 1, 4).map((q) => [...q, side]),
           cut(cy + r + 1, cy + r + 5, 1).map((q) => [...q, one]), cut(cy + r + 5, b4, 4).map((q) => [...q, out]), cut(b4, cy + r + 41, 8).map((q) => [...q, out]));   // (the first four rows south of the box a tile each, its own paint (e 8): tall land there stands at the screen's foot, a tile as big as a hand)
         const tz = (x, y) => { const c = host.column(x, y); return c && c.length ? c[c.length - 1] : null; }, flat = (x, y, z) => tz(x - 1, y) === z && tz(x + 1, y) === z && tz(x, y - 1) === z && tz(x, y + 1) === z;
-        for (const [y, h, cols] of rows) { yield "far"; if (farDirty.length) farForget(); for (const [x, w] of cols) { const bk = Math.floor(x / CH) + "," + Math.floor(y / CH), fk = x + "," + y + "," + w + "," + h; let m = farOf.get(bk); const had = m && m.get(fk);
-          if (had) { P.use(had[2]); if (had[0].length) fl.push(had[0]); if (had[1].length) fs.push(had[1]); continue; } const a = [], b = []; into = []; fars++; patch(x, y, w, h, a, b); const f = [new Float32Array(a), new Float32Array(b), into]; into = null; if (!m) farOf.set(bk, m = new Map()); m.set(fk, f); farN++; if (a.length) fl.push(f[0]); if (b.length) fs.push(f[1]); if (farN % 6 === 0) yield "far"; }   // (a step: six patches made, not a row of them: a slow phone's frame waited for 27)
-          if (farN > 12000) farClear(); }   // (a patch's faces kept by where it is: walking, the patches 4, 8 tiles back are this one's; 4 ms of each land's 6 were the far land made again)
+        const made = (x, y, w, h, a, b) => { into = []; patch(x, y, w, h, a, b); const s = into; into = null; return s; };   // (a patch drawn: the places of the paints it names, kept with it)
+        yield* far.rows(rows, made, fl, fs);
         return [cat(fl), cat(fs)];
         function patch(x, y, w, h, fl, fs) { let mx = x + (w >> 1), my = y + (h >> 1); const c = host.column(mx, my), land = c && c.length && !(host.water && host.water(mx, my));
           const Q = [[1, 1], [3, 1], [1, 3], [3, 3]].map(([a, b]) => [x + (w * a >> 2), y + (h * b >> 2)]).filter(([qx, qy]) => tz(qx, qy) !== null && !(host.water && host.water(qx, qy)));
@@ -315,9 +264,12 @@ const VoxStyleLand = (() => {
           const put = (q, k, s, e) => { const u0 = land ? (s % SL) * C : 0, v0 = land ? (s / SL | 0) * C : 0, dst = land ? fl : fs, kind = land ? 7 : 3; for (let t = 0; t < 6; t++) { const p = q[TRI[t]]; emit(dst, p[0], p[2] * H, p[1], u0, v0, k, 1, kind, z, e); } };   // (no vertex made as an array of its own)
           put([[x, y, z], [x + w, y, z], [x + w, y + h, z], [x, y + h, z]], 1, sl, w * h === 1 && tz(x, y) === z ? 8 : 9);
           if (land) { const lo = (t) => Math.min(z - 10, t === null ? o.sea : t), s = lo(tz(mx, y + h)), wz = lo(tz(x - 1, my)), ez = lo(tz(x + w, my));   // (each skirt down to the land beside it: ten levels were a mountain's patches hung in the air over the meadow, the sky under them)
-            put([[x, y + h, z], [x + w, y + h, z], [x + w, y + h, s], [x, y + h, s]], .8, fr, 10); put([[x, y, z], [x, y + h, z], [x, y + h, wz], [x, y, wz]], .7, fr, 11); put([[x + w, y + h, z], [x + w, y, z], [x + w, y, ez], [x + w, y + h, ez]], .78, fr, 11); } } }
+            // (each skirt its cells' own rock, face rule 2: earth from the top down to the middle tile's stone, its stone under that, split at a whole level)
+            let st = null; if (host.rock) for (let q = z; q > z - 64 && st === null; q--) if (host.rock(mx, my, q) === 2) st = q;
+            const fs2 = st !== null && st < z && host.paintFront ? front(mx, my, st, z) : fr, sk = (q, lo, k, e) => { if (st === null || st >= z || st <= lo) { put(q(z, lo), k, st !== null && st >= z ? fs2 : fr, e); return; } put(q(z, st), k, fr, e); put(q(st, lo), k, fs2, e); };
+            sk((a, b) => [[x, y + h, a], [x + w, y + h, a], [x + w, y + h, b], [x, y + h, b]], s, .8, 10); sk((a, b) => [[x, y, a], [x, y + h, a], [x, y + h, b], [x, y, b]], wz, .7, 11); sk((a, b) => [[x + w, y + h, a], [x + w, y, a], [x + w, y, b], [x + w, y + h, b]], ez, .78, 11); } } }
       const want = []; for (let by = Math.floor(Y0 / CH); by <= Math.floor(Y1 / CH); by++) for (let bx = Math.floor(X0 / CH); bx <= Math.floor(X1 / CH); bx++) want.push([bx, by]);
-      if (P.start(!!o.again)) { store.clear(); farClear(); }   // (a land made with its paints from none keeps no chunk made before: they name places of paints that are gone. The land was wiped (eng.lost: forget) while one was being made, that one's chunks were kept, and the next, from none, drew them with other tiles' paints: grey and green squares on a meadow, the mean colour, a shadow's black blades on the grass)
+      if (P.start(!!o.again)) { store.clear(); far.clear(); }   // (a land made with its paints from none keeps no chunk made before: they name places of paints that are gone. The land was wiped (eng.lost: forget) while one was being made, that one's chunks were kept, and the next, from none, drew them with other tiles' paints: grey and green squares on a meadow, the mean colour, a shadow's black blades on the grass)
       making = true; late.clear();   // (the paints and the land that names them change together: vox_style.js)
       try {
         const need = want.filter(([bx, by]) => !good(store.get(bx + "," + by), bx, by)); wantK = new Set(want.map(([bx, by]) => bx + "," + by)); partN = 0; partOf = need.length + 1; yield "scan";   // (part: how much of this land is made, the chunks and then the far land: the first screen's wait, index.html #boot)
@@ -334,8 +286,8 @@ const VoxStyleLand = (() => {
         return {parts, clip: [X0, X1 + 1, Y0, Y1 + 1], wet, made, space: pt ? {x: cx - r, y: cy - r, D, lvl: reachA, cls: clsA} : null, win, cut: cutH};
       } finally { making = false; }
     }
-    return {steps, touch, touchBox, wet, model, clear() { store.clear(); farClear(); }, farKeep, evicted(kept) { for (const k of [...store.keys()]) if (!wantK || !wantK.has(k)) store.delete(k); if (kept) farFree(kept); else farClear(); },   // (paints given again: what was made with them and is not of this land goes)
-      get stamp() { return stamp; }, get fars() { return fars; }, get part() { return partOf ? partN / partOf : 0; }};   // (fars: far patches made, all told: tests)
+    return {steps, touch, touchBox, wet, model, clear() { store.clear(); far.clear(); }, farKeep: () => far.keep(), evicted(kept) { for (const k of [...store.keys()]) if (!wantK || !wantK.has(k)) store.delete(k); if (kept) far.free(kept); else far.clear(); },   // (paints given again: what was made with them and is not of this land goes)
+      get stamp() { return stamp; }, get fars() { return far.fars; }, get part() { return partOf ? partN / partOf : 0; }};   // (fars: far patches made, all told: tests)
   }
   return {create, N, CH};
 })();

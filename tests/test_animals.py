@@ -39,7 +39,7 @@ def test_chickens_lay_cows_give_milk_and_beds_set_spawn(world):
     sim.world.set(a.x - 1, a.y, block="bed")
     assert run(sim, a, "sleep", {"dir": "W"})["ok"] and a.spawn == [a.x - 1, a.y]
     a.hp = 1
-    sim.kill_agent(a, "test", None)
+    sim.kill_agent(a, "dev", None)
     assert abs(a.x - (a.spawn[0])) + abs(a.y - a.spawn[1]) == 1
 
 def test_eggs_hatch_and_chicks_grow_up(world):

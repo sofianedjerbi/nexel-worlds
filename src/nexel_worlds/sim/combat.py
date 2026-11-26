@@ -3,8 +3,13 @@
 from .. import tiles as T
 from ..tiles import DIRS
 from .constants import ATTACK_COOLDOWN, FARM, FLEE_SECONDS, FOOD_MAX, HP_MAX, SAT_START, sec
-from .entities import CREATURES, ActionError, Agent, Creature, roll_drops
+from .entities import CREATURES, ActionError, Agent, Creature, ref, roll_drops
 from .progress import XP_KILL
+
+
+# A DEATH'S CAUSE is a code (#6): killed, bitten, burnt, fell, starvation, fire, admin, dev; who did it with it ({kind, id, name}).
+# Its words are its readers' own: the page's (web/js/death.js WHY_DIED), the agents' (nexel-agent rl/facts.py told)
+CAUSES = ("killed", "bitten", "burnt", "fell", "starvation", "fire", "admin", "dev")
 
 
 class Combat:
@@ -34,13 +39,13 @@ class Combat:
     def _tool_attack(self, a, args):
         t = self._find_target(args.get("target"))
         if t is a:
-            raise ActionError("bad_target", "you cannot attack yourself")
+            raise ActionError("bad_target", "you cannot attack yourself", why="self")
         if isinstance(t, Creature) and CREATURES[t.kind].get("untouchable"):
-            raise ActionError("bad_target", "your hand goes through it")
+            raise ActionError("bad_target", "your hand goes through it", why="untouchable")
         weapon = self.held(a, args)
         reaches = lambda: self.within(a, "melee", t.x, t.y, self.height(t), weapon, getattr(t, "kind", None))
         if not reaches():
-            raise ActionError("out_of_range", "target is out of reach, height counted (a layer is half a tile)")
+            raise ActionError("out_of_range", "target is out of reach, height counted (a layer is half a tile)", why="far")
         # the hit lands at once, then the arm needs ATTACK_COOLDOWN before the next swing: a ready swing takes no
         # time, so you can fight while walking; one sent too soon waits for the cooldown, or on the move is dropped
         if self.tick < a.swing_ready and getattr(self, "passing", None) is a:
@@ -56,7 +61,7 @@ class Combat:
             dmg = self.gust_struck(t, a, dmg)                        # spinning up, it scatters; otherwise it runs (wild.py)
         self.tire(a, "attack")
         name = t.name if isinstance(t, Agent) else f"{t.kind}#{t.id}"
-        self.emit("attack", a.x, a.y, attacker=a.name, target=name, damage=dmg, weapon=weapon or "fists")
+        self.emit("attack", a.x, a.y, who=ref(a), whom=ref(t), damage=dmg, weapon=weapon or "fists")
         a.bump("attacks")
         if isinstance(t, Creature):
             t.cooldown = 0
@@ -65,21 +70,25 @@ class Combat:
             elif t.kind == "tusker":                # ...and a tusker takes it badly (wild.py)
                 self.enrage(t, a)
         before = t.deaths if isinstance(t, Agent) else 0
-        self.damage(t, dmg, f"killed by {a.name}", by=a)
+        self.damage(t, dmg, "killed", by=a)
         killed = t.deaths > before if isinstance(t, Agent) else t.id not in self.creatures
         return {"target": name, "damage": dmg, "target_hp": 0 if killed else t.hp, "killed": killed}
 
-    def damage(self, target, n: float, cause: str, by: Agent | None = None):
+    def damage(self, target, n: float, code: str, by: Agent | None = None, who=None):
+        """`code`: of CAUSES; `by`: the person it is put down to (a kill, a hob's owner); `who`: what did it, `by` if not said."""
         target.hp -= n
         if isinstance(target, Agent):
             self.tire(target, "hurt")
         if target.hp <= 0:
             if isinstance(target, Agent):
-                self.kill_agent(target, cause, by)
+                self.kill_agent(target, code, by, who or by)
             else:
                 self.kill_creature(target, by)
 
-    def kill_agent(self, a: Agent, cause: str, by: Agent | None):
+    def kill_agent(self, a: Agent, code: str, by: Agent | None, who=None):
+        if code not in CAUSES:
+            raise ValueError(f"a death's code is one of CAUSES, not {code!r}")
+        who = ref(who) if who is not None else None
         for item in a.worn.values():             # what you wore falls with the rest
             a.add(item)
         a.worn = {}
@@ -90,7 +99,7 @@ class Combat:
         self.stats["deaths"] += 1
         if by:
             by.bump("kills")
-        self.emit("death", a.x, a.y, name=a.name, cause=cause, by=by.name if by else None,
+        self.emit("death", a.x, a.y, name=a.name, code=code, who=who, by=by.name if by else None,
                   dropped=dropped)
         if a.action or a.aside:
             self.interrupt(a, "you died")
@@ -109,7 +118,7 @@ class Combat:
             a.spawn = None
             a.x, a.y = self.find_spawn(a.id * 31 + a.deaths)
         a.hp, a.hunger, a.sat, a.tired = HP_MAX, FOOD_MAX, SAT_START, 0.0
-        a.events.append({"tick": self.tick, "type": "respawn", "cause": cause,
+        a.events.append({"tick": self.tick, "type": "respawn", "code": code, "who": who,
                          "by": by.name if by else None, "x": a.x, "y": a.y})
 
     def kill_creature(self, c: Creature, by: Agent | None):

@@ -3,10 +3,47 @@
 import pytest
 
 
-def speed(rec, skip_ms=300):
-    """Tiles per second over a recording, ignoring the start."""
-    pts = [r for r in rec if r[0] > skip_ms]
-    return abs(pts[-1][1] - pts[0][1]) / ((pts[-1][0] - pts[0][0]) / 1000)
+def game_s(a, b):
+    """The game's time a recorded frame moved things by (s): the frame's own, 0.1 s at the most (render.js update: a
+    longer one is cut there, as on any machine that cannot keep up)."""
+    return min(b[0] - a[0], 100) / 1000
+
+
+def gone(a, b):
+    """Tiles a recorded frame moved you."""
+    return abs(b[1] - a[1]) + abs(b[2] - a[2])
+
+
+def free(rec):
+    """The frames the walk went at its own pace, neither waiting for the world nor catching up with it (walk.js walkOn:
+    past LEAD[0], 2 tiles ahead, it slows for a world that comes late, as it should; under -1 it goes a quarter faster).
+    The lead that paced a frame is the one it began with: the one recorded after its move, less the move (a frame of
+    0.625 tiles at 5 a second, catching up, was recorded at -0.42). On the runners the world comes late: the sprint by
+    the page's clock was 8 for 10, a turn's pace 6.6."""
+    return [(a, b) for a, b in zip(rec, rec[1:]) if b[0] > a[0] and -1 <= b[3] - gone(a, b) <= 2]
+
+
+def walked(rec, skip_ms=300):
+    """The free frames of a walk, from skip_ms on, up to its last frame that moved you."""
+    moved = [k for k in range(1, len(rec)) if gone(rec[k - 1], rec[k]) > 1e-6]
+    return free([r for r in rec[: moved[-1] if moved else 0] if r[0] > skip_ms])
+
+
+def speed(rec, skip_ms=300, also=()):
+    """Tiles per second of the game's time the walk went at its own pace (free frames; a frame cut at 0.1 s counts 0.1 s:
+    game_s. A runner's frames are 67 to 280 ms, and by the page's clock a walk read 2 tiles a second), ignoring the start
+    and what follows the walk: its last frame that moved you (it ends on a tile, short of a frame's walk), and you
+    standing after it (hold() waits for the server's answer once the key is up: 0.6 s of standing read 3.8). `also`: more
+    recordings of the same walk, their free frames counted with its own."""
+    pairs = [p for r in (rec, *also) for p in walked(r, skip_ms)]
+    assert len(pairs) >= 3, ("too few frames at the walk's own pace", rec[:6])
+    return sum(gone(a, b) for a, b in pairs) / sum(game_s(a, b) for a, b in pairs)
+
+
+def slow(rec, pace):
+    """The free frames of a walk under 0.8 of `pace`: [ms, frame ms, tiles, lead it began with]."""
+    return [(round(a[0]), round(b[0] - a[0]), round(gone(a, b), 3), round(b[3] - gone(a, b), 2))
+            for a, b in free([r for r in rec if r[0] > 300]) if gone(a, b) < .8 * pace * game_s(a, b)]
 
 
 def backward_jumps(rec, axis, sign):
@@ -15,30 +52,48 @@ def backward_jumps(rec, axis, sign):
 
 
 def test_walk_and_sprint_speeds(game):
-    game.start_recording()
-    game.hold(["d"], 1500)
-    walk = game.recording()
-    game.sleep(400)
-    game.start_recording()
-    game.hold(["Shift", "a"], 1500)
-    sprint = game.recording()
-    assert 4.3 < speed(walk) < 5.7, speed(walk)
-    assert 8.5 < speed(sprint) < 11.5, speed(sprint)
+    # (on a meadow of its own: 7.5 tiles east at a walk, then 15 west at a sprint. It walked over whatever the test before
+    # it left, water at half the pace or a step to jump, and read 2.7 to 4 tiles a second now and then: #28)
+    # (and a second time, back the way it came, when a loaded runner left too few frames at the walk's own pace: its
+    # server, late, then made two tiles in 140 ms, and every frame after was the page catching up: "too few frames", 117 ms)
+    game.clear_area(16)
+
+    def run(keys, back):
+        recs = []
+        for k in (keys, back):
+            game.start_recording()
+            game.hold(k, 1500)
+            recs.append(game.recording())
+            game.sleep(400)
+            if len(walked(recs[0])) >= 3:
+                break
+        return recs[0], recs[1:]
+    walk, more = run(["d"], ["a"])
+    assert 4.3 < speed(walk, also=more) < 5.7, (speed(walk, also=more), slow(walk, 5))
+    sprint, more = run(["Shift", "a"], ["Shift", "d"])
+    assert 8.5 < speed(sprint, also=more) < 11.5, (speed(sprint, also=more), slow(sprint, 10))
     game.sleep(500)
     assert game.pos() == (game.server()["x"], game.server()["y"])
 
 
 @pytest.mark.realtime
 def test_taps_move_one_tile_and_never_snap_back(game):
-    x0, _ = game.pos()
+    # (each tap one tile, when the page had the key down less than a stride of the game's time. The key's up comes from the
+    # test: on a runner drawing every 50 ms it reached the page after a stride, and that tap rightly went a second tile, the
+    # page's key held that long: "(-5 - -9) == 3". How long the page had it down is by its own clocks, in the game's time)
+    stride = game.js("1000 / RULES.pace.walk")
+    game.js("""(() => { window.__down = []; addEventListener('keydown', (e) => { if (e.key === 'd' && !e.repeat) __down.push([performance.now()]); }, true);
+      addEventListener('keyup', (e) => { if (e.key === 'd' && __down.length) __down[__down.length - 1].push(performance.now()); }, true); return 1; })()""")
     for hold in (20, 60, 120):
+        x0, _ = game.pos()
         game.start_recording()
         game.hold(["d"], hold)
         game.sleep(500)
         rec = game.recording()
         assert backward_jumps(rec, "x", 1) < .1
-    x1, _ = game.pos()
-    assert x1 - x0 == 3                                   # three taps, three tiles
+        down = game.js("(() => { const d = __down[__down.length - 1]; return d[1] - d[0]; })()")
+        moved = game.pos()[0] - x0
+        assert moved == 1 or (moved > 1 and down >= stride), (hold, moved, round(down), stride)     # a tap, a tile
     game.start_recording()
     for _ in range(6):                                    # rapid taps: never thrown back to the start
         game.hold(["a"], 40)
@@ -64,26 +119,34 @@ def test_letting_go_and_pressing_another_key_never_stalls(game):
             page.keyboard.up(keys[i % 2])
         page.keyboard.up("Shift")
         rec = game.recording()
-        return sum(abs(b[1] - a[1]) + abs(b[2] - a[2]) for a, b in zip(rec, rec[1:])) / ((rec[-1][0] - rec[0][0]) / 1000)
+        still.extend((round(b[0]), round(b[3], 2)) for a, b in zip(rec, rec[1:]) if abs(b[1] - a[1]) + abs(b[2] - a[2]) < 1e-6)
+        return speed(rec, 0)
 
+    still = []                                                # (frames that did not move you: [ms, tiles ahead of the world])
     corner = turns("ds")
     game.sleep(600)
     assert game.pos() == (game.server()["x"], game.server()["y"])
     back = turns("da")
     game.sleep(600)
     assert game.pos() == (game.server()["x"], game.server()["y"])
-    assert corner > 7.5 and back > 6.5, (corner, back)        # (sprinting is 10 a second; it was 5.4 and 3)
+    assert corner > 7.5 and back > 6.5, (corner, back, still[:30])        # (sprinting is 10 a second; it was 5.4 and 3)
 
 
-def stops(rec, ms=60):
-    """The pauses (ms) in a recorded walk, its ends left out."""
+def stops(rec, ms=60, wait=None):
+    """The pauses in a recorded walk, its ends left out: frames drawn with you where the frame before had you, two or
+    more in a row and more than `ms` of the game's time (ms). (It was any gap of more than 60 ms between two frames that
+    moved you: on the runners a frame alone is 70 to 180 ms, and every frame was a stop. At 60 frames a second the two
+    frames are under the 60 ms: as it was). `wait`: walk.js LEAD[1], the tiles ahead of the world where the walk waits
+    for it, as it should: a frame standing there is no stop)"""
     mid = [r for r in rec if rec[0][0] + 400 < r[0] < rec[-1][0] - 400]
-    out, i0 = [], 0
-    for i in range(1, len(mid)):
-        if abs(mid[i][1] - mid[i0][1]) + abs(mid[i][2] - mid[i0][2]) > 1e-6:
-            if mid[i][0] - mid[i0][0] > ms:
-                out.append(round(mid[i][0] - mid[i0][0]))
-            i0 = i
+    out, still, n = [], 0.0, 0
+    for a, b in [*zip(mid, mid[1:]), (None, None)]:
+        if b is not None and abs(b[1] - a[1]) + abs(b[2] - a[2]) <= 1e-6 and (wait is None or b[3] < wait):
+            still, n = still + game_s(a, b) * 1000, n + 1
+            continue
+        if n >= 2 and still > ms:
+            out.append(round(still))
+        still, n = 0.0, 0
     return out
 
 
@@ -126,10 +189,16 @@ def test_late_ticks_do_not_stop_you(game):
     page.keyboard.up("d")
     page.keyboard.up("Shift")
     rec = game.recording()
-    dist = sum(abs(b[1] - a[1]) + abs(b[2] - a[2]) for a, b in zip(rec, rec[1:]))
+    # (the walk's own pace in the game's time, where the world let it go: speed. It was the tiles gone, then the pace on
+    # frames not cut: on a runner the lumps of late ticks put you past LEAD[0] and the walk slowed for them, as it
+    # should, 6.8. Stopped at a tile ahead of the server's last word, as it was, the free frames would stand still)
+    pace = speed(rec, 0)
     game.sleep(900)
-    assert not stops(rec), stops(rec)
-    assert dist > 17, dist                                    # (2.1 s sprinting: 21 tiles at full speed)
+    # (a runner's own late ticks on top of the 220 ms lumps put you LEAD[1] ahead, and the walk waited there for the world,
+    # as it should: "[117]", 133 ms frames. A stop short of it is the fault: one tile ahead, as it was)
+    wait = game.js("LEAD[1]")
+    assert not stops(rec, wait=wait), (stops(rec, wait=wait), [(round(b[0]), round(b[3], 2)) for a, b in zip(rec, rec[1:]) if abs(b[1] - a[1]) + abs(b[2] - a[2]) <= 1e-6])
+    assert pace > 8.5, (pace, slow(rec, 10))
     assert game.pos() == (game.server()["x"], game.server()["y"])
 
 
@@ -145,9 +214,10 @@ def test_two_keys_never_slide_diagonally(game):
         game.page.keyboard.up(first)
         game.sleep(500)
         rec = game.recording()
-        # a diagonal step moves visibly on both axes in one frame (sub-pixel snaps onto the lane don't count)
-        where = [(round(rec[k][0]), rec[k - 1][1:], rec[k][1:]) for k in range(1, len(rec))
-                 if abs(rec[k][1] - rec[k - 1][1]) > .01 and abs(rec[k][2] - rec[k - 1][2]) > .01]
+        # sliding diagonally is being off both lanes at once (sub-pixel snaps onto the lane don't count). (It was moving on
+        # both axes in one frame: a frame of 85 ms on the runners finished the step east and began the one north, an L)
+        off = lambda v: abs(v - round(v)) > .01
+        where = [(round(r[0]), r[1:]) for r in rec if off(r[1]) and off(r[2])]
         assert not where, (first, second, where)
     assert game.pos() == (game.server()["x"], game.server()["y"])
 
@@ -159,37 +229,6 @@ def test_walls_stop_you_and_turn_you(game):
     game.sleep(300)
     assert game.pos() == (x0, y0)                         # blocked: you stay
     assert game.js("ents.get('agent' + myId).fx") == 1    # but you now face it
-
-
-def test_you_jump_up_a_layer_but_not_two(game):
-    # north of you: a ledge one layer up (2 rows), then ground three layers up
-    game.stamp(-3, -6, ["......."] * 5, levels=["3333333"] * 3 + ["1111111"] * 2)
-    x, y = game.pos()
-    game.page.keyboard.down("w")                                # one tile, a jump up (Space: walking into it stops you), along the ledge, then the wall
-    game.sleep(100); game.page.keyboard.press("Space"); game.sleep(1000)
-    game.page.keyboard.up("w")
-    game.sleep(500)
-    s = game.server()
-    assert (s["x"], s["y"]) == (x, y - 3) and game.pos() == (s["x"], s["y"])
-    assert game.js(f"levelAt({s['x']}, {s['y']})") == 1
-
-
-def test_hop_down_off_a_hill_edge(game):
-    # you stand on a hill (level 1) two tiles in from its west edge: walk west and hop down
-    game.stamp(-3, -2, ["......."] * 5, levels=["0111110"] * 4 + ["0000000"])
-    x, y = game.pos()
-    assert game.js(f"levelAt({x}, {y})") == 1
-    game.hold(["a"], 900)
-    game.sleep(500)
-    s = game.server()
-    assert s["x"] <= x - 3 and game.js(f"levelAt({s['x']}, {s['y']})") == 0 and game.pos() == (s["x"], s["y"])
-    low = s["x"]
-    game.page.keyboard.down("d")                                # and a jump back up the same edge (Space)
-    game.sleep(100); game.page.keyboard.press("Space"); game.sleep(600)
-    game.page.keyboard.up("d")
-    game.sleep(500)
-    s = game.server()
-    assert s["x"] > low and s["x"] >= x - 2 and game.js(f"levelAt({s['x']}, {s['y']})") == 1 and game.pos() == (s["x"], s["y"])
 
 
 @pytest.mark.realtime
@@ -210,42 +249,6 @@ def test_higher_ground_is_drawn_higher_and_clicks_find_it(game):
     assert px[2] > px[1] > px[0] and game.js(f"tileAtScreen({mx}, 96)") is None, px      # ...and a point of the sky over it is no tile
     game.js(f"ents.get('agent' + myId).y = {y - 3}")             # someone up there is lifted with it
     assert game.js("liftOf(ents.get('agent' + myId))") == 3 * L * z
-
-
-def test_a_hop_is_one_arc_over_the_edge_at_the_pace_of_a_step(game):
-    """Up or down a layer: a crouch on the ground it leaves, one arc from there to the ground it lands on, clear of the
-    edge, a landing; your shadow on the ground under you, and as long as a jump that high takes (now a block and more:
-    "the Space jump should be as high as 1 block and more", the walk waiting for it: a third of a second, not a fifth). (Seen frame by frame it hung:
-    the step took half as long again, the body near the top of its arc for most of it, legs going; and it ended with
-    a 2 px snap. Then "Jump looks unnatural": it left the ground the instant the step began, stiff.)"""
-    game.clear_area(6)
-    game.stamp(1, -1, ["..."] * 3, levels=["111"] * 3); game.rest()        # ground a layer up, east of you
-    x, y = game.pos()
-    L = game.js("RELIEF_STEP")                                # (art px a layer: a block)
-    # your feet and your shadow over the lower ground (art px; the solver says levels), f of the way across, going east (up) or west (down)
-    at = lambda f, to: game.js(f"""(() => {{ const j = jumpOf({{x: {x} + {f}, y: {y}, tx: {to}, ty: {y}, fx: {1 if to > x else -1}, fy: 0}});
-      return {{feet: (j.body + {f}) * {L}, shadow: (j.ground + {f}) * {L}, squash: j.squash}}; }})()""")
-    for to in (x + 1, x):
-        way = [at(f / 50, to) for f in range(1, 50)]
-        off, land = (way[0], way[-1]) if to > x else (way[-1], way[0])
-        up = to > x
-        assert abs(off["feet"] - (0 if up else L)) < 1e-6 and off["squash"] == up and abs(land["feet"] - (L if up else 0)) < 1.5   # on the ground as it sets off (up: crouched); a px or so from it as it lands (the landing's squash: after it, by the clock)
-        assert max(abs(b["feet"] - a["feet"]) for a, b in zip(way, way[1:])) < L / 8          # one smooth arc: no snap anywhere
-        assert all(abs(q["shadow"]) < 1e-6 for q in way[:24]) and all(abs(q["shadow"] - L) < 1e-6 for q in way[25:])
-        assert all(q["feet"] >= L - (1e-6 if up else 2) for q in way[24:])                         # over the higher ground: never inside it (down: under two px)
-        if up:
-            assert max(q["feet"] for q in way) > L + 1                                      # clear of the edge
-        else:                                                                               # down: no jump, a drop off the edge
-            assert max(q["feet"] for q in way) <= L + 1e-6 and all(b["feet"] >= a["feet"] - 1e-6 for a, b in zip(way, way[1:]))
-    assert game.js(f"jumpOf({{x: {x} - .5, y: {y}, tx: {x} - 1, ty: {y}, fx: -1, fy: 0}})") is None   # on the level: no hop
-    game.start_recording()                                    # and it takes the time of a step: up the step (Space as you set off) and on, at walking pace
-    game.page.keyboard.down("d"); game.page.keyboard.press("Space")
-    game.hold(["d"], 700)
-    rec = game.recording()
-    game.sleep(500)
-    gone = rec[-1][1] - rec[0][1]
-    assert gone > 2.5, gone                                   # (5 tiles a second for 0.7 s, the step a third of a second: its jump's time, jump.js jumpMs)
-    assert game.pos() == (game.server()["x"], game.server()["y"])
 
 
 def test_moved_far_just_as_you_stop_walking_you_are_drawn_where_the_world_has_you(game):

@@ -7,7 +7,7 @@ import pytest
 
 from test_e2e_hd_behind import calm, go
 from test_e2e_hd_sun import hd
-from test_e2e_hd_xray import CHANGED
+from test_e2e_hd_xray import CHANGED   # (the px the window changes, against a second picture without it: what changes by itself not counted)
 
 
 @pytest.mark.realtime
@@ -33,7 +33,11 @@ def test_at_a_mountain_s_foot_the_window_is_your_few_tiles_not_the_meadow_behind
             g.rpc("dev_col", tiles=[t], col=[h])
         g.rest()
         go(g, x - 10, y)
-        g.js("""() => { window.__w = []; const f = () => { const p = myPos(), w = HdLook.win; let far = 0; for (const t of w.tiles) if (Math.abs(t[0] - Math.round(p.x)) + Math.abs(t[1] - Math.round(p.y)) > 5) far++;
+        # (far: a tile of the window more than 5 from every place you stood in the last half second. The window drawn is the
+        # one made for where you were when its land was begun: on a runner drawing every 133 ms that land takes frames, and
+        # you were a tile or two on, "14" from where you stood that frame; the meadow behind the mountain is hundreds)
+        g.js("""() => { window.__w = []; const was = []; const f = () => { const p = myPos(), w = HdLook.win, now = performance.now(); was.push([now, Math.round(p.x), Math.round(p.y)]); while (now - was[0][0] > 500) was.shift();
+          let far = 0; for (const t of w.tiles) if (was.every(([, x, y]) => Math.abs(t[0] - x) + Math.abs(t[1] - y) > 5)) far++;
           window.__w.push([w.n, far]); if (window.__w.length < 3000) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }""")
         g.hold(["d"], 2500)                                                # east along its foot
         w = g.js("window.__w.splice(0)")

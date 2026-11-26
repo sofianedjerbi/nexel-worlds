@@ -29,8 +29,13 @@ def smooth(rec):
     leaves the ground and lands), a px on a quicker frame; no pose shown and gone back from (a flash)."""
     for a, b in zip(rec, rec[1:]):           # (4 px more as it leaves the ground, as test_e2e_leap's smooth: up a flight, one jump's touch to the next one's takeoff, 13 to 8 in a 60th of a second)
         assert abs(b[2] - a[2]) <= max(1, -(-3.5 * (b[0] - a[0]) // 16.67)) + (4 if "takeoff" in (a[3], b[3]) else 0), (a, b)
-    runs = [r[3] for r, q in zip(rec, [None] + rec) if q is None or r[3] != q[3]]
-    assert not [i for i in range(1, len(runs) - 1) if runs[i - 1] == runs[i + 1] and runs[i]], runs
+    # (a flash: a pose shown and gone back from, where the frames round it were short enough to show every pose (34 ms: two
+    # 60ths). Up a flight each step is a jump of its own; on a frame of 83 to 117 ms one's takeoff or touch falls between two
+    # frames, and its rise came straight after the last one's apex or touch: "rise, apex, rise", "rise, touch, rise")
+    starts = [i for i in range(len(rec)) if i == 0 or rec[i][3] != rec[i - 1][3]] + [len(rec)]
+    runs = [(rec[a][3], a, b) for a, b in zip(starts, starts[1:])]
+    quick = lambda a, b: all(rec[j][0] - rec[j - 1][0] <= 34 for j in range(max(1, a), min(len(rec), b + 1)))
+    assert not [k for k in range(1, len(runs) - 1) if runs[k - 1][0] == runs[k + 1][0] and runs[k][0] and quick(*runs[k][1:])], [p for p, _, _ in runs]
 
 
 @pytest.mark.realtime
@@ -77,7 +82,9 @@ def test_auto_jump_up_a_staircase_is_smooth_and_keeps_its_rhythm(game):
     at = lambda r: ORDER.index(r[3]) if r[3] in ORDER else -1
     offs = [r[0] for r, q in zip(rec, [None] + rec) if at(r) >= 0 and (q is None or at(q) < 0 or at(r) < at(q))]
     assert len(offs) == 4, offs
-    beats = [b - a for a, b in zip(offs, offs[1:])]
+    # (from the second step: the first is jumped from the flat ground before the flight, a whole jump; a flight is walked at a walk's
+    # pace from its second step, leap.js stairArc. Counted with it, a runner drawing every 83 ms read "[517, 183, 217]")
+    beats = [b - a for a, b in zip(offs[1:], offs[2:])]
     frame = sorted(b[0] - a[0] for a, b in zip(rec, rec[1:]))[len(rec) // 2]      # (a takeoff is seen on the first frame drawn in it: a frame late at the most)
     assert max(beats) - min(beats) <= max(45, 2 * frame) and min(beats) >= 180 - frame, (beats, frame, [r[:4] for r in rec if offs[0] - 50 <= r[0] <= offs[-1] + 50])       # (a step at the walk's pace, 0.2 s a tile: up a flight each jump is planned, leap.js stairArc. It was a whole jump each step, 0.25 s and more, against the next step's face)
     tops = [max(r[2] for r in rec if a <= r[0] < a + 300) for a in offs]

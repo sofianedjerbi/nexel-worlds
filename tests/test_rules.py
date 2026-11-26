@@ -96,7 +96,7 @@ KEPT = {
     "effects.js PCOL": "art: the colours of the bits a tile breaks into",
     "effects.js KICK": "art: the dust a step kicks up, by ground",
     "goals.js GOALS": "words: the player's first goals and their icons (kept on the page, localStorage)",
-    "hd_things.js CARD": "art: the things drawn as an upright card",
+    "hd_cards.js CARD": "art: the things drawn as an upright card",
     "hold_art.js ROW": "art: a tool's row in the held sheet",
     "hold_art.js LOW": "art: what is held low",
     "hold_art.js SHAPES": "art: the shapes of the held tools",
@@ -112,7 +112,7 @@ KEPT = {
     "swing_art.js STEP": "art: the swings that lunge",
     "tiles.js MARKS": "art: what is drawn on a ground (tilled soil, ash, a floor, a path)",
     "title_cast.js HARD": "the title scene's cast: grounds its actors walk round",
-    "title_cast.js DO": "the title scene's cast: what its actors do",
+    "title_errands.js DO": "the title scene's cast: what its actors do",
     "ui.js ICONS": "art: an item's icon",
     "ui.js BARE": "art: the icons drawn without a ring",
     "wear.js LOOK": "art: how each worn thing is drawn",
@@ -123,14 +123,14 @@ KEPT = {
     "world_decor.js VARIANTS": "art: the farm animals' looks",
     # (keyed by something else that happens to be spelt like a tile's char: keys, faces, palettes)
     "keyboard.js BOOK_KEYS": "the keyboard's keys", "keyboard.js HELD": "the keyboard's keys", "mouse.js FACE": "a block's faces",
-    "target.js FACES": "a block's faces", "races.js BASE": "a palette's letters", "races.js EXTRA": "a palette's letters",
+    "target_box.js FACES": "a block's faces", "races.js BASE": "a palette's letters", "races.js EXTRA": "a palette's letters",
     "wear.js BASE": "a palette's letters", "wear.js BODY": "a palette's letters", "render.js WATCH": "a place: x, y, z",
     "voxpaint.js SLIM": "a shape's letters",
 }
 # the kept tables with keys of their own besides the world's (a group's title, a goal's words, a material, a pose): in
 # every other one, each key is a tile, an item or a creature the world has (a name dropped or changed there fails here)
 MIXED = {"assets.js LATE", "craft.js RECIPE_GROUPS", "effects.js PCOL", "goals.js GOALS", "sound_of.js STRIKE", "sound_of.js BREAK", "sprites.js ANIM",
-         "keyboard.js BOOK_KEYS", "keyboard.js HELD", "mouse.js FACE", "target.js FACES", "races.js BASE", "wear.js BASE", "render.js WATCH", "voxpaint.js SLIM"}
+         "keyboard.js BOOK_KEYS", "keyboard.js HELD", "mouse.js FACE", "target_box.js FACES", "races.js BASE", "wear.js BASE", "render.js WATCH", "voxpaint.js SLIM"}
 
 
 def _client_tables():
