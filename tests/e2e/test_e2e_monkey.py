@@ -26,6 +26,13 @@ def test_random_play_keeps_screen_and_server_in_step(game):
     # (until the walk is over and the action done, a click's way there with them, then the screen and the world compared. A sleep
     # of 1.5 s read a click's walk half way on an 83 ms runner: "(7, -11) == (8, -10)", a tile on, as it went)
     game.wait("!walking && !pred && !myAction && (() => { const p = ents.get('agent' + myId); return !!p && p.e.x === Math.round(p.x) && p.e.y === Math.round(p.y); })()", 15000)
+    # (and until the world's own answer agrees: the page had caught up with the last place it was told while the world's walk
+    # to a click went on, "(-9, -11) == (-9, -10)". 15 s at the most: past that, the screen and the world disagree)
+    for _ in range(60):
+        here, s = game.pos(), game.server()
+        if here == (s["x"], s["y"]):
+            break
+        game.sleep(250)
     assert game.pos() == (game.server()["x"], game.server()["y"])
     m = game.rpc("metrics")["metrics"]
     # the world's tick in its last 250: the usual one is quick, and no key or click made one run away. (A ceiling of 60 ms
