@@ -4134,7 +4134,7 @@ Two more rounds of the loop (an agent that changes nothing looks, others fix, I 
 - Look: meadow, stair (a covered tread, 8 down), room (14 down), swim, title at 390x844, DPR 3, the page's clock (performance.now, rAF, Date, Math.random) frozen and 40 frames drawn, HEAD and this, two runs each: the same px but what differs between two runs of HEAD itself (a 2x2 px grass speck, your body's facing on the tread, the water's ripples); title 0 px (its islanders' timer stopped). Opened: the sheets HEAD | this | difference.
 - Tests: test_e2e_hd_work.py (new, counters: blocks come in unpainted and the sheet is never wiped across five places; walking back the far land is not made again; a person's sheet is made in two idle turns or more; under the roof the x-ray place is found at most once a tile; all fail on HEAD); hd (15 files) 59 passed; quick 61 passed, 2 skipped; races, title, title_scene, wear, xray 26 passed; caves, water, edges, digging passed; test_e2e_land's two timing tests fail here and on HEAD's copy alike (classic look, load 4-6); unit 677 passed. A node check (`.perf/land_eq.js`): eleven lands made by HEAD's vox_style_land.js and this one, walking with tiles changed between, the same faces number for number.
 - Where it stands at low: walk 58, sprint 59.5, swim 59.5, stair 58, stand 60, frames over 33 ms 0 to 2: the fps and the frames over 33 ms are met but walk at 57.8-57.9; script p95 14 to 18, not 12. Title 19-22 fps (11-16 before); after Wake up no long task over 100 ms (507 before), but 18-25 fps, not 50.
-- Still the biggest (low): the land is made again at every tile you walk, 2.5 ms a frame of its budget (5 under a roof) nearly all the time: the far patches you have not stood near (3000 new paints of far tiles in a 5 s walk, a patch's tile chosen from the eye) and the 4 MB copy of the paints' sheet each land that adds one; the HD frame itself 3 ms (the land's draw, sprites, shadows of what stands); the title is the island made 12 ms a frame while its eye pans, and its frames 25-30 ms of script.
+- Still the biggest (low) [open: #10, the phone's frame budget]: the land is made again at every tile you walk, 2.5 ms a frame of its budget (5 under a roof) nearly all the time: the far patches you have not stood near (3000 new paints of far tiles in a 5 s walk, a patch's tile chosen from the eye) and the 4 MB copy of the paints' sheet each land that adds one; the HD frame itself 3 ms (the land's draw, sprites, shadows of what stands); the title is the island made 12 ms a frame while its eye pans, and its frames 25-30 ms of script.
 
 ## Iteration 231: the title line is read over any island
 - Audit 8 B8: the line under the name was unreadable over trees and bubbles. A dark strip of the ink (62%) behind its words, square, per line. Title tests 9 passed; looked at on desktop.
@@ -4160,6 +4160,7 @@ Two more rounds of the loop (an agent that changes nothing looks, others fix, I 
 - The look option, its menu row and ?look= are gone; render.js paints nothing (265 -> 128 lines); 15 js files deleted (xray, behind, underground, vox_under, mark, selector, shader, sun and the old WebGL engine). src -3364 lines, tests -4238. Browser tests 466 -> 319; whole suite 7.5 min at -n 3.
 - Doors and gates now open and sound in the HD look (they only ticked inside the classic painter). Pixels unchanged on meadow, stair, room, swim.
 - Open: effects, floats, fire, hopping drops and XP orbs were never drawn in the HD look; way out of a shaft with a pickaxe never digs its next block (climb/touch tests); hd_burst and hd_fall fail on main too since the holes-and-marks merge.
+  [done: effects 6cbc39dd (237); way out 4326bb8a (237); hd_burst and hd_fall pass on GitHub's runners, run 45726841359 (247)]
 ## Iteration 236: audit 8's sides, loaves, void, glowing holes and earth in stone: whole art px, no lens, the last picture held, holes a step darker, cuts in stone stone
 
 - Asked (audit 8, B1 B2 B3 B4 B7): the newly painted sides are 1-px streaks finer than the land's art px, rims blurred, far faces smeared ("cheap 3D, not pixel art", the owner's main complaint); the owner's straight walls at (-41, 69) bend into round loaves; trees and the cat float on a flat grey void for 0.3 to 1 s after a teleport; hole floors glow pale at night; steps dug in stone are earth.
@@ -4175,6 +4176,7 @@ Two more rounds of the loop (an agent that changes nothing looks, others fix, I 
 - Perf (phone_sim --cpu 12 --at 40,40, walk and stair, HEAD's copy and this in turn, load < 6), four pairs, fps (frames over 33 ms), script p95, land ms p95 (`land_ms_p95`): walk HEAD 59.2 (1), 59.0 (0), 57.2 (5), 53.7 (12); this 57.2 (5), 56.3 (2), 57.4 (5), 56.1 (6): mean 57.3 / 56.8 fps, 18 / 18 frames over 33 ms; script p95 15.4, 15.0, 17.0, 19.6 / 17.5, 18.9, 18.2, 19.0; land p95 5.1 to 5.3 / 5.3 to 8.2. stair HEAD 57.5 (0), 59.4 (1), 57.0 (1), 52.3 (6); this 59.5 (1), 56.2 (2), 57.8 (3), 56.1 (1): mean 56.6 / 57.4, 8 / 7 over 33 ms; script p95 17.6, 16.4, 18.2, 21.1 / 15.8, 20.4, 18.5, 19.4. Within the Mac's run-to-run noise; walk's script p95 a little higher (+1.6 ms mean), what the land's making adds: the stone cut's look round each low tile (`cut`, cached per land version as `rocky` is) and the hole's.
 - Tests: test_e2e_hd_whole.py (new, 4: every level of a stone wall has its lit row and its seam and the screen is the land's picture px for px; no frame with the land unpainted after two teleports at CPU x4; a pit's floor a step darker than the meadow by day and night; a trench cut in stone is stone). All 4 fail on HEAD's copy. test_e2e_hd.py: `green` took 20 over red; the meadow is 192/212/112 (20 exactly) once the bloom no longer lit it: 12. HD files (17) 67 passed (the two walls one after the `green` change) (test_e2e_hd_work's person's sheet and test_e2e_hd_behind's shaft needed their second try, load 5 to 16); quick (56 files, five at a time) 53 passed, 2 skipped (water's bed step needed its second try); unit: test_code_size + test_vox_layer 332 passed, 1 failed (the section remake timing, fails on HEAD's copy too under load).
 - Weak: the stone sides read as laid masonry (the audit: "a natural mountain reads as laid brick masonry"): courses now show on every level and make it more so; a cliff paint for natural stone is still to do. A plateau's top seen far off and edge on keeps a speckle along its rim (not the sides: its px are tops' or the sun's shadow rims). Held frames: a teleport shows the old place for up to the land's making (0.1 to 0.4 s on this Mac); on arriving from the title, the title's island stays until the land is made. The bend's facets slide through the land as you walk (they are counted from you): a crease moves along a far block.
+  [masonry: done f394e739 (237); the plateau's speckle: #85; held frames: as meant, waking reworked 7076d462 (241); the facets' crease: #86]
 
 ## Iteration 237: effects drawn in the HD look; way out of a shaft by R; cliffs (batch)
 - hd_fx.js: floats, hopping drops, orbs, fire, tree fall, puffs drawn in the HD look (were only on the deleted classic canvas).
@@ -4193,6 +4195,87 @@ Change (each merged with its own e2e test that failed before):
 - Phone/demo: half-float lines fixed (highp), land kept up while sprinting, lost GL context recovered, full-screen loader first, title ~25% sooner, memory churn 393 → 128 KB/frame standing.
 Measured: unit 665 pass; quick e2e set green; live server restarted twice (jump, held item) on backed-up saves.
 Next: shade inside the open-sky cut, shaft passage band, build-mode placing reach + side faces, way-out key at sprint start, loader bar jump.
+  [done: shade and band 9eb74b86, reach and faces 1ff10a4a, way-out key 15de9dad/292532da (239); loader bar 6bbafb5b, 7e591fd0, e026f5bb, 8594c5b5]
+
+## Iteration 239: build on the face you point at, aim, caves' camera, admins, robot voices, jump 4 (batch, 2026-11-22)
+Hypothesis: 238's "Next" list (placing reach, side faces, the open-sky cut's shade, the way-out key) and the owner's "hard to build in a cave" are each one rule that is missing, not a feature.
+Change:
+- Build mode: a block is placed on the face the pointer is on, with digging's reach rule; a block nothing holds is dotted and Space does nothing (1ff10a4a, build.js UNHELD). The box over you and aim poses: you face the selected block (ccef631c, 30e76269).
+- X-ray: the opened strip keeps the sun's shade, no blue band at a shaft's floor (9eb74b86); under the open sky the x-ray stays your space (0493e6b1). Way-out cap: its side decided against you as drawn this frame, gone the frame nothing pins it (15de9dad, 292532da); a way on foot wins over a kept dig way (8accac38).
+- Camera in caves: the eye looks down at most 58 degrees, was 78.6 (9152d390); a deep hole's walls in the stone's or earth's own paint (2a6be51b); a narrow hole keeps its lip (5a800894).
+- Jump 4: a real jump a block high (20 art px, 410 ms in the air), no teleport; others drawn on the line between two tiles' heights (871cd05e). The lantern stays lit up and down a step (1555c5a1). A tool in the paw is drawn from its grip (2939a8d2).
+- Admins: an operator role outside the world, /op /tp /summon /give /time /kick /ban ..., each logged in events.jsonl (d386e450, 0844ca83). AI players speak in the chip robot voice (f55f7978, 774eade3).
+- Loading: the bar counts the script's bytes, no long task while the first screen is made (6bbafb5b); the wait is a framed meadow at noon (d0a99e96). Home screen never zoomed (c128a65c), no vertical lines in its water (72fac3ff). Help rows name your own keys (aa5daa88).
+- Mobs: running ones no longer vanish (012e1e77), drawn wherever the land shows (3b410e68).
+- Sim: a fall that kills you in your own step kills you (c313ce70).
+Measured: each change merged with its own e2e test (aim, hd_mouth, jump, x-ray); unit tests green at each merge.
+Next: the jump through the air (Jump 5), water that runs, keys by physical place.
+
+## Iteration 240: water that runs, keys by place, jump 5 to 8, browser tests with no second try (batch, 2026-11-23 night)
+Hypothesis: the owner's cave-stairs "teleport" and the HD tests' one-in-eight flakes have one cause each, to be found, not retried.
+Change:
+- Owner, 2026-11-23: browser tests get no second try (c6afd9e6). The flakes were then fixed one by one, each by what it measures (5634d054 ... 6e59ef2b). The shared cause of hd_land, hd_far, hd_vanish and hd_window's flakes: they played where the player woke, a few tiles off by chance; every HD test now plays on one fixed flat place, PLACE (0, -40), laid out again before each (b9faceba).
+- Water flows a cell at a time (flow.py): levels 1-7, down first, sideways a level less a tile, a dug hole under a river fills from its floor (64 cells at most), cut off it dries, a block dams it; the server steps it 4 times a second near players, 512 cells a step at most (9e200e26, afec7029). Water left by one test no longer swims the next (07b329ef).
+- Keys by physical place: break on the key over A (A on AZERTY, Q on QWERTY), ZQSD walks, no walking key fires a shortcut on any layout, Tab cycles the hand (a64058ed).
+- Jump 5: Space is a real jump through the air (leap.js, sim/leaping.py), leaving the ground at the walk's speed (0 / 5 / 10 tiles/s), 1.25 blocks high, steerable. The cave stairs' teleport: each step down was a 337 ms hop while the server sprinted at 100 ms a step, the screen fell 6+ tiles behind and was snapped back (b8813249). Jump 6: none under a roof (3eb982d3); 7: the camera keeps moving after a jump (1b794155); 8: in the air the view takes your feet's level (82b125e2); a jump ending a walk tells the world (8534b817).
+- The build cursor follows the ray from your eye (dfdf39b5). The paint sheet has 16384 places on every screen; 4096 ran out on a phone and at 960 x 540 (8c02860f, bb34cd10, 39aef9ea).
+- A sword held low at the side, the owner's pick of the looks (d4483a48). The loading screen runs through a day (a5a5fee1); its styles moved to css/boot.css (58dacb1f).
+- Fixes: from a mountain the distance is land and sky, not the backdrop (b9bc1c17); a pit's floor darker than the meadow again (9dc52aad); down a hill of steps the eye does not nod (58a49aae); the picture's pin at your feet' level, no 0.965 px drift (50e182f0); a name under a bubble is not cut (4ddc8241).
+Measured: the HD files passed first time on a loaded Mac after b9faceba (the flakes were 1 in 8 before).
+Next: the public repository, CI.
+
+## Iteration 241: a public repository, CI and releases; drop items; bubbles and names on the land's px (batch, 2026-11-23 day)
+Hypothesis: the game can be public once the premium art is in no commit and every push is checked by a machine, not the shared Mac.
+Change:
+- Public repository: the AI players moved to their own repo (nexel-agent); the Sprout Lands art is installed from the buyer's packs by tools/install_assets.py, in no commit (51d91b5f). Readme: one animated banner and the links (8d233053, 41eb3547).
+- CI (ci.yml): ruff, the unit tests on Python 3.14, commitlint; security.yml: CodeQL, uv audit, gitleaks, bandit; semantic-release cuts a release from the commits (bc7ba452). v0.1.1 to v0.1.13 the same night (2d6f5761 ... f088b0e4), then only when the release tag is pushed (b30c835d).
+- Waking up, the island stays on the screen until the world has you: 10 fresh joins at desk and phone size each showed 2 to 6 dark frames (0.1-0.3 s) first, now none (7076d462).
+- Drop items with Y (Shift+Y the stack) or drag out of the bag; the server does not hand a pile back while its dropper stands by it (08c18ac1). Game notes over the hotbar, not in the chat (5f9df907, 774e0c4b).
+- Light: no halo round you by day, at night a soft light with no rings (b8e7e70a). Sky: its line is the eye's (6ed6a317). Running water is one see-through surface, no stacked tints (f2687aff). A jump's arc carries you over water and wide holes (6974c9f3); a jump pressed while falling into a hole is no hop (0dbd9c90).
+- Land on screen is asked for at once, not 3 s after a far ask (9cdccef3).
+- Fractional screen density (#61's ground): one whole-pixel scale, overlays snapped to it (53110a7a); a bubble on the land's px grid, your own name and bubble follow your drawn sprite (89eb8615, fae20456); a bubble as wide as its words (55b9f06c).
+Measured: CI green on main from bc7ba452; the browser tests still only on the Mac.
+Next: one record of where a body is (the solvers' audit).
+
+## Iteration 242: one record of a body's place, one rules table, one hearing, one reach (batch, 2026-11-24 night)
+Hypothesis: the audit's decisions 1 and 2: the client had no model of a body (each reader asked jumping(), falling(), climbOf(), swimsAt() itself, in its own order), and the server's rules were typed again in JS. Most "a ladder opens the window", "the eye tilts in a dip" bugs come from that.
+Change:
+- BodyPlace (body_place.js): one record a body a frame {tx, ty, z, ground, mode in ONE order (boat, swim, climb, fall, jump, walk), pose, eye...}; picture, name, camera and HD look read it (fa7d4715, 0313a231, 4dbad12b). Phase A: a body's place pinned frame by frame for each way it moves (e5732e73, test_e2e_body_trace.py). Phase B moved fall, hop, ladder, swim and boat, jump, leap into it, in levels, traces unchanged (46770b09, 5e937f54, 8957f621, 76e9781a, a1808c1f, f76e9237). Phase C: the HD look reads a body's line and ground from its place (7722fc0f). The land over a body is its own record, HdLevel.cover (6b097906); the eye's pitch comes from it alone (fd5cbda0). One writer for facing (8688526f); climbing.js stands by cells.js stand (6728a338); jump.js lineLift gone (4b7ce3d9).
+- Server: rules.py rules_table() from the server's own constants, sent in hello and written as web/js/rules.js; a test fails if a table is typed again in JS (7226a2c6). One stand() (14010644), one hears(listener, event) and one RANGE table (say 12, shout 48, craft 4...), emit() no longer takes a radius at 17 calls (243ebc42); one REACH table for the world and the screen, replacing USE_R, LAYER, reachOf and 32 `near:` (698c66df); one can_craft() and take_pile() (59c94ed0).
+- Light from one source (Light.now) and lamps from one table (Light.lamp) (3f096afb); no halo in the day's first and last minutes (5d1cba4f). hd.js split: HdEye, HdLamps, HdPick, 376 -> 281 lines, no behaviour change (b8b48924).
+- Fixes found by the records: a ladder climb no longer opens the window or lights the lantern (4dbad12b); two people on one row at two heights each have their own name (bf4d46f8); on a ladder the body's tile is the ladder's (b4260c96); on a phone Build never moves under the thumb (47aef501).
+Measured: body traces identical before and after each phase B move (all seven); unit tests green; v0.1.8 to v0.1.11.
+Next: the painters as data; the classic picture's last code.
+
+## Iteration 243: the land's painter takes data; a column's stone or earth is the world's; the classic painters gone (batch, 2026-11-24)
+Hypothesis: "a cut through stone shows brown earth" and the land's odd paints come from the screen guessing what the world knows, and from 2D painters read back into the HD look.
+Change:
+- One rule for a surface's paint; what is laid on the ground (path, tilled, ash, floor) is a table (bc1aea10); a built box lit as the land's faces (57139b6d); a wall's look, a bridge, cobbles, planks and roofs are px the land's painter lays, drawWall gone, no 2D canvas read back (ab04ad2c, 527c7b2c, 09fd0b6e, 13013359). Under sea level one tone by depth on the land's own paints (6915b0ed).
+- Stone or earth is a byte a tile in the chunk (chunks.py rock), kept through digging; a cut in stone is stone (44eb9164, 2e9efd98, 2f8fc790).
+- The frame's parts called by name in one place, nothing wraps frame or drawTile at load (6e2892f9, 958a2913, 2110d5fd); the classic picture's last painters (drawLoot, drawOrbs, drawEffects...) gone; without WebGL 2 a panel says so (4fde3d4e). A creature killed flashes, lifts and fades in the HD look (0733155d).
+- Tests: the pit-floor-darker test dropped: a cut is lit as any land of its shape since 6641a986 (979867cd); a frame's script cost measured with twelve creatures round you (56a19aa8).
+Measured: v0.1.12, v0.1.13; HD files green at merge.
+
+## Iteration 244: view distance, the water's depth by distance, the pointer on every px (batch, 2026-11-24 day)
+Hypothesis: one view extent, set by the player, can drive the land box, the bodies, the water and the pointer, instead of each its own radius.
+Change:
+- View distance: first four names (Near 9, Normal, Far 25, Very far 37), then a slider, 9 to 65 tiles in steps of 4 (the bend's facets) (df80242c, a2775562); hd.js viewOf the one source; bodies drawn as far as the land (fba426f3); the land box is the view extent (f3666b77). Every Picture setting acts in the HD look; curved world off flattens the land (358fb8ea). v0.2.0.
+- Water: the depth tint is one function of distance, whole within 8 tiles, one far tint by 18 (3ac1dc9f); no water past the horizon (85fb3203); no dither rings (eb939be5).
+- One View puts a place of the world on the screen (2c042c92); one rounding to the land's px, onArt (30508767); draw offsets in one table, DRAW_AT (e7a727b1, 16ea55fc). What is written over a body is in the land's px, not zoom px (731c5fc7, 80af3c3b: a screen at 125 %). Feet on a whole art px (39147ded).
+- The pointer: on the sky no tile (57f6f323); on a hill's side that tile, every land px on one (a38bb1f3); its pick looks through the land made (f3eedba1); swept at Far and Very far (c1d07af6).
+- The first screen's longest task on a phone split (accc9209); a teleport off the axes keeps your facing (b3f9ace7); the bar goes to 100 % a frame at a time (e026f5bb).
+Measured: v0.2.1; pointer sweep test: every top of the made land answers at Far and Very far, zoomed out.
+
+## Iteration 245: the sky, one grip, earth over stone, the whole cave cut open, nexel_worlds (batch, 2026-11-24, to caa11f4e)
+Hypothesis: the owner's words, each a rule: "grass shouldn't turn into stone", "underground view should show the real blocks around the player", "the whole cave should show up, not a small radius", "rename package to nexel worlds".
+Change:
+- Sky: sun with eight pixel rays, a moon with its phase from the day's count, three kinds of stars, the owner's pick of six looks (2bedbb91). Every body's hop seen from the eye's pitch (371e1b99).
+- One grip: a tool is held at the paw's point, only its angle changes; sword and spear keep their low hold (f242d7f4).
+- Earth on top, stone underneath, laid by the world generator (chunks.py lay_stone; stone.py made_of): mountains (5 high and up) stone at every height, other land stone from 2 cells under the lowest ground round it (4bd199fb).
+- Under the land the real blocks round you, the land over your head left out (d9253695); the cut follows your whole cave, every floor you can walk or drop to 24 tiles out (1f641e29). Behind a mountain its caves stay shut: the cut needs land over your own tile (a5af0252), and the x-ray stays off them (4c779278); their test in its own file (caa11f4e).
+- refactor!: src/megastructure is src/nexel_worlds; the page moves a player's old megastructure-* keys once (02438afc, 6a1325d9). This journal keeps the old name as history.
+Measured: each with its e2e test; unit tests green.
+Weak: the whole-cave cut is #8's first half; deep rooms' walls still to check there.
 
 ## Iteration: Nyxwing, the boss of "Sugar rush" (2026-11-25, issue #22)
 Hypothesis: a second boss is worth most if everything about it is one thing, timed to one song: its moves on the
@@ -4206,6 +4289,31 @@ sounds in music/sfx.py, one palette. Summoned only: nothing calls it down yet.
 Measured: its sheet pixel for pixel the one picked; game sheets written indexed (the same pixels, 586 KB -> 256 KB for
 the twelve); unit tests 11 new; sounds' centroids 130-680 Hz, under 2 % above 4 kHz; the song -20 LUFS, out of the kept
 pieces' range: nothing. Not heard by me: by ear is the owner's.
-Weak: its entrance is timed from when this client first sees it (a player who walks in late sees the rest of it with the
+Weak [#88]: its entrance is timed from when this client first sees it (a player who walks in late sees the rest of it with the
 song from its start); a classic (non-HD) picture has no entrance, but there is no classic picture any more.
 Next: what calls it down (the owner's call), then its place in the world.
+
+## Iteration 246: the art in git, creatures, the game built in CI, music renders by fingerprint, the first PRs (batch, 2026-11-24 night to 11-25)
+Hypothesis: a game anyone can build needs its art in the repo and its music and sounds made by a machine from their sources, each render only when its own sources change.
+Change:
+- The Sprout Lands sheets the game uses are committed; the missing-art check goes (9b99e9aa, 911af447). Sprite, tileset and music maker skills for Claude (6d05fb79). Drafts move out of the repo to ~/nexel/local (39ef886c, 68eda729, 5f5e9060, 462e9558). Dead code dropped (5a21deb8).
+- The emblem, a gold coin struck with the N: favicon, home-screen icon, the first screen's name (8cf4987f, f58f3bd5); the readme banner plays a scene and the repo has a social preview (35bd8622, 895e4283). The demo is the game alone (89b3df81, ee5c9e54).
+- Wild: the gustling (snatches what you hold), the grumblestump (a stump by day), the snapbloom, and the hob on your side, each warning before it acts (f958129a, d9c9ff72); each creature's own warning, blow and cry, picked by ear (fcd13f2f); an untouchable creature is a flag in CREATURES (b5671f68).
+- CI game.yml: the game built from its sources on every push, music on Surge XT headless, sounds, web build (5d3a1170, 462a72a3, 2628ada0, 970d0298, 034fdde8, 1f9fc8a9). music/renders.py: each of the nine renders has its own fingerprint, so one piece's change renders that piece alone (bfc41637); the last renders restored whatever changed, the website told of a new build (da78c88a); a page kept open loads the new build at once (c1d180b1).
+- Audio: Slow tide in the morning, Bright dream among the day pieces (e7cff296, #17); which sound a thing makes moves to sound_of.js (fdc473bf). Trailblazer by day when you sail or are 96 tiles from your bed (b3a51736, #33).
+- Sim and land: the reach rule as pure functions for agent programs (d7b39cd3); an agent sees the roofs in view (645fbb8b, #45, nexel-agent#28); ores in the stone in veins from the seed and four tool tiers (31963d92, #41), drawn as nuggets on their blocks' faces (c0895fe7, #43). gen_chunk's columns a list (2fbb1170).
+- Moving: planned jumps up a flight of steps; walking off a ledge is the jump's own fall, no 55 px leap up the screen (5b0ac0e2); fall damage shown as you land (4f29cbbf #25, 385471ef #38); a swimmer let go swims on (bc8ee5ad, #27); a block in hand goes at your level over a drop (a170ee4c, #32).
+- Render: a cave keeps its blocks' colours, mouths a soft shadow (55e86f0d); no dark rim along cliffs and holes (7255600e, #30); a lamp the land hides lights nothing in front (5a66a212, #36).
+- Nyxwing: see its own entry above (2d430988, #40).
+Measured: game.yml green from 970d0298 (the full render needs its jobs one after the other); a one-piece change renders one piece.
+
+## Iteration 247: the browser tests move to GitHub (batch, 2026-11-25 to 26, to 387eaccc)
+Hypothesis: the owner, 2026-11-25: browser tests on GitHub, not the shared Mac. The suite was written on a fast GPU Mac; on CPU runners its failures are the tests' clocks, CI's set-up, or real bugs, each to be told apart (#47).
+Change:
+- CI: four runners a quarter of the files each (6c6e4f96); a PR runs the tests tools/affected.py picks, main runs them all (3c8342fb, #46); optional until green, a PR's only with the label e2e (c091b66f, 93c6e81a); main's run never cancelled by the next push, then one group again with the newest waiting run (404ae71f, 015cc2a3, c934b4c9); a PR at most 4 runners (10426b20); files dealt by measured time, tools/e2e_shards.py, a hung test cut at 300 s (447087c1, #57).
+- Chrome on mesa's lavapipe, not SwiftShader: loading, edits and hd_keepup 137-240 s against 570-811 s (c714e231, #50). The tests' pace fits the machine (E2E_PACE), so slow runners keep whole frames (6dfa0012, #52), measured on a sprint's frames (8298fd4f, #62). A failing test's last picture uploaded (2d792294, #53). The game's sounds built in CI so the sound tests run (8594c5b5, #48).
+- Tests made to measure ways and the game's time, not frames or wall time: hd-look (007e00ad #54, 1b98bdcd #59), creatures and first screen (aaa5a5d3 #51), view and ui (70ba8376 #55), world (cab94e6a #56), demo, bundle, buildghost (387eaccc #63).
+- Real bugs the runners found: a face's flags read as whole numbers, so CPU renderers draw no band across a floor (4d65934d, #60, closes #58); a late 'blocked' still turns you to the wall (0ead11b3, #64).
+Measured: main's full run on cab94e6a (run 45726841359): 504 passed, 37 failed, among them leap, leap_terrain, jump, jump_feel, moving, phone, build, demo and bundle; hd_burst and hd_fall pass (235's Open). 16 runners 5.0-6.8 min, the whole browser run 9.4 min (447087c1).
+Weak: the 37 are #47's; tests/e2e/test_e2e_hd_behind.py's fire test (not drawn where the server has you) fails on main too. Open as issues: #61, #65, #67, #70, #75.
+Next: #47 until main's browser run is green, then the tests stop being optional.
