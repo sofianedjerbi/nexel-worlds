@@ -107,8 +107,12 @@ def test_a_bubble_goes_with_its_speaker_px_for_px_and_its_letters_stay_as_they_a
 
 # What a player sees, the game's canvas never read: frames frozen a moment during the walk (the last one drawn stays on the
 # screen), a screenshot of the bubble on whole px of the screen, then on
-FREEZE = "(() => { window.__go = frame; frame = () => {}; return 1; })()"
-THAW = "(() => { frame = window.__go; requestAnimationFrame(frame); return 1; })()"
+# (frozen on the first frame that draws the words from now: a frame the HD look keeps its last picture draws none, and
+# the bubble's b.at is a frame old there: a shot of the wrong place, 35120 px of 35168 off, main 45890314292; as #217's REC)
+FREEZE = """(() => { const go = window.__go = frame, d0 = drawBubbles; window.__frozen = false;
+  drawBubbles = (...a) => { window.__drew = true; return d0(...a); };
+  frame = (t) => { if (window.__frozen) return; window.__drew = false; go(t); if (window.__drew) { window.__frozen = true; drawBubbles = d0; } }; return 1; })()"""
+THAW = "(() => { window.__frozen = false; frame = window.__go; requestAnimationFrame(frame); return 1; })()"
 BUBBLE_AT = "(name) => { const b = bubbles.find((b) => b.name === name && b.at); return b && [b.at[0], b.at[1], b.w, b.h]; }"
 NO_BUBBLE = """(name) => { const p = [...ents.values()].find((e) => e.e && e.e.name === name); return {bubbles: bubbles.map((b) => [b.name, b.at, b.up, b.h]),
   drawn: p && View.of(p), hid: p && HdLook.hidden(p.x + .5, p.y + .5, p.e.z !== undefined ? p.e.z : floorAt(Math.round(p.x), Math.round(p.y))), at: p && [p.x, p.y],
@@ -149,7 +153,7 @@ def test_a_bubble_looks_the_same_on_every_step_of_a_walk(browser, server, dpr):
                 g.wait(f"[...ents.values()].some((p) => p.e && p.e.name === {other.name!r} && p.x > {x + 2} + {len(shots) * .5})", 10000)
                 g.js(f"(() => {{ for (const b of bubbles) if (b.name === {other.name!r}) b.t = performance.now() / 1000 - 2; return 1; }})()")   # (its age kept: a slow runner's six steps outlasted its 5 s, "no bubble drawn")
                 g.js(FREEZE)
-                g.js(FRAMES, 2)                                                        # (frame() asks for the next one first: that one still draws, the bubble a step on)
+                g.wait("window.__frozen", 5000)                                        # (the last frame on the screen drew the words)
                 at = g.js(BUBBLE_AT, other.name)
                 assert at, ("no bubble drawn", g.js(NO_BUBBLE, other.name))
                 X, Y, W, H = (round(v * dpr) / dpr for v in at)                    # (on whole px of the screen)
