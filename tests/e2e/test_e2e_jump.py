@@ -278,9 +278,13 @@ def test_a_hop_is_one_arc_over_the_edge_at_the_pace_of_a_step(game):
     assert game.js(f"jumpOf({{x: {x} - .5, y: {y}, tx: {x} - 1, ty: {y}, fx: -1, fy: 0}})") is None   # on the level: no hop
     game.start_recording()                                    # and it takes the time of a step: up the step (Space as you set off) and on, at walking pace
     game.page.keyboard.down("d"); game.page.keyboard.press("Space")
+    # (from the frame the body set out: the frames before it, the key on its way and drawn standing, were walked at
+    # nothing. Held 700 ms from the key down, on a runner drawing every 50 ms they were a fifth of it: "3.0")
+    game.wait(f"Math.abs(ents.get('agent' + myId).x - {x}) > .05", 3000)
     game.hold(["d"], 700)
     rec = game.recording()
     game.sleep(500)
+    rec = rec[next(i for i, (a, b) in enumerate(zip(rec, rec[1:])) if abs(b[1] - a[1]) > 1e-6):]
     v = speed(rec, 0)
-    assert v > 3.5, v                                         # (5 tiles a second, the step a third of a second, at the walk's own pace: its jump's time, jump.js jumpMs. It was 2.5 tiles in 0.7 s by the page's clock: on a runner the walk waited for the world)
+    assert v > 3.5, (v, [(round(r[0]), round(r[1], 2), round(r[3], 2)) for r in rec[:30]])                                         # (5 tiles a second, the step a third of a second, at the walk's own pace: its jump's time, jump.js jumpMs. It was 2.5 tiles in 0.7 s by the page's clock: on a runner the walk waited for the world)
     assert game.pos() == (game.server()["x"], game.server()["y"])
