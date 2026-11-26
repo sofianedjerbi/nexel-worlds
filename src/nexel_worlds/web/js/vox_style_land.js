@@ -234,7 +234,7 @@ const VoxStyleLand = (() => {
       const cutAt = (x, y, h) => { if (topOf(x, y) <= h) return; const k = x * 1048576 + y, was = cutH.get(k); if (was === undefined || h < was) cutH.set(k, h); };
       // (only UNDER the land: land over your own head. Behind a mountain on the surface its caves stay shut, the owner: "being behind a mountain shouldn't show the caves")
       if (pt && !pt.walk && topOf(cx, cy) > L + 2) for (const [x, y, lo] of win) {
-        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) cutAt(x + dx, y + dy, lo + 2);
+        const RR = (typeof window === "object" && window.__capR) || 1; for (let dy = -RR; dy <= RR; dy++) for (let dx = -RR; dx <= RR; dx++) cutAt(x + dx, y + dy, lo + 2);   // PROBE #8 cap variant, never merged
         for (let k = 1; k <= 4; k++) cutAt(x, y + k, lo + Math.floor(3.2 * (k - 1)));
       }
       if (cutH.size) for (const [x, y, lo] of win) { const kk = x * 1048576 + y, h = cutH.get(kk); if (h < lo) cutH.set(kk, lo); }

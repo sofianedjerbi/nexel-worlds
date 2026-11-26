@@ -56,12 +56,14 @@ def test_faces_shots(browser, server, hill):
     g.page.close()
 
 
+@pytest.mark.parametrize("cap", [1, 6])
 @pytest.mark.parametrize("hill", ["meadow", "stone7"])
-def test_deep_room_shots(browser, server, hill):
+def test_deep_room_shots(browser, server, hill, cap):
     """A room 14 under the land (#8: the x-ray box's outer edges in a deep room): the room, and the cut round it."""
     g = hd(browser, server)
     g.js("setOpt('names', false); setOpt('hints', false); setOpt('clouds', 0); setOpt('rays', 0); setOpt('shimmer', 0)")
     g.hour(.3, still=True)
+    g.js(f"(() => {{ window.__capR = {cap}; return 1; }})()")
     x, y = g.pos()
     if hill == "stone7":
         scene(g, ["." * 17] * 17, ["7" * 17] * 17)
@@ -73,6 +75,6 @@ def test_deep_room_shots(browser, server, hill):
     g.wait("HdLook.win.a === 1 && !HdLook.busy", timeout=15000)
     g.rest()
     g.frames(8)
-    shot(g, f"deep-{hill}-room", x, y, z - 14, 200, 150)
-    shot(g, f"deep-{hill}-north-wall", x, y - 3, z - 11, 200, 150)
+    shot(g, f"deep-{hill}-cap{cap}-room", x, y, z - 14, 200, 150)
+    shot(g, f"deep-{hill}-cap{cap}-north", x, y - 4, z - 14, 200, 150)
     g.page.close()
