@@ -11,7 +11,7 @@
 // The ears are the head's: they move with it.
 
 const AimArt = (() => {
-  const CELL = 48, COL = {up: 0, ahead: 1, down: 2};
+  const COL = {up: 0, ahead: 1, down: 2};
   const INK = {a: [92, 78, 146, 255], b: [243, 242, 192, 255], d: [221, 213, 222, 255], c: [232, 181, 172, 255]}, COLLAR = [118, 109, 170];
   const ix = (x, y) => (y * CELL + x) * 4, on = (d, x, y) => x >= 0 && y >= 0 && x < CELL && y < CELL && d[ix(x, y) + 3] > 0;
   const is = (d, x, y, c) => on(d, x, y) && d[ix(x, y)] === c[0] && d[ix(x, y) + 1] === c[1] && d[ix(x, y) + 2] === c[2];

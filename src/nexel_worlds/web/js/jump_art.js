@@ -14,7 +14,7 @@
 // body k+2..bottom-2, the feet the last two rows.
 
 const JumpArt = (() => {
-  const CELL = 48, POSES = ["crouch", "takeoff", "rise", "apex", "fall", "land", "settle"];
+  const POSES = ["crouch", "takeoff", "rise", "apex", "fall", "land", "settle"];
   const LINE = [92, 78, 146], COLLAR = [118, 109, 170];
   const same = (d, i, c) => d[i + 3] && d[i] === c[0] && d[i + 1] === c[1] && d[i + 2] === c[2];
 

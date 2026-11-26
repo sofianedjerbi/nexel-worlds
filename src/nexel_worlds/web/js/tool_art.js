@@ -7,7 +7,7 @@
 // before this was read, "ToolArt is not defined", and the page never started.)
 
 const ToolArt = (() => {
-  const CELL = 48, AXE_ROW = 16, KINDS = ["pickaxe", "sword", "spear"];
+  const AXE_ROW = 16, KINDS = ["pickaxe", "sword", "spear"];
   const HEAD = new Set(["129,129,129", "183,183,183"]), HANDLE = new Set(["170,121,89", "144,98,93"]);
   const C = {wood: [170, 121, 89], dark: [144, 98, 93], iron: [129, 129, 129], steel: [183, 183, 183], edge: [158, 170, 182], blade: [226, 232, 236], gold: [222, 178, 86]};
   const pad = document.createElement("canvas"); pad.width = pad.height = CELL * 8;
