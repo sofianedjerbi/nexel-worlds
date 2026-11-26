@@ -129,7 +129,7 @@ class Underground:
             if not self.world.solid(x, y, z) or (self.world.solid(x, y, z + 1) and not (inside and self.open_cell(x, y, z))):
                 raise ActionError("changed", "something changed there")
             if any(self.height(b) == z for b in self.bodies_on(x, y)):
-                raise ActionError("occupied", "someone is standing there")
+                raise ActionError("occupied", "someone is standing there", on="body")
             if not again:
                 yield from self.wait(a, 0.8 * tool_time(pick) if pick else 2.4)      # (by hand it is slow work; a better pickaxe is quicker: tiles.py TIER_TIME)
         if z == self.world.level(x, y) and self.world.block(x, y) == "flower":

@@ -138,7 +138,7 @@ class Storeys:
             if why:
                 raise ActionError("changed" if again else "bad_target", why)
             if any(1 <= z - self.height(b) <= 2 for b in self.bodies_on(x, y)):
-                raise ActionError("occupied", "someone is standing there")
+                raise ActionError("occupied", "someone is standing there", on="body")
             if not again:
                 yield from self.wait(a, 0.3)
         a.add(item, -1)
@@ -161,9 +161,9 @@ class Storeys:
             if block == "ladder" and not self.leans(x, y, z):
                 raise ActionError("bad_target", "a ladder goes against something taller beside it")
             if cell[1] != "none":
-                raise ActionError("occupied", f"there is a {cell[1].replace('_', ' ')} there")
+                raise ActionError("occupied", f"there is a {cell[1].replace('_', ' ')} there", on=cell[1])
             if BLOCKS[B[block]].solid and any(self.height(b) == z for b in self.bodies_on(x, y)):
-                raise ActionError("occupied", "someone is standing there")
+                raise ActionError("occupied", "someone is standing there", on="body")
             if not again:
                 yield from self.wait(a, 0.3)
         a.add(item, -1)
@@ -210,9 +210,9 @@ class Storeys:
             if self.world.col(x, y) != col_solid(top) or top >= HIGH:
                 raise ActionError("bad_target", "earth goes on open ground")
             if self.world.block(x, y) not in ("none", "flower"):
-                raise ActionError("occupied", f"there is a {self.world.block(x, y).replace('_', ' ')} there")
+                raise ActionError("occupied", f"there is a {self.world.block(x, y).replace('_', ' ')} there", on=self.world.block(x, y))
             if self.bodies_on(x, y):
-                raise ActionError("occupied", "someone is standing there")
+                raise ActionError("occupied", "someone is standing there", on="body")
             if not again:
                 yield from self.wait(a, 0.3)
         if self.world.block(x, y) == "flower":
@@ -233,13 +233,13 @@ class Storeys:
         self.reach(a, x, y, z=z)
         for again in (False, True):
             if not LOW < z <= HIGH or w.solid(x, y, z) or self.floors.get(x, y, z) is not None:
-                raise ActionError("occupied", "that cell is not empty")
+                raise ActionError("occupied", "that cell is not empty", on="thing")
             if not any(w.solid(x + i, y + j, z + k) or self.floors.get(x + i, y + j, z + k) is not None for i, j, k in near):
                 raise ActionError("bad_target", "a block goes against something solid: the ground, a wall, another block")
             if z == w.top(x, y) + 1 and (w.block(x, y) != "none" or w.ground(x, y) not in T.LAND):
-                raise ActionError("occupied", "something is on that ground (or it is water: place without z fills it)")
+                raise ActionError("occupied", "something is on that ground (or it is water: place without z fills it)", on="thing")
             if any(self.height(b) < z <= self.height(b) + 2 for b in self.bodies_on(x, y)):
-                raise ActionError("occupied", "someone is standing there")
+                raise ActionError("occupied", "someone is standing there", on="body")
             if not again:
                 yield from self.wait(a, 0.3)
         a.add(item, -1)
