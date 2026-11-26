@@ -35,3 +35,19 @@ def test_a_tap_on_a_slow_page_is_one_tile_in_the_world_too(game, where, hold):
     s = game.server()
     said = {"page": game.pos(), "world": (s["x"], s["y"]), "from": (x, y), "z": s["z"], "keys": game.js("__keys"), "acts": game.js("__acts")}
     assert (s["x"], s["y"]) == (x, y - 1) and game.pos() == (x, y - 1), said
+
+
+@pytest.mark.parametrize("where", ["meadow", "step"])
+def test_a_tap_let_go_before_any_frame_is_still_a_tile(game, where):
+    """A tap whose key down and key up are both handled before the page draws a frame (a slow page: both came in during
+    one long frame) was a stop where you stood: step-90 above, "(-2, -1) == (-2, -2)". The walk goes on for one frame
+    and lets go after it: a tile, on a meadow and up a step."""
+    game.clear_area(8)
+    x, y = game.pos()
+    if where == "step":
+        game.stamp(-1, -3, ["..."] * 3, levels=["111"] * 3)
+    game.rest()
+    game.js("""(() => { for (const ty of ['keydown', 'keyup']) dispatchEvent(new KeyboardEvent(ty, {key: 'ArrowUp', code: 'ArrowUp'})); return 1; })()""")
+    game.wait("!walking && !pred && !Leap.on()", 8000)
+    game.wait(f"(() => {{ const p = ents.get('agent' + myId); return !!p && p.e.x === {x} && p.e.y === {y - 1}; }})()", 8000)
+    assert game.pos() == (x, y - 1) and (game.server()["x"], game.server()["y"]) == (x, y - 1)
