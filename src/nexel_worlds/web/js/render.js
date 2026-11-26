@@ -20,6 +20,38 @@ function update(now) {
   const began = performance.now();
   const dt = Math.max(0, Math.min(.1, (now - lastT) / 1000)); lastT = now;   // (never back in time: a frame stamped before the last one moved every body standing still by 0/0, for good)
   const t = now / 1000;
+  moveBodies(dt, now);
+  moveCamera(dt, now);
+  const {vis, onScreen, landMs} = bringLand();
+
+  // The world is drawn by the HD look (hd.js, after this frame, on a canvas of its own): here nothing of it is painted.
+  const S = TS(), [ox, oy] = screenOrigin(S);
+  Curve.frame(ox, oy, S, now);                       // (the curved world's line: the HD look's sky, curve.js)
+  const hereBlock = blocks.get(bkey(Math.floor(cam.x / B), Math.floor((away.a >= 1 ? away.y : cam.y + away.shift) / B)));
+  const allShown = vis.every((b) => !onScreen(b) || Voxels.made(b));
+  arrivingNow = (arrivingNow || !hereBlock || !Voxels.made(hereBlock)) && !allShown;   // (from arriving until all of it is ready)
+  const worldReady = !arrivingNow;
+  // A long way at once (a teleport, waking again after a death): until the land there has come, the screen keeps the
+  // picture it had. Held for HOLD_MS at the most once some of the land there is ready; after that, what has come.
+  const lacking = !!me && (!hereBlock || !worldReady), late = lacking && goodAt > 0 && now - goodAt >= HOLD_MS && (now - goodAt >= 4 * HOLD_MS || vis.some((b) => onScreen(b) && Voxels.made(b)));      // (...and while none of it has come at all, four times as long: a busy machine)
+  if (!lacking) goodAt = now; else if (!late && goodAt > 0) { slowFrame(dt, false); return; }
+  slowFrame(dt, worldReady);
+  // (where people are: a gate or a door opens for someone beside it. Not for a hen: animals work neither, sim/animals.py)
+  occupied = new Set([...ents.values()].filter((p) => p.e && p.e.kind === "agent" && !Floors.rise(p)).map((p) => Math.round(p.x) + "," + Math.round(p.y)));   // (on the land: someone upstairs over a door does not open it)
+  Voxels.still(vis, t);                     // (the water's picture the HD look lays on its water, voxels.js)
+  // what moves on by itself: drops hopping out (their sound as they land), orbs flying to you, poofs, dust, plucked flowers: their state goes on
+  // here, a step each (loot.js, xp.js, effects.js); the HD look draws them (hd_fx.js)
+  stepLoot(now); stepOrbs(dt); stepEffects(dt, performance.now());
+  drawXp();
+  foodPreview();
+  swingDoors(t);
+  updateActions();
+  Build.tick();                                      // (plans that could not be done go; out of the mode when you are gone: build.js)
+  floats = opt("floats") ? floats.filter((f) => t - f.t < 1.4) : [];
+  perfFrame(now, performance.now() - began, landMs);   // (/perf: debug.js)
+}
+// every body a step nearer where the world has it this frame (you: your own walk or leap); one axis at a time on the grid
+function moveBodies(dt, now) {
   for (const p of ents.values()) {
     if (p.e && p.e.kind === "agent" && p.e.id === myId && Leap.on()) { Leap.frame(p, dt, now); continue; }   // you in the air (leap.js)
     if (p.e && p.e.kind === "agent" && p.e.id === myId && walking && p.walking) { walkOn(p, dt, now); continue; }   // your own walk (walk.js)
@@ -44,6 +76,9 @@ function update(now) {
       if (Math.abs(dx) < Math.abs(dy)) p.x += Math.sign(dx) * Math.min(step, Math.abs(dx)); else p.y += Math.sign(dy) * Math.min(step, Math.abs(dy));
     } else { p.x += dx / d * step; p.y += dy / d * step; }
   }
+}
+// the camera on you (build mode: half way to the cursor; high or low land round you: away), or on who you follow
+function moveCamera(dt, now) {
   cam.lift = 0;                                      // (art px the camera is lifted with you: the eye's height, curve.js)
   if (me && myId !== null) {
     if (HdLook.eye && HdLook.eye.watch) HdLook.eye = null;      // (in the world now: the eye is on you)
@@ -74,6 +109,9 @@ function update(now) {
     // watching, not in the world (?follow=, the first screen gone): the HD look's eye is the camera, at the land's top there (hd.js eye)
     if (!HdLook.eye && $("joinbox").style.display === "none") HdLook.eye = Object.assign(() => Object.assign(WATCH, {x: cam.x, y: cam.y, z: topAt(Math.round(cam.x), Math.round(cam.y))}), {watch: true});
   }
+}
+// the land coming in, built a little a frame within LAND_MS, the screen's first (-> what is in view, which of it is on the screen, ms it took)
+function bringLand() {
   const [vx, vy, vw, vh0] = viewRect(2), vh = vh0 + 6;   // (+6 rows south: high ground there is drawn up into view)
   const inRect = (x, y, w, h) => { const out = []; for (let by = Math.floor(y / B); by <= Math.floor((y + h) / B); by++) for (let bx = Math.floor(x / B); bx <= Math.floor((x + w) / B); bx++) { const b = blocks.get(bkey(bx, by)); if (b) out.push(b); } return out; };
   const vis = inRect(vx, vy, vw, vh);
@@ -92,32 +130,7 @@ function update(now) {
   for (let n = 0; dirtyTiles.length && (n++ & 15 || performance.now() < landUntil);) { const yy = dirtyTiles.pop(), xx = dirtyTiles.pop(); drawTile(xx, yy); WaterBed.changed(xx, yy); HdLook.touch(xx, yy); }
   Voxels.work(coming, landUntil);                    // (its beds and its sea: voxels.js)
   const landMs = performance.now() - landFrom;
-
-  // The world is drawn by the HD look (hd.js, after this frame, on a canvas of its own): here nothing of it is painted.
-  const S = TS(), [ox, oy] = screenOrigin(S);
-  Curve.frame(ox, oy, S, now);                       // (the curved world's line: the HD look's sky, curve.js)
-  const hereBlock = blocks.get(bkey(Math.floor(cam.x / B), Math.floor((away.a >= 1 ? away.y : cam.y + away.shift) / B)));
-  const allShown = vis.every((b) => !onScreen(b) || Voxels.made(b));
-  arrivingNow = (arrivingNow || !hereBlock || !Voxels.made(hereBlock)) && !allShown;   // (from arriving until all of it is ready)
-  const worldReady = !arrivingNow;
-  // A long way at once (a teleport, waking again after a death): until the land there has come, the screen keeps the
-  // picture it had. Held for HOLD_MS at the most once some of the land there is ready; after that, what has come.
-  const lacking = !!me && (!hereBlock || !worldReady), late = lacking && goodAt > 0 && now - goodAt >= HOLD_MS && (now - goodAt >= 4 * HOLD_MS || vis.some((b) => onScreen(b) && Voxels.made(b)));      // (...and while none of it has come at all, four times as long: a busy machine)
-  if (!lacking) goodAt = now; else if (!late && goodAt > 0) { slowFrame(dt, false); return; }
-  slowFrame(dt, worldReady);
-  // (where people are: a gate or a door opens for someone beside it. Not for a hen: animals work neither, sim/animals.py)
-  occupied = new Set([...ents.values()].filter((p) => p.e && p.e.kind === "agent" && !Floors.rise(p)).map((p) => Math.round(p.x) + "," + Math.round(p.y)));   // (on the land: someone upstairs over a door does not open it)
-  Voxels.still(vis, t);                     // (the water's picture the HD look lays on its water, voxels.js)
-  // what moves on by itself: drops hopping out (their sound as they land), orbs flying to you, poofs, dust, plucked flowers: their state goes on
-  // here, a step each (loot.js, xp.js, effects.js); the HD look draws them (hd_fx.js)
-  stepLoot(now); stepOrbs(dt); stepEffects(dt, performance.now());
-  drawXp();
-  foodPreview();
-  swingDoors(t);
-  updateActions();
-  Build.tick();                                      // (plans that could not be done go; out of the mode when you are gone: build.js)
-  floats = opt("floats") ? floats.filter((f) => t - f.t < 1.4) : [];
-  perfFrame(now, performance.now() - began, landMs);   // (/perf: debug.js)
+  return {vis, onScreen, landMs};
 }
 function outlined(text, x, y, color) {
   ctx.fillStyle = "#5b3f36";

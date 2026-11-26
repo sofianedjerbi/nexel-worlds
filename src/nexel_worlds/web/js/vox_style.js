@@ -122,12 +122,7 @@ const VoxStyle = (() => {
       const pw = [{A: 1, B: 2, C: 3}[v.edge] || 2, 0, 1, 0];
       const wup = !!(W && W.canvas && W.canvas.width && wet && (!wat || (W.ver !== undefined ? W.ver !== wat[5] : Math.abs((v.t || 0) - wat[4]) > .1 || !v.t)));   // (the water's picture: when the host made a new one (ver), ten times a second; with no water in the land, never)
       const wv = W && W.canvas && W.canvas.width && wet ? (wup ? [W.x, W.y, W.canvas.width, W.canvas.height] : wat.slice(0, 4)) : [0, 0, 0, 0];
-      const own = (v.own || []).filter((b) => (v.sky || !b[4]) && !winL.some((t) => t[0] === b[0] && t[1] === b[1] && t[2] <= b[2] && t[3] > b[2])), winA = (own.length ? winL.concat(own) : winL).filter((t) => v.sky || !t[4]);   // (a tile of your space under the open sky only while land hides you there (v.sky, hd_level.js hides): the shaft you stepped out of had its south wall cut away, its floor drawn where it projects, south of its rim: "a drawer")   // (view.own: boxes that are yours whatever the last land's search found: your tile, where you came from: the window is on you the frame land covers you, not when the search is done)
-      const rimz = v.rim === undefined ? v.at[2] - .5 : v.rim, cpx = cfg.up * Math.cos(v.cam.pitch * Math.PI / 180), sn = 16 * Math.sin(v.cam.pitch * Math.PI / 180), per = (t) => Math.max(1, Math.min(48, (rimz - t[3]) * cpx)) / sn, gn = rimz + "," + cpx;
-      // (view.rim: the level of the land round your hole. DEPTH: the section over a tile's north edge is as tall as the ground over its ceiling really is, seen from this eye: cpx px a level (8.5 from 58 degrees, hd.js STEEP), 48 px at most (the shader's search, vox_style_glsl.js: 5 levels and more from 58), up to the surface's own line, as the north wall of a dug pit would stand: a room 14 down has a wall 48 px tall over it, one 4 down 8.
-      //  not a band of 8 to 20 rows whatever the depth, and half the floor at most: 6 deep and 14 deep would read 1 to 3 deep)
-      const wk = winN + "|" + (v.way ? v.way.key : "") + "|" + own.join() + "|" + gn, now = v.t || 0; if (wk !== wKey && (winA.length || wxr <= 0)) { wKey = wk; wmap = new Map(winA.map((t) => [t[0] + "," + t[1], [t[2], t[3]]])); const roofed = (x, y, lv) => { const c = host.column(x, y); return !!c && c.length > 0 && c[c.length - 1] > lv; }; W_.set(v.way && winA.length ? winA.concat([...v.way.on].map(([k, lv]) => { const [x, y] = k.split(",").map(Number); return [x, y, lv, lv + 2]; }).filter((b) => roofed(b[0], b[1], b[2]))) : winA, per); }   // (shut: the last window stays while it fades) (the way's floors under the land only: under the open sky its marks are seen as they are. Along a river in a gorge they would be a path of boxes one tile wide through the bank: slivers of it left standing in the hole)
-      { const d = Math.min(.1, Math.max(0, now - wAt)) / .1; wAt = now; wxr = W_.n ? Math.max(0, Math.min(1, wxr + (v.win && winA.length ? d : -d))) : 0; if (v.win && own.length && v.dep > 0) wxr = Math.max(wxr, .5); }   // (a roof over you and the search not done: half its px that very frame, the rest in three: not all of it in one frame, a pop)
+      const {rimz, cpx} = windowOf(v);
       const ct = cutM && cutM.size ? 1 : 0;   // (the land really cut under it, vox_style_land.js: the window paints no section, no strata on its walls: they are the land's own blocks)
       wrim = rimz; let S = SPR.list(v, m, mp, lastS); if (!S) { SPR.reset(); S = SPR.list(v, m, mp, lastS); if (!S) return el; }
       { const fr = cfg.rock ? cfg.rock.from : cfg.levels[1], top = Math.round(v.at[2] - .5 + (v.dep || 0)), cl = (z) => Math.max(cfg.levels[0], Math.min(cfg.levels[1], z)), ws = (lv) => slot("f" + lv + ",0", (px, at, st) => host.paintFront(lv, 0, px, at + (C - cfg.up) * st, st));   // (the window's section: the wall paints of the ground it is cut in, earth and stone (the land's own slots for them): the painter lays their rows over the window's north edge)
@@ -140,6 +135,26 @@ const VoxStyle = (() => {
       const gSame = sameW(gh, lastG), dSame = sameW(sd, lastD);
       why = again ? "land" : sized ? "size" : stale || dirty.length ? "paints" : S.un ? "pictures" : wup ? "water" : !gSame ? "ghosts" : !dSame ? "shadows" : !sameN(S.d, S.n, lastS, lastSn) ? "sprites" : !sameW(un, lastU) ? "view " + firstOff(un, lastU) : "";   // (why this frame is drawn again; "": it is the last one)
       if (!why) { fresh = false; cost = performance.now() - t0; return el; }   // (nothing changed: the picture drawn last frame is this frame's)
+      const f = {v, L, RW, RH, W, m, eye, lamp, hr, gh, sd, disc, pw, wup, wv, rimz, cpx, ct, S, bd, un, gSame, dSame};   // (the frame's parts: what sendFrame, setUniforms and drawPasses read)
+      sendFrame(f);
+      const {u, us} = setUniforms(f);
+      drawPasses(f, u, us);
+      gl.bindVertexArray(null); cost = performance.now() - t0;
+      return el;
+    }
+    // the x-ray window this frame: its boxes (yours and the other spaces' beside), the rim it is cut down from and how deep a level reads, how open it is (-> {rimz, cpx})
+    function windowOf(v) {
+      const own = (v.own || []).filter((b) => (v.sky || !b[4]) && !winL.some((t) => t[0] === b[0] && t[1] === b[1] && t[2] <= b[2] && t[3] > b[2])), winA = (own.length ? winL.concat(own) : winL).filter((t) => v.sky || !t[4]);   // (a tile of your space under the open sky only while land hides you there (v.sky, hd_level.js hides): the shaft you stepped out of had its south wall cut away, its floor drawn where it projects, south of its rim: "a drawer")   // (view.own: boxes that are yours whatever the last land's search found: your tile, where you came from: the window is on you the frame land covers you, not when the search is done)
+      const rimz = v.rim === undefined ? v.at[2] - .5 : v.rim, cpx = cfg.up * Math.cos(v.cam.pitch * Math.PI / 180), sn = 16 * Math.sin(v.cam.pitch * Math.PI / 180), per = (t) => Math.max(1, Math.min(48, (rimz - t[3]) * cpx)) / sn, gn = rimz + "," + cpx;
+      // (view.rim: the level of the land round your hole. DEPTH: the section over a tile's north edge is as tall as the ground over its ceiling really is, seen from this eye: cpx px a level (8.5 from 58 degrees, hd.js STEEP), 48 px at most (the shader's search, vox_style_glsl.js: 5 levels and more from 58), up to the surface's own line, as the north wall of a dug pit would stand: a room 14 down has a wall 48 px tall over it, one 4 down 8.
+      //  not a band of 8 to 20 rows whatever the depth, and half the floor at most: 6 deep and 14 deep would read 1 to 3 deep)
+      const wk = winN + "|" + (v.way ? v.way.key : "") + "|" + own.join() + "|" + gn, now = v.t || 0; if (wk !== wKey && (winA.length || wxr <= 0)) { wKey = wk; wmap = new Map(winA.map((t) => [t[0] + "," + t[1], [t[2], t[3]]])); const roofed = (x, y, lv) => { const c = host.column(x, y); return !!c && c.length > 0 && c[c.length - 1] > lv; }; W_.set(v.way && winA.length ? winA.concat([...v.way.on].map(([k, lv]) => { const [x, y] = k.split(",").map(Number); return [x, y, lv, lv + 2]; }).filter((b) => roofed(b[0], b[1], b[2]))) : winA, per); }   // (shut: the last window stays while it fades) (the way's floors under the land only: under the open sky its marks are seen as they are. Along a river in a gorge they would be a path of boxes one tile wide through the bank: slivers of it left standing in the hole)
+      { const d = Math.min(.1, Math.max(0, now - wAt)) / .1; wAt = now; wxr = W_.n ? Math.max(0, Math.min(1, wxr + (v.win && winA.length ? d : -d))) : 0; if (v.win && own.length && v.dep > 0) wxr = Math.max(wxr, .5); }   // (a roof over you and the search not done: half its px that very frame, the rest in three: not all of it in one frame, a pop)
+      return {rimz, cpx};
+    }
+    // what changed is sent: the ghosts' and shadows' lists, the paints' sheet (all of it, or the rows of the new ones), the water's picture, the sprites'
+    function sendFrame(f) {
+      const {v, L, RW, RH, W, m, lamp, gh, sd, wup, S, un, gSame, dSame} = f;
       again = false; fresh = true; lastU = un; lastS = S.d; lastSn = S.n; calls = 0;
       if (!gSame) { fill(bufs.land, null, cat(far, gh.f.subarray(0, gh.n))); lastG = gh; cnt.ghost = gh.n / N; } if (!dSame) { fill(bufs.shade, null, sd.f.subarray(0, sd.n)); lastD = sd; cnt.shade2 = sd.n / N; }
       if (wxr > 0) W_.pass(m, lamp, v.bend || 0, RW, RH);
@@ -152,12 +167,21 @@ const VoxStyle = (() => {
       gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, stx); gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, wtx); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, atx);
       for (let i = 0; i < S.un; i++) { const c = S.ups[i]; gl.texSubImage2D(gl.TEXTURE_2D, 0, c._a.x, c._a.y, gl.RGBA, gl.UNSIGNED_BYTE, c); }
       gl.activeTexture(gl.TEXTURE0);
+    }
+    // every number the two programs take this frame (-> the uniforms' finders, u: the land's, us: the sprites')
+    function setUniforms(f) {
+      const {v, L, RW, RH, m, eye, lamp, disc, pw, wv, rimz, cpx, ct, bd} = f;
       gl.useProgram(pr); const u = (n) => U[n] || (U[n] = gl.getUniformLocation(pr, n)), us = (n) => U["s" + n] || (U["s" + n] = gl.getUniformLocation(sp, n));
       gl.uniformMatrix4fv(u("m"), false, m); gl.uniform1i(u("t"), 0); gl.uniform1i(u("wt"), 2); gl.uniform1i(u("gw"), 3); gl.uniform1i(u("mk"), 4); gl.uniform1f(u("xr"), wxr); gl.uniform1f(u("ct"), ct); gl.uniform3fv(u("sc"), (v.sect || SECT)[0]); gl.uniform4fv(u("sp"), sectAt); gl.uniform1f(u("rf"), cfg.rock ? cfg.rock.from : 1e9); gl.uniform3fv(u("go"), GLOW.sorg); gl.uniform3fv(u("lamp"), [lamp[0], lamp[1] + .6, lamp[2]]); gl.uniform3fv(u("eye"), eye);   // ("gw", not "st": the sprites' names are kept under "s" + name)
       gl.uniform3fv(u("em"), mean); gl.uniform3fv(u("ctr"), lamp); gl.uniform1f(u("bend"), v.bend || 0); gl.uniform2f(u("vpx"), RW, RH); gl.uniform3fv(u("fogc"), L.fogc); gl.uniform4fv(u("cl"), clip);
       { const f1 = (n, x) => gl.uniform1f(u(n), x); f1("lr", L.lr); f1("day", L.day); f1("amb", L.amb); f1("fn", L.fog[0]); f1("ff", L.fog[1]); f1("rim", L.rim); f1("wa", L.wa ?? .62); f1("dep", v.dep || 0); f1("rd", 0); f1("sun", L.sun ?? 1); f1("shp", 0); f1("cd", GLOW.cdv); f1("rz", rimz); f1("cp", cpx); f1("bh", v.behind || 0); f1("ud", v.under || 0); }
       gl.uniform4fv(u("wtn[0]"), L.wtint || Z40); gl.uniform4fv(u("wv"), wv); gl.uniform3fv(u("mc"), disc); gl.uniform3fv(u("bd[0]"), bd); gl.uniform4fv(u("pw"), pw); gl.uniform1f(u("bp"), 0);
       gl.useProgram(sp); gl.uniform1i(us("t"), 1); gl.uniform1i(us("mk"), 4); gl.uniform2f(us("nf"), .5, 200); gl.uniform3fv(us("mc"), disc); gl.uniform4fv(us("pw"), pw); gl.useProgram(pr);
+      return {u, us};
+    }
+    // the passes: the land and what stands in it, the window, the shadows, the sprites, the water, what is over you again, the hour's light
+    function drawPasses(f, u, us) {
+      const {v, hr, pw, S} = f;
       const go = (b, from, n) => { if (n > 0) { gl.bindVertexArray(b.vao); gl.drawArrays(gl.TRIANGLES, from, n); calls++; } };
       go(bufs.land, 0, cnt.main + cnt.model + cnt.far + cnt.ghost);   // (the land, what stands in it as boxes, the far land, the ghosts: one list)
       if (wxr > 0 && pw[0] === 2) { gl.enable(gl.BLEND); gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false); gl.uniform1f(u("bp"), 1); go(bufs.land, 0, cnt.main + cnt.model); gl.uniform1f(u("bp"), 0); gl.depthMask(true); gl.disable(gl.BLEND); }   // (B: the kept land's last px along a cut's side, over your space, in steps of opacity)
@@ -187,8 +211,6 @@ const VoxStyle = (() => {
         else if (hr.tint) { one(ltx, hr.tint, hr.tint.join()); quad(ltx, gl.DST_COLOR, gl.ZERO); }   // (hour.tint: the light one colour all over)
         gl.disable(gl.BLEND); gl.enable(gl.DEPTH_TEST); gl.activeTexture(gl.TEXTURE0); gl.useProgram(pr);
       }
-      gl.bindVertexArray(null); cost = performance.now() - t0;
-      return el;
     }
     return {build, steps, start, touch: land.touch, touchBox: land.touchBox, wet: land.wet, get water() { return cnt.water; }, draw, forget() { wipe = true; land.clear(); }, get lost() { const l = lost; lost = false; return l; }, get cost() { return cost; }, cut: (x, y) => (cutM ? cutM.get(x * 1048576 + y) : undefined),   // (the land's cut under it: its cells over that height not drawn, vox_style_land.js)
       get win() { return {n: W_ ? W_.n : 0, a: wxr, tiles: W_ ? W_.tiles : []}; },   // (the x-ray window: its boxes [x, y, lo, hi], how open it is 0..1)
