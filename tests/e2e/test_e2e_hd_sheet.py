@@ -24,7 +24,7 @@ WHERE = """(() => { const a = window.__was, b = HdLook.read(0, 0, cv.width, cv.h
   for (let i = 0; i < a.length; i += 4) if (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 24) { n++; band[Math.min(7, Math.floor((i / 4 / W) / H * 8))]++; if (a[i + 2] > a[i] + 20) blue++; }
   return {bands: band.map((v) => +(v / (W * H / 8)).toFixed(4)), blue: n ? +(blue / n).toFixed(2) : 0}; })()"""
 
-# PROBE (#111): the pictures, before, after and where they differ, saved when the bound is broken
+# the pictures, before, after and where they differ (red), saved to E2E_SHOTS when the bound is broken: what changed shows in the run's artifact (#111)
 PNG = """(which) => { const W = cv.width, H = cv.height, now = HdLook.read(0, 0, W, H).data, was = window.__was, c = document.createElement('canvas'); c.width = W; c.height = H;
   const x = c.getContext('2d'), im = x.createImageData(W, H), d = im.data;
   for (let i = 0; i < d.length; i += 4) { const diff = Math.abs(was[i] - now[i]) + Math.abs(was[i + 1] - now[i + 1]) + Math.abs(was[i + 2] - now[i + 2]) > 24;
