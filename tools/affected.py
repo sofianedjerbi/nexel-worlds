@@ -102,6 +102,14 @@ def users(stem: str, root: Path) -> tuple[list[str], str]:
     return [f"{E2E}{s}.py" for s in sorted(seen) if s.startswith("test_e2e_")], "imports it"
 
 
+JS_NOTE = re.compile(r"//.*$|/\*[\s\S]*?\*/", re.M)
+
+
+def code_js(text: str) -> str:
+    """A script without its comments: the names it uses, not those its comments say."""
+    return JS_NOTE.sub("", text)
+
+
 def code(text: str) -> str:
     """A test's text without its docstrings and comments: the names it uses, not the words it says ("said", "xray")."""
     return NOTE.sub("", DOC.sub("", text))
@@ -146,7 +154,7 @@ def affected(changed, root: Path = ROOT, why=None):
             for t, text in U.items():
                 if named(text, name) or (name.startswith("vox_") and "vox_" in text):
                     add(unit, t, f"{name}: named")
-            whole = [j for j in (root / JS).glob("*.js") if j.name != name and mentions(code(j.read_text(errors="replace")), names)]
+            whole = [j for j in (root / JS).glob("*.js") if j.name != name and mentions(code_js(j.read_text(errors="replace")), names)]   # (in its code: a comment naming it, "split out of TitleCast", is no use of it)
             if len(whole) == 1:
                 for t in affected([JS + whole[0].name], root)[0]:
                     add(e2e, t, f"{name}: a part of {whole[0].name}")

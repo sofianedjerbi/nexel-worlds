@@ -109,3 +109,14 @@ def test_a_helper_of_the_browser_tests_asks_for_the_tests_that_import_it(tmp_pat
 def test_on_the_real_repo_a_change_to_waits_py_runs_browser_tests():
     e2e, _, _ = A.affected(["tests/e2e/waits.py"], ROOT)
     assert len(e2e) > 20 and "tests/e2e/test_e2e_moving.py" in e2e
+
+
+def test_a_comment_naming_a_part_is_no_use_of_it(tmp_path):
+    """A part (its globals used by one other script) selects what that script selects. A comment naming it ("split out of
+    TitleCast") made a second user, and the part ran no test: title_errands.js -> title_cast.js -> title_scene.js."""
+    r = repo(tmp_path, {"src/nexel_worlds/web/js/cast.js": "const TitleCast = (() => Errands({}))();\n",
+                        "src/nexel_worlds/web/js/errands.js": "// split out of TitleCast\nconst Errands = (K) => ({});\n",
+                        "src/nexel_worlds/web/js/scene.js": "const TitleScene = { cast: TitleCast };\n",
+                        "tests/e2e/test_e2e_title.py": 'def test_t(g):\n    g.wait("TitleScene.cast")\n'})
+    assert A.affected(["src/nexel_worlds/web/js/errands.js"], r)[0] == ["tests/e2e/test_e2e_title.py"]
+    assert A.affected(["src/nexel_worlds/web/js/cast.js"], r)[0] == ["tests/e2e/test_e2e_title.py"]
