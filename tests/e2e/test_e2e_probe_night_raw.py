@@ -17,12 +17,12 @@ PROBE = """() => { window.__pr = []; const show = HdView.show; HdView.show = (o)
     const ok = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE; if (ok) { gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); tpx = [...px.slice(0, 3)].join(); } else tpx = "incomplete";
     gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.deleteFramebuffer(fb); }
   const k = devicePixelRatio, s = HdLook.read(Math.round(innerWidth * k / 2), Math.round(innerHeight * k / 2), 1, 1).data;
-  const pp = myPos(), fa = HdLook.screenOf(pp.x + .5, pp.y + .92, topAt(pp.x, pp.y)), FX = Math.round(fa[0] * k), FY = Math.round(fa[1] * k), fs = HdLook.read(FX, FY, 1, 1).data;   // (your feet: the shadow test's px)
+  const pp = myPos(); self.__probeAt = [Math.floor(pp.x), Math.floor(pp.y)]; const fa = HdLook.screenOf(pp.x + .5, pp.y + .92, topAt(pp.x, pp.y)), FX = Math.round(fa[0] * k), FY = Math.round(fa[1] * k), fs = HdLook.read(FX, FY, 1, 1).data;   // (your feet: the shadow test's px)
   let fl = "none"; if (t) { const fb = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, fb); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
     const W2 = 320, H2 = 180;   // (the hour's light picture's size, as the probe recorded it: 320 x 180)
     if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE) { gl.readPixels(Math.round(FX / c.width * W2), Math.round((1 - FY / c.height) * H2), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); fl = [...px.slice(0, 3)].join(); }
     gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.deleteFramebuffer(fb); }
-  __pr.push([HdLook.why, glpx, [...s.slice(0, 3)].join(), tpx, gl.getError(), "roof " + (HdLevel.cover && HdLevel.cover.roof), "lit " + HdLook.youLit, "b " + HdLook.builds, "busy " + (HdLook.busy ? 1 : 0), "feet " + [...fs.slice(0, 3)].join(), "light@feet " + fl, "feet@ " + FX + "," + FY, "raw " + (typeof HdLook.raw === "function" ? HdLook.raw() : "?"), "pin " + JSON.stringify(HdLook.pinned && HdLook.pinned.map((v) => (typeof v === "number" ? Math.round(v * 100) / 100 : v)))]); } catch (e) { __pr.push(["err", String(e)]); } return r; }; return 1; }"""
+  __pr.push([HdLook.why, glpx, [...s.slice(0, 3)].join(), tpx, gl.getError(), "roof " + (HdLevel.cover && HdLevel.cover.roof), "lit " + HdLook.youLit, "b " + HdLook.builds, "busy " + (HdLook.busy ? 1 : 0), "feet " + [...fs.slice(0, 3)].join(), "light@feet " + fl, "feet@ " + FX + "," + FY, "raw " + (typeof HdLook.raw === "function" ? HdLook.raw() : "?"), "mo " + JSON.stringify((self.__moLog || []).slice(-1)), "pin " + JSON.stringify(HdLook.pinned && HdLook.pinned.map((v) => (typeof v === "number" ? Math.round(v * 100) / 100 : v)))]); } catch (e) { __pr.push(["err", String(e)]); } return r; }; return 1; }"""
 
 
 @pytest.mark.parametrize("run", range(4))
