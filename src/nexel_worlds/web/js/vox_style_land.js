@@ -9,6 +9,27 @@
 //     value: {parts: {main, model, shade, water, far, sea: Float32Array}, clip: [x0, x1, y0, y1], wet,
 //     made: chunks made, space: your space's floors and classes a tile, win: [[x, y, lo, hi]...] the boxes of the x-ray window (vox_style_win.js)}), touch(x, y), clear()}
 //   P (the paints, vox_style.js): {SL, C, slot(key, paint) -> its place, unslot(key), start(again), spill() -> did they run out}
+// THE FACE RULE (#4): every face the land is drawn with obeys these, and a face that does not is a fault to fix here, not a case of its own.
+//   1. WHICH FACES: a cell's face is drawn where it is solid and the cell beside it, as the land is shown, is not (solidIn: the real column, or the
+//      x-ray cut's, VoxMesh.clip): its top (kind 1) where the cell over it is open, its four sides (kind 0) where the one beside is open. Nothing else
+//      of a cell is drawn: no face between two solid cells, none of the rock inside. What stands (models, kind 8 to 10), water (3) and the far land (7)
+//      are their own faces, below.
+//   2. ONE MATERIAL: a cell is stone at and under its tile's stone height, earth over it (the world's own rule, stone.py made_of; here
+//      VoxPaint.rocky, a block put there by somebody: its own). Every face of a cell is painted as that cell is: a top with its ground (grass,
+//      sand, snow, a floor) only where it is the land's top under the sky or a floor; the side of a cell, the cut's section and the cut's first line
+//      with the cell's own material, earth or stone, never the grass over it.
+//   3. WHOLE ART PX: a face shows its paint px for px, 16 of them a tile, a level's 16 rows a level: never stretched. Where the eye sees fewer
+//      px than the paint has (a face seen aslant, a level foreshortened), whole rows or columns are left out (vox_style_glsl.js pick, whole),
+//      never squeezed.
+//   4. NOTHING HIDDEN SHOWS: no face of a cell the eye cannot see (shut in the rock, behind the cut's kept land), no ore on a face that only the
+//      cut has opened, no px of a paint that is not there (raw, em).
+//   5. LIGHT, NOT PAINT, TELLS DEPTH AND PLACE: lips, feet, mouths' shadows, the window's dimming and the strata's steps are light laid over a
+//      face's own paint (flags in e, vox_style_glsl.js), never another paint in its place.
+// Where the code still breaks it (to route through the rule, then strike from this list): the cut's section takes stone or earth from the
+// surface's top cell and your height, not from each cell it shows (vox_style.js sectAt, flag 8388608); its first line is the land's own
+// top px, grass on a meadow (vox_style_glsl.js wn 11); a riser and a window's side edge "A"
+// are one tone whatever their rock (vox_style_glsl.js); a far patch's skirt is one tile's rock; a model face wider or deeper than a tile is
+// its 16 px stretched (model); ore shows on any face of a cell with air beside it, seen or not (host.ore).
 const VoxStyleLand = (() => {
   const H = VoxStyleGLSL.H, C = 16, N = 10, CH = 8, KINDS = ["main", "model", "shade", "water"];
   const gp = (x, y, z) => [x, z * H, y];

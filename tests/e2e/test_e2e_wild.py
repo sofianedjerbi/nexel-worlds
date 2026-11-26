@@ -3,6 +3,8 @@
 import pytest
 import os
 
+from nexel_worlds.sim.constants import TICK_HZ
+
 SHOT = os.environ.get("WILD_SHOTS")          # a folder to keep screenshots of each scene in
 
 
@@ -141,23 +143,25 @@ def test_a_tusker_is_where_it_is_when_it_paws_charges_and_stands_dazed(game):
     pace: a quarter of a second into a warning or a daze it is on its tile, and its drawn place never jumps."""
     game.rpc("dev_needs", hp=20, hunger=17)
     game.spawn("tusker", -3, -2)                               # off its line: it trots into line, paws, charges, hits, is dazed
-    seen = game.js("""() => new Promise((ok) => {
+    # (a jump: further in a frame than a charge, a tile a tick, goes in that frame's time. It was further than 0.6 of a
+    # tile in a frame, which a charge goes in a frame of 60 ms: on the runners, frames of 70 to 110 ms, it "jumped" 0.7 and 1.1)
+    seen = game.js("""(hz) => new Promise((ok) => {
       const out = {acts: [], worst: 0, late: 0, t0: performance.now()}; let last = null, act = '', since = 0;
       const tick = (now) => {
         const p = [...ents.values()].find((q) => q.e && q.e.kind === 'tusker');
         if (p) {
           const a = p.e.act || '';
           if (a !== act) { act = a; since = now; out.acts.push(a); }
-          if (last) out.worst = Math.max(out.worst, Math.hypot(p.x - last.x, p.y - last.y));
+          if (last) out.worst = Math.max(out.worst, Math.hypot(p.x - last.x, p.y - last.y) - hz * (now - last.t) / 1000);
           if ((a === 'windup' || a === 'stun') && now - since > 250) out.late = Math.max(out.late, Math.hypot(p.tx - p.x, p.ty - p.y));
-          last = {x: p.x, y: p.y};
+          last = {x: p.x, y: p.y, t: now};
         }
         if (performance.now() - out.t0 < 7000) requestAnimationFrame(tick); else ok(out);
       };
       requestAnimationFrame(tick);
-    })""")
+    })""", TICK_HZ)
     assert {"windup", "charge", "stun"} <= set(seen["acts"]), seen
-    assert seen["worst"] < 0.6 and seen["late"] < 0.02, seen    # (no jump; in its place while it paws and while it is dazed)
+    assert seen["worst"] < 0.3 and seen["late"] < 0.02, seen    # (no jump; in its place while it paws and while it is dazed)
 
 
 def test_a_blow_is_said_in_hearts_whoever_takes_it(game):

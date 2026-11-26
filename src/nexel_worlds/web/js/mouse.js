@@ -59,9 +59,9 @@ cv.addEventListener("mousemove", (e) => {
   }
   const p = tileAtScreen(e.clientX, e.clientY), t = p && tile(p.x, p.y), tip = $("hover");
   if (!t) { tip.style.display = "none"; return; }
-  let text;
+  let text, walk = false;
   if (me && Build.on) Build.point(p);
-  if (me && Build.on) { const it = Build.hint(p); text = it ? it.text : ""; tip.className = it && it.ok === false ? "bad" : ""; cv.classList.toggle("act", !!(it && !it.walk && !it.info && it.ok !== false)); }
+  if (me && Build.on) { const it = Build.hint(p); text = it ? it.text : ""; walk = !!(it && it.walk); tip.className = it && it.ok === false ? "bad" : ""; cv.classList.toggle("act", !!(it && !it.walk && !it.info && it.ok !== false)); }
   else if (me) {      // a left click breaks (X's verb), a right click uses (E's): each line its button's (intent.js clickIntent)
     const L = clickIntent(p, "break").it, R = clickIntent(p, "use").it, does = (it) => !!it && !it.walk && !it.info, said = (it) => does(it) || (!!it && it.ok === false);
     const r = said(R) && (!L || R.text !== L.text) ? R : null;
@@ -72,7 +72,7 @@ cv.addEventListener("mousemove", (e) => {
     const here = entityAt(p);
     text = here ? (here.e.name || here.e.kind) : GROUND.has(t[0]) ? label(CH[t[1]]) : label(CH[t[0]]);
   }
-  if (!text || (me && text === "Walk here")) { tip.style.display = "none"; return; }
+  if (!text || walk) { tip.style.display = "none"; return; }
   tip.textContent = text;
   tip.style.display = "block"; tip.style.left = e.clientX + 16 + "px"; tip.style.top = e.clientY + 14 + "px";
 });
