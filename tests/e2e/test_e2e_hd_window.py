@@ -164,15 +164,17 @@ def test_the_aim_on_a_cave_s_wall_is_on_the_cell_you_hit(browser, server):
     g.rpc("dev_teleport", x=x - 3, y=y, z=1)                               # the room's west end
     g.wait("HdLook.win.a === 1 && !HdLook.busy && HdLook.cam.pitch > HdLook.steep - .1", timeout=8000)
     g.hold_item("pickaxe")
+    g.rest()                                                               # (settled before you turn: once turned, the aim is read at once)
     AIM = "HdLook.aim && aimedTile() && aimedTile().it && aimedTile().it.cell === 2"
     g.hold(["ArrowLeft"], 250)                                             # (the way out, shown after two seconds standing, is put away when you turn to a wall: the test below; this one failed with it shown: {aim: None, way: 9})
     try:
         g.wait(AIM, timeout=4000)
     except Exception:                                                      # (what the page has when the aim is not there: it failed "under load" with nothing said)
         raise AssertionError(g.js(STATE)) from None
-    g.rest()
-    a = g.js("HdLook.aim")
-    c = [g.js(f"HdLook.screenOf({x - 4 + i}, {y + j}, 2)") for i, j in ((0, 0), (1, 1))]     # the wall's cell at your level: its top, one level over your floor
+    # the aim and the wall's cell at your level (its top, one level over your floor), read in the one frame while it is shown: two
+    # seconds standing bring the way out, which puts the aim away (a rest here on a loaded runner: aim None)
+    a, c = g.js(f"[HdLook.aim, [[{x - 4}, {y}], [{x - 3}, {y + 1}]].map(([i, j]) => HdLook.screenOf(i, j, 2))]")
+    assert a, g.js(STATE)
     want = [(c[0][0] + c[1][0]) / 2, (c[0][1] + c[1][1]) / 2]
     assert abs(a["x"] + a["w"] / 2 - want[0]) < 4 and abs(a["y"] + a["h"] / 2 - want[1]) < 4, (a, want)      # (it was round the wall's top, a level higher: 9 px up the screen)
 
