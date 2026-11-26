@@ -9,7 +9,7 @@ let deathTimer = null;
 // server's `cause` is the agents' words, not read here). Who: {kind, id, name} (sim/entities.py ref)
 const WHY_DIED = {killed: (w) => `killed by ${w.name}`, bitten: (w) => `bitten by ${w.name || "a " + label(w.kind).toLowerCase()}`,
   burnt: () => "burnt by a hob", fell: () => "fell", starvation: () => "starved", fire: () => "burnt in a fire", admin: () => "struck down", dev: () => "struck down"};
-const whyDied = (e) => (WHY_DIED[e.code] || (() => "fell"))(e.who || {});
+const whyDied = (e) => (Object.hasOwn(WHY_DIED, e.code) ? WHY_DIED[e.code] : () => "fell")(e.who || {});   // (its own codes only: one from the wire such as "constructor" is not a method of Object)
 function showDeath(e) {
   const v = $("deathveil"), p = $("death");
   const skull = $("deathskull").getContext("2d"), [c, r] = EMOTE.skull;
