@@ -23,8 +23,8 @@ def test_the_camera_centres_on_you_as_drawn(game):
     terrace(game, h=3, dy=-1, rows=3)
     x, y = game.pos()
     game.js(f"act('move_to', {{x: {x}, y: {y - 1}}})")
-    game.wait(f"({QUIET})()", 10000)                       # (up: the walk answered at its stop)
-    game.wait("(() => { const p = ents.get('agent' + myId); return liftOf(p) > 0 && Math.abs(cam.y - (p.y - liftOf(p) / TS())) < 1e-6; })()", 5000)   # (the eye come to rest on you)
+    game.until(f"({QUIET})()")                       # (up: the walk answered at its stop)
+    game.until("(() => { const p = ents.get('agent' + myId); return liftOf(p) > 0 && Math.abs(cam.y - (p.y - liftOf(p) / TS())) < 1e-6; })()")   # (the eye come to rest on you)
     d = game.js("(() => { const p = ents.get('agent' + myId); return [cam.y, p.y - liftOf(p) / TS(), liftOf(p)]; })()")
     assert d[2] > 0 and abs(d[0] - d[1]) < 1e-6
 
@@ -53,14 +53,14 @@ def test_a_pit_below_sea_level_is_drawn_like_any_hole(game):
     x, y = game.pos()
     game.face(1, 0)
     game.act("dig_down", **{"with": "pickaxe"})              # down a layer where you stand
-    game.wait(f"floorAt({x}, {y}) === -1 && liftAt({x}, {y}) < 0", 10000)
+    game.until(f"floorAt({x}, {y}) === -1 && liftAt({x}, {y}) < 0")
     assert game.js(f"floorAt({x}, {y})") == -1 and game.js(f"liftAt({x}, {y})") < 0
     game.act("dig_down", **{"with": "pickaxe"})             # (X now faces the pit's side: it would cut into that)
-    game.wait(f"floorAt({x}, {y}) === -2", 10000)
+    game.until(f"floorAt({x}, {y}) === -2")
     assert game.js(f"floorAt({x}, {y})") == -2
     game.js("selectItem(null)")
     game.hold(["d"], 200)                                    # two layers up: a wall
-    game.wait(f"({QUIET})()", 10000)
+    game.until(f"({QUIET})()")
     assert game.server()["x"] == x
 
 
@@ -74,8 +74,8 @@ def test_walking_off_a_cliff_you_fall_and_a_long_fall_hurts(game):
     game.rpc("dev_needs", hp=20, hunger=17)                    # (not healing by itself)
     hp = game.server()["hp"]
     game.hold(["s"], 420)                                    # off its south edge
-    game.wait(f"({QUIET})()", 10000)
-    game.wait(f"meObs.self.hp === {hp - 3}", 10000)         # (the fall's hurt, as the page is told it)
+    game.until(f"({QUIET})()")
+    game.until(f"meObs.self.hp === {hp - 3}")         # (the fall's hurt, as the page is told it)
     s = game.server()
     assert s["z"] == 0 and s["hp"] == hp - 3 and (s["x"], s["y"]) == game.pos() and s["y"] >= y - 3
     assert game.js("myAt.z") == 0 and game.js("liftOf(ents.get('agent' + myId))") == 0
@@ -96,7 +96,7 @@ def test_a_pickaxe_cuts_a_tunnel_into_a_wall(game):
     game.rest()
     game.js("selectItem(null)")
     game.hold(["w"], 300)
-    game.wait(f"({QUIET})()", 10000)
+    game.until(f"({QUIET})()")
     s = game.server()
     assert s["in_cave"] and s["z"] == 0 and (s["x"], s["y"]) == (x, y - 1)
 
@@ -108,5 +108,5 @@ def test_told_it_missed_events_the_page_asks_for_its_land_again(game):
     game.js(f"(() => {{ const t = tileIdx({x + 2}, {y}); t[0].comb[t[1]] = 'T'; return 1; }})()")     # as if we'd missed a change
     assert game.tile(2, 0) == "T"
     game.js("""(() => { spec.onmessage({data: '{"type":"resync"}'}); return 1; })()""")
-    game.wait(f"combAt({x + 2}, {y}) !== 'T'", 10000)       # (made again from the server's)
+    game.until(f"combAt({x + 2}, {y}) !== 'T'")       # (made again from the server's)
     assert game.tile(2, 0) != "T"

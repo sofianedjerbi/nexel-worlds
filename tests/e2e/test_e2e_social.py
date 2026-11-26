@@ -2,7 +2,7 @@
 
 import pytest
 from conftest import needs_sounds, open_game
-from waits import QUIET
+from waits import QUIET, until
 
 
 @pytest.fixture
@@ -24,7 +24,7 @@ def test_chat_shows_and_fades(game, friend):
     for g in (game, friend):                                 # both see it in the chat and as a bubble
         assert "hello over there" in g.js("$('chatlog').innerText")
         assert g.js("bubbles.some((b) => b.text === 'hello over there')")
-    friend.wait("[...$('chatlog').children].pop().classList.contains('old')", 20000)   # faded away
+    friend.until("[...$('chatlog').children].pop().classList.contains('old')")   # faded away
 
 
 def test_give_and_see_each_other(game, friend):
@@ -35,7 +35,7 @@ def test_give_and_see_each_other(game, friend):
     x, y = friend.pos()
     me = game.pos()
     game.js(f"perform({{x: {x}, y: {y}}}, intent({{x: {x}, y: {y}}}, false))")
-    game.wait(f"({QUIET})()", 8000)                          # (given: the server has answered)
+    game.until(f"({QUIET})()")                          # (given: the server has answered)
     assert friend.inv("berries") == 1 and game.inv("berries") == 2
 
 
@@ -49,12 +49,12 @@ def test_letters_through_a_mailbox(game, friend):
     assert game.js("$('mail').style.display") == "block"
     game.page.fill("#letter", "come see my farm")
     game.page.click("#postbtn")
-    game.wait(f"({QUIET})()", 8000)                      # (posted: the server has answered)
+    game.until(f"({QUIET})()")                      # (posted: the server has answered)
     game.press("Escape", 200)
     mx, my = game.pos()[0] + 1, game.pos()[1]
     friend.js(f"(() => {{ actTarget = {{x: {mx}, y: {my}}}; openMailPanel(actTarget); }})()")
     friend.page.click("#openbtn")
-    friend.wait("$('letters').innerText.includes('come see my farm')", 8000)
+    friend.until("$('letters').innerText.includes('come see my farm')")
     assert "come see my farm" in friend.js("$('letters').innerText")
 
 
@@ -65,7 +65,7 @@ def test_following_someone_by_their_link(browser, server, game):
     page.goto(f"{server}/?follow={game.name}")
     page.wait_for_function("typeof ready !== 'undefined'")
     page.wait_for_function("blocks.size > 0", timeout=8000)
-    page.wait_for_function("(name) => $('agents').innerText.includes(name)", arg=game.name, timeout=8000)
+    until(page, f"$('agents').innerText.includes({game.name!r})")
     assert game.name in page.evaluate("$('agents').innerText")
     page.close()
     assert not errors
@@ -82,13 +82,13 @@ def test_boat_launch_sail_and_moor(game):
     x, y = game.pos()
     assert game.tile(0, -1) == "V"
     game.js(f"act('move_to', {{x: {x}, y: {y - 1}}})")       # board
-    game.wait(f"({QUIET})()", 8000)                          # (a walk is answered at its stop)
+    game.until(f"({QUIET})()")                          # (a walk is answered at its stop)
     assert game.server()["sailing"]
     game.hold(["w"], 380)
-    game.wait(f"({QUIET})()", 8000)
+    game.until(f"({QUIET})()")
     assert game.server()["sailing"]
     game.hold(["s"], 900)                                    # back to the shore: you step out, the boat stays
-    game.wait(f"({QUIET})()", 8000)
+    game.until(f"({QUIET})()")
     assert not game.server()["sailing"]
 
 
@@ -143,15 +143,15 @@ def test_the_goals_stay_and_tab_shows_the_day_who_you_are_and_who_is_awake(game,
     game.rpc("dev_time", phase=.86)                                                # night falls while it shows
     game.wait("$('whosky').dataset.night === '1' && Math.abs(parseFloat($('whomark').style.left.slice(5)) - clock.phase) < .02", 5000)
     game.page.keyboard.up("Tab")
-    game.wait(f"(({box})('who')) === null")
+    game.until(f"(({box})('who')) === null")
     assert game.js(box, "who") is None
     game.give(wood=4)                                                              # a goal done: ticked where it is, no line of news for it
-    game.wait("$('goalcount').textContent === '1/12'")
+    game.until("$('goalcount').textContent === '1/12'")
     assert "Goal done" not in game.toast() and game.js("document.querySelectorAll('.goal.done').length") == 1 and game.js("$('goalcount').textContent") == "1/12"
     game.press("g", 200)                                                           # away again: the tab is back, with how many are done
     assert game.js(box, "goals") is None and game.js("$('goalhint').textContent") == "Ggoals1/12" and game.js("localStorage.getItem('nexel-goals-off')") == "1"
     game.give(berries=1)                                                           # a goal done while the card is away: said in the line of news
-    game.wait("$('toast').style.display === 'block' && $('toastt').innerText === 'Goal done: Pick berries'")
+    game.until("$('toast').style.display === 'block' && $('toastt').innerText === 'Goal done: Pick berries'")
     assert game.toast() == "Goal done: Pick berries"
     page = browser.new_page()                                                      # someone watching
     page.goto(f"{server}/?follow={game.name}")                                     # (by the link that follows someone: no menu)
@@ -181,7 +181,7 @@ def test_a_line_is_said_in_a_run_of_syllables_as_it_is_written(game, friend):
     shown = game.js(f"(() => {{ const b = bubbles.find((b) => b.text === {line!r}); return written(b.text, performance.now() / 1000 - b.t).length; }})()")
     assert 0 < shown < len(line)                                    # being written, a letter every 45 ms
     written = f"(() => {{ const b = bubbles.find((b) => b.text === {line!r}); return written(b.text, performance.now() / 1000 - b.t); }})()"
-    game.wait(f"{written} === {line!r}")                           # (all of it written: waited for, a letter every 45 ms of the page's time)
+    game.until(f"{written} === {line!r}")                           # (all of it written: waited for, a letter every 45 ms of the page's time)
     assert game.js(written) == line
     for g in (game, friend):                                        # the one who speaks hears it too
         said = g.js("window.__said")
