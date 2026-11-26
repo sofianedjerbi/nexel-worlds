@@ -164,3 +164,17 @@ def test_a_cow_eats_a_carrot(world):
     a.add("carrot", 1)
     assert run(sim, a, "feed", {"target": cow.id, "item": "carrot"})["ok"]
     assert a.count("carrot") == 0
+
+
+def test_a_cow_two_tiles_off_is_milked_and_a_fed_hen_two_tiles_off_lays_on_the_ground(world):
+    """tests/e2e/test_e2e_world.py's cows and hens, moved here whole (#290): a cow two tiles east, a hen two tiles
+    west, both kept still; milked, the milk is yours; fed berries, five seconds on the hen's egg lies on the ground."""
+    sim, a = world
+    from nexel_worlds.devtools import dev_op
+    cow = dev_op(sim, a, "dev_creatures", {"kind": "cow", "dx": 2, "dy": 0, "still": 10 ** 6})["spawned"]
+    hen = dev_op(sim, a, "dev_creatures", {"kind": "chicken", "dx": -2, "dy": 0, "still": 10 ** 6})["spawned"]
+    a.add("berries", 1)
+    assert run(sim, a, "milk", {"target": cow})["ok"] and a.count("milk") == 1
+    assert run(sim, a, "feed", {"target": hen, "item": "berries"})["ok"]
+    dev_op(sim, a, "dev_skip", {"seconds": 5})
+    assert any("egg" in pile for pile in sim.items.values()) and not a.count("egg")
