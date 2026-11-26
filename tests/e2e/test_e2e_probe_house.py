@@ -28,18 +28,19 @@ DUMP = """() => { const P = CanvasRenderingContext2D.prototype, gi = P.getImageD
     X = Math.floor((A + i + .5) * Z), Y = Math.floor((B + j + .5) * Z), p = (Y * sc.w + X) * 4;
     return X >= 0 && Y >= 0 && X < sc.w && Y < sc.h && Math.abs(sc.d[p] - sp.d[o]) + Math.abs(sc.d[p + 1] - sp.d[o + 1]) + Math.abs(sc.d[p + 2] - sp.d[o + 2]) < 60 ? p : -1 - p; };
   let best = [-1, 0, 0], n = 0; for (let j = 0; j < sp.h; j++) for (let i = 0; i < sp.w; i++) if (sp.d[(j * sp.w + i) * 4 + 3] >= 128) n++;
-  for (let A = gx - 40; A <= gx + 40; A++) for (let B = gy - 60; B <= gy + 40; B++) { let c = 0;
+  for (let A = gx - sp.w; A <= gx + 8; A++) for (let B = gy - sp.h; B <= gy + 8; B++) { let c = 0;
     for (let j = 0; j < sp.h; j++) for (let i = 0; i < sp.w; i++) if (sp.d[(j * sp.w + i) * 4 + 3] >= 128 && ok(A, B, i, j) >= 0) c++;
     if (c > best[0]) best = [c, A, B]; }
   const [, A, B] = best, rows = [], bad = [];
   for (let j = 0; j < sp.h; j++) { let f = 0, t = 0; for (let i = 0; i < sp.w; i++) { const o = (j * sp.w + i) * 4; if (sp.d[o + 3] < 128) continue; t++;
     const p = ok(A, B, i, j); if (p < 0) { f++; const q = -1 - p; if (bad.length < 20 && (i + j) % 2 === 0) bad.push([i, j, [sp.d[o], sp.d[o + 1], sp.d[o + 2]], [sc.d[q], sc.d[q + 1], sc.d[q + 2]]]); } }
     if (t) rows.push(j + ':' + f + '/' + t); }
-  return {share, best_share: n ? best[0] / n : 0, at: [A, B], guess: [gx, gy], Z, dpr: DPR, sprite: [sp.w, sp.h], fail_rows: rows.join(' '), bad}; }"""
+  const tint = [...new Set([...Array(sp.w * sp.h).keys()].filter((q) => sp.d[q * 4 + 3] >= 128).map((q) => sp.d[q * 4] + ',' + sp.d[q * 4 + 1] + ',' + sp.d[q * 4 + 2]))].slice(0, 12);
+  return {name: me.e && me.e.name, tint, share, best_share: n ? best[0] / n : 0, at: [A, B], guess: [gx, gy], Z, dpr: DPR, sprite: [sp.w, sp.h], fail_rows: rows.join(' '), bad}; }"""
 
 
-@pytest.mark.parametrize("hour", [None, .5])
-@pytest.mark.parametrize("n", range(4))
+@pytest.mark.parametrize("hour", [None])
+@pytest.mark.parametrize("n", range(10))
 def test_probe_the_house(browser, server, hour, n):
     g = hd(browser, server)
     try:
