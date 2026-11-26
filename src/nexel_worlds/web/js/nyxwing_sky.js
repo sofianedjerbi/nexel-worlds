@@ -69,7 +69,7 @@ const NyxRift = (K) => {
     const rc = picture(s, "riftC", CW, CH), g = rc.getContext("2d"), im = g.createImageData(CW, CH), b = new Uint32Array(im.data.buffer);
     const line = ease(seg(u, 4, 8)), open = ease(seg(u, 9, WIDE)) * (1 - ease(seg(u, 32, 33))), breathe = 1 + .03 * Math.sin(u * 2.2);
     const rx = Math.max(1, 3 + (RX - 3) * open * breathe), ry = RY * line * (u >= 32 ? 1 - .7 * seg(u, 32, 33) : 1), hot = Math.floor(u * 9);
-    s.rift = {u, line, open, at: performance.now()};                          // (what was drawn last: tests, Nyx.rift)
+    s.rift = {u, line, open, at: performance.now()};                          // (the last picture of it: tests, Nyx.rift)
     if (u < 33) lines(b, CW, CH, air, seg(u, 8, 15) * (open > .05 ? 1 : 0), hot);
     if (line > 0 && open < .02 && u < 32) for (let y = Math.round(CY - ry); y <= CY + ry; y++) {          // the tear, a jagged gold line taller than it
       const x = Math.round(CX + Math.sin(y * .5) * 2 + Math.sin(y * .13) * 4); for (let i = -2; i <= 2; i++) b[y * CW + x + i] = i ? ((y + i) % 2 ? VIO : b[y * CW + x + i]) : (y + hot) % 4 ? PALE : WHITE; }
