@@ -22,6 +22,8 @@ concurrency:
 env:
   RUFF: ruff@0.17.6
   PRETTIER: prettier@3.10.1
+  ESLINT: eslint@9.39.5
+  GLOBALS: globals@16.5.0
 
 jobs:
   lint:
@@ -51,6 +53,9 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
+      # every name the web client reads is defined somewhere: a split that leaves one behind fails here (#174, #158)
+      - name: no undefined names (tools/undef_check.mjs, ESLint no-undef over the page's scripts)
+        run: npm install --no-save --no-package-lock "$ESLINT" "$GLOBALS" && node tools/undef_check.mjs
       - name: prettier --check (not blocking until the format pass)
         continue-on-error: true
         run: |
