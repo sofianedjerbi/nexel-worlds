@@ -156,23 +156,16 @@ def pytest_terminal_summary(terminalreporter):
 RUNNER_LIKE = float(os.environ.get("E2E_RUNNER_LIKE") or 0)
 
 
-def throttled(b):
-    """The browser `b`, each page it makes slowed RUNNER_LIKE times once in the game (Game.join: its frames as a runner's;
-    slowed from its making, its boot at 30x took over 30 s and the name box was not clicked), its contexts' pages too."""
-    def slow(page):
-        def now():
-            page._throttle = page.context.new_cdp_session(page)    # (kept: the rate holds while the session lives)
-            page._throttle.send("Emulation.setCPUThrottlingRate", {"rate": RUNNER_LIKE})
-        page.runner_like = now
-        return page
-    new_page, new_context = b.new_page, b.new_context
-    b.new_page = lambda *a, **kw: slow(new_page(*a, **kw))
-    def context(*a, **kw):
-        ctx = new_context(*a, **kw)
-        ctx.on("page", slow)
-        return ctx
-    b.new_context = context
-    return b
+def runner_like():
+    """Each game's page slowed RUNNER_LIKE times once it is in (Game.join): its frames as a runner's. (Slowed from its
+    making, its boot at 30x took over 30 s and the name box was not clicked.)"""
+    join = Game.join
+    def slowed(self, *a, **kw):
+        out = join(self, *a, **kw)
+        self.page._throttle = self.page.context.new_cdp_session(self.page)   # (kept: the rate holds while the session lives)
+        self.page._throttle.send("Emulation.setCPUThrottlingRate", {"rate": RUNNER_LIKE})
+        return out
+    Game.join = slowed
 
 
 @pytest.fixture(scope="session")
@@ -185,7 +178,7 @@ def browser():
         pw.stop()
         pytest.skip(f"Chrome is needed for the end-to-end suite: {e}")
     if RUNNER_LIKE:
-        b = throttled(b)
+        runner_like()
     RENDERER.append(webgl_renderer(b))
     yield Pages(b)                                        # (its pages on the tests' clock, counted and shut: pages.py)
     b.close()

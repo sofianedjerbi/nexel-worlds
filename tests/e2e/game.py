@@ -83,8 +83,6 @@ class Game(Waits):
                 said = [ln[:200] for ln in lines if name in ln or "Traceback" in ln or "ERROR" in ln or "Error" in ln][-12:] + ["...the log's end:"] + [ln[:160] for ln in lines[-14:]]
             raise AssertionError(f"{name} did not get in: {state}; page errors: {self.errors}; server: {said}") from e
         self.js(clock.DAY)
-        if hasattr(self.page, "runner_like"):                # (in: from here its frames as a runner's, conftest.py RUNNER_LIKE)
-            self.page.runner_like()
         # (morning, set by the test's first page only: dev_time only goes forward, so a second page of the same test set it
         # again and sent the world on to tomorrow's .3, 12000 ticks, mid-test: a Nyxwing summoned 4 s before had come 1199.6 s
         # ago for the late page. Whatever hour the test is at, its later pages leave the world's day as it is)
