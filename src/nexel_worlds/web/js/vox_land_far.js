@@ -25,6 +25,6 @@ const VoxLandFar = ({P, CH}) => {
     },
     get fars() { return fars; },
     get forgot() { return forgot; },   // (patches let go as a tile they read changed: made again rightly, tests: hd_work)
-    get fresh() { return fresh; },   // (patches made at a place no patch was made at before: walking back over land made, none; tests: hd_work, #240)
+    get fresh() { return fresh; },   // (patches made at a place where none was made yet: walking back over land made, none; tests: hd_work, #240)
   };
 };
