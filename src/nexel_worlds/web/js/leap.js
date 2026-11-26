@@ -133,7 +133,9 @@ const Leap = (() => {
   // step it was planned to clear (a runner drawing on the CPU, a frame every 100 ms: pinned up a flight of steps, walking)
   function frame(p, dt, now) {
     const n = Math.max(1, Math.ceil(dt * 60 - .01));
-    for (let i = 0; i < n && L; i++) step(p, dt / n, now);
+    let i = 0;
+    for (; i < n && L; i++) step(p, dt / n, now);
+    if (!L && i < n && walking && p.walking) walkOn(p, (n - i) * dt / n, now);   // (down in the frame, the walk on: its time left walked. It was lost: sprinting over steps, 7.1 tiles a second of 10)
   }
   function step(p, dt, now) {
     if (!L) return;
