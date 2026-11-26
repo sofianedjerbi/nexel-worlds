@@ -22,7 +22,7 @@ class Ticking:
         period = 1.0 / TICK_HZ
         nxt = loop.time()
         while not self.stopping.is_set():
-            nxt = await self.owed(loop, nxt)            # (lockstep: until the page asks for this tick, lockstep.py)
+            nxt = await self.owed(loop, nxt)            # (lockstep: until the page asks for this tick)
             t0 = time.perf_counter()
             chunks0 = len(self.sim.world.chunks)
             try:
@@ -41,7 +41,8 @@ class Ticking:
                 log.warning("slow tick %d: %.0f ms (step %.0f ms, chunks %d -> %d)", self.sim.tick, dt,
                             (t1 - t0) * 1000, chunks0, len(self.sim.world.chunks))
             self.ticked.set()
-            if self.driver is not None:              # (lockstep: the next tick when the page asks for it, not on the wall's)
+            if self.driver is not None:              # (lockstep: the next tick when the page asks for it, not on the wall's;
+                await asyncio.sleep(0)               # each tick sent and answered before the next, however many are owed)
                 continue
             nxt += period / getattr(self.sim, "clock_rate", 1)      # (pace: the browser tests' clock, devtools.py dev_pace: only with --dev)
             # In the browser (no threads) land is made in the time to spare, 8 ms at a time, the loop turning three times
@@ -57,11 +58,12 @@ class Ticking:
                 delay = 0
             await asyncio.sleep(max(0.0, delay))
 
-    def unlock(self):
+    def init_clock(self):
         self.driver = None             # the socket driving the ticks (dev_lockstep), or None: the wall's clock
         self.step_to = 0               # the tick it asked the world to be at
         self.ticked = asyncio.Event()  # set at each tick made: a dev_step waits for its own
         self.owe = asyncio.Event()     # set when a tick is owed or the driver lets go: the loop waits for it
+        self.steps: set = set()        # the dev_step answers on their way (kept: a task nobody holds may be collected mid-wait)
 
     def dev_clock(self, ws, op: str, msg: dict, answer):
         """dev_lockstep, answered at once; dev_step, answered when its tick is made (the socket goes on meanwhile)."""
@@ -70,7 +72,14 @@ class Ticking:
 
         async def stepped():
             answer(await self.step(ws, msg))
-        asyncio.get_running_loop().create_task(stepped())
+        task = asyncio.get_running_loop().create_task(stepped())
+        self.steps.add(task)
+        task.add_done_callback(self.stepped)
+
+    def stepped(self, task):
+        self.steps.discard(task)
+        if not task.cancelled() and task.exception() is not None:
+            log.error("dev_step broke", exc_info=task.exception())
 
     async def owed(self, loop, nxt: float) -> float:
         """Before a tick, in lockstep: until one is owed (the driver asked for a later one) or the driver lets go, the

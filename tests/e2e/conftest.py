@@ -260,6 +260,7 @@ def pace(request):
         request.getfixturevalue("machine")
     clock.now = pace_of(request.node)
     clock.step = stepped(request.node)                    # (its pages' time 1/60 s a frame: clock.py STEP)
+    clock.pages = 0                                       # (its own pages' chances counted from its first: clock.py SEED)
     if "server" in request.fixturenames:
         url = request.getfixturevalue("server")
         if _world_pace.get(url, 1.0) != clock.now:

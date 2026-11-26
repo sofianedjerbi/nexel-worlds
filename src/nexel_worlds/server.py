@@ -54,7 +54,7 @@ class GameServer(Views, Ticking):
         self.sim.screens = lambda: [r for r in self.spectators.values() if r]   # (nothing comes or goes on a screen: spawning.py)
         self.tick_ms = collections.deque(maxlen=250)
         self.tick_parts = collections.deque(maxlen=250)      # (each tick's parts: its step's ms, whether it flushed the world to disk)
-        self.unlock()                  # (the world's ticks on the wall's clock: lockstep.py)
+        self.init_clock()              # (the world's ticks on the wall's clock, till a test's page drives them: ticking.py)
         self.started = time.time()
         self.stopping = asyncio.Event()
         self.admin = Admins(self, world_dir, admins)      # (an operator, out of the world: the server's /commands, admin.py)
@@ -204,7 +204,7 @@ class GameServer(Views, Ticking):
                     self.sim.submit(agent, tool, args, on_done=done)
                 elif op == "hold":                                 # what is in your hand (the bar's selected slot): the others see it in your paw (views.py)
                     agent.held = str(msg["item"])[:40] if msg.get("item") else None; reply(mid, held=agent.held)  # noqa: E702
-                elif op in ("dev_lockstep", "dev_step") and self.dev and not account:   # (the browser tests' one clock: lockstep.py)
+                elif op in ("dev_lockstep", "dev_step") and self.dev and not account:   # (the browser tests' one clock: ticking.py)
                     self.dev_clock(ws, op, msg, lambda r, mid=mid: reply(mid, **r))
                 elif op.startswith("dev_") and self.dev and not account:  # QA tools, only with --dev, never for who came by ticket
                     reply(mid, **dev_op(self.sim, agent, op, msg))

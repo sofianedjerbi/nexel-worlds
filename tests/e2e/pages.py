@@ -138,6 +138,7 @@ class Pages:
             return None
         page.emulate_media(reduced_motion=motion)       # (asked for before this test's marks were known)
         self.made.append(kept(page))
+        clock.pages += 1                                  # (the next test's first page, seeded as such: clock.py SEED)
         return made
 
 

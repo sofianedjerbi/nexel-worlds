@@ -32,6 +32,7 @@ now = 1.0           # the pace of the test that is running (conftest.py: the `pa
 LOCKSTEP = os.environ.get("E2E_LOCKSTEP", "1") != "0"
 step = False        # the test that is running is `stepped`: its pages' time goes 1/60 s a frame, whatever the machine (STEP)
 seed = coming_seed = 0   # the chances of the test that is running, and of the one after it (SEED; conftest.py: from their ids)
+pages = 0           # the pages of the running test given their chances so far: each page its own sequence (SEED)
 coming = None       # the pace of the test after it, if it plays on the `game` fixture's page; None: it does not, or there is none (conftest.py)
 
 # (a sleep is never cut under SHORT ms of the machine's time, or its own length: what it waited for may be an answer
@@ -134,7 +135,10 @@ def paced(page, pace=None):
     """A page whose clocks run at the pace of the test that made it (or at `pace`: the next test's, pages.py)."""
     mine = pace is None                          # (this test's own page; a page asked for ahead is the next test's: pages.py)
     pace = pace or now
-    page.add_init_script(SEED % (seed if mine else coming_seed))
+    global pages
+    if mine:                                     # (each page of a test its own sequence: two pages drew the same ids and tokens)
+        pages += 1
+    page.add_init_script(SEED % (((seed if mine else coming_seed) + (pages - 1 if mine else 0) * 0x9E3779B9) & 0xFFFFFFFF))
     if step and mine and pace == 1:
         page.add_init_script(STEP)
         page.wait_for_timeout = lambda ms: stepped_wait(page, ms)
