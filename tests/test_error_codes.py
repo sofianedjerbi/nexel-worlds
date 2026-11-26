@@ -56,3 +56,13 @@ def test_the_page_shows_a_refusal_by_its_code():
             if "r.detail" in line and "const errorText" not in line]
     assert not hits, hits
     assert re.search(r"Object\.hasOwn\(ERROR_TEXT, r\.error\)", (JS / "agent.js").read_text())
+
+
+def test_every_reason_a_block_cannot_go_has_words_on_the_page():
+    """block_fits' codes (storeys.py, BLOCK_WHY) are said on the page by build mode's words (floors.js WHY) or agent.js'
+    TARGET_WHY; and "changed" (the world moved under you) is worded with no data sent."""
+    from nexel_worlds.sim.entities import BLOCK_WHY
+    js = (JS / "floors.js").read_text() + (JS / "agent.js").read_text()
+    missing = [c for c in BLOCK_WHY if not re.search(rf"\b{c}: (\(\) => )?\"", js)]
+    assert not missing, missing
+    assert re.search(r"changed: \(\) => \"", (JS / "agent.js").read_text())

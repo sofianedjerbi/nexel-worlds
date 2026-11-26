@@ -18,6 +18,13 @@ class ActionError(Exception):
         self.code, self.detail, self.data = code, detail, data
 
 
+# why no block can go in a cell (storeys.py block_fits), in the agents' words
+BLOCK_WHY = {"too_high": "nothing is built that high", "block_there": "there is a block there already",
+             "on_water": "nothing stands on water: lay a bridge first", "in_way": "the {what} is in the way",
+             "too_low": "too low over the floor: leave room to stand under it",
+             "unheld": "a block rests on the block or the wall under it, or holds to a block beside it"}
+
+
 def failure(e: Exception) -> dict:
     """An action that stopped on an exception -> what it answers. A refusal (ActionError) says why; anything else is
     a bug: written to the log, and the action only fails (never the whole world's clock with it)."""
