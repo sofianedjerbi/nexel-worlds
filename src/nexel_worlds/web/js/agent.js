@@ -87,7 +87,8 @@ const ERROR_TEXT = {
   missing_item: (d) => (d.food ? "Nothing it eats in your bag" : d.where === "chest" ? `No ${label(d.item).toLowerCase()} in the chest`
     : d.need > 1 ? `Takes ${d.need} ${label(d.item).toLowerCase()}: you have ${d.have}` : `No ${label(d.item).toLowerCase()} in your bag`),
   occupied: (d) => (Object.hasOwn(IN_THE_WAY, d.on) ? IN_THE_WAY[d.on] : `${label(d.on)} is there`),
-  bad_target: (d) => (Object.hasOwn(TARGET_WHY, d.why) ? TARGET_WHY[d.why](d) : "Not there"),
+  bad_target: (d) => (Object.hasOwn(TARGET_WHY, d.why) ? TARGET_WHY[d.why](d) : Object.hasOwn(Floors.WHY, d.why) ? Floors.WHY[d.why] : "Not there"),   // (a block's cell: build mode's own words, floors.js)
+  changed: () => "Something changed there first",
   cannot_dig: (d) => (d.what ? `${label(d.what)} can't be dug` : (Object.hasOwn(NO_DIG, d.why) ? NO_DIG[d.why] : "That can't be dug")),
 };
 const NO_DIG = {deepest: "This is as deep as it goes", enclosed: "Inside the land: dig to it from beside it", not_clear: "Stand on clear ground to dig down"};
@@ -99,11 +100,11 @@ const TARGET_WHY = {
   needs_dry: (d) => `${label(d.item)} needs dry land`, needs_ground: (d) => `${label(d.item)} needs the ground under it`, no_floor: () => "No floor there to stand it on",
   no_lean: () => "A ladder goes against something taller", no_higher: () => "Stairs go up to something higher beside them", no_room: () => "No room there for the stairs",
   ladder_ground: () => "A ladder's foot goes on the ground", nothing_built: () => "Nothing built there", block_on_top: () => "Take the block on top first",
-  no_support: () => "A block goes against something solid", nothing_overhead: () => "Nothing over your head to dig",
+  no_support: () => "A block goes against something solid", too_high: () => "Nothing is built that high", nothing_overhead: () => "Nothing over your head to dig",
   self: () => "You can't hit yourself", untouchable: () => "Your hand goes through it", not_kind: (d) => `That is not a ${lcLabel(d.kind)}`, wont_eat: (d) => `A ${lcLabel(d.kind)} doesn't eat that`,
   not_agent: () => "Give to someone, not a creature",
 };
-const errorText = (r) => (r.data && Object.hasOwn(ERROR_TEXT, r.error) ? ERROR_TEXT[r.error](r.data) : r.detail || r.error);
+const errorText = (r) => (Object.hasOwn(ERROR_TEXT, r.error) && (r.data || !ERROR_TEXT[r.error].length) ? ERROR_TEXT[r.error](r.data) : r.detail || r.error);   // (words that need no data, as "changed"'s, need none sent)
 async function act(tool, args, quiet) {
   if (!me || (eating() && !RULES.meanwhile.includes(tool))) return null;
   while (pred && performance.now() < pred.until) await new Promise((ok) => setTimeout(ok, 16));   // the server is still coming to where you stopped: what you do, you do from there
