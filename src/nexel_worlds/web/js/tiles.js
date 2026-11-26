@@ -177,7 +177,7 @@ function drawTile(x, y, to = null) {                 // (to: the px it is painte
   const i = (y - b.by * B) * B + (x - b.bx * B), c = b.comb[i], gr = b.gnd[i], g = LAID, lv = levelAt(x, y);
   g.n = 0;
   // a tile up on the land: its level's hill sheet, a plain top (its rim is the land's, by its cells: voxpaint.js rim). Its ground and
-  // what is laid on it by the one rule (drawBlobLayer): soil, the grass over it, then paths, fields, floors, ash, a hedge
+  // what is laid on it by the one rule (drawBlobLayer): soil, the grass over it, then paths, fields, floors, ash
   let k = lv;
   for (; k >= 1; k--) { drawBlobLayer(g, hillSheet(k), x, y, () => true, k < 3 ? .25 : k < 5 ? .1 : .45); if (cellSolid(g.img[g.n - 1], g.at[g.n - 1] % 4096, g.at[g.n - 1] >> 12)) break; }
   const hills = g.n, covered = k >= 1;
@@ -187,7 +187,6 @@ function drawTile(x, y, to = null) {                 // (to: the px it is painte
   }
   const base = g.n;
   if (isLand(gr)) groundMarks(g, x, y, gr);
-  if (c === "H") drawBlobLayer(g, IMG.hedge, x, y, (cc) => cc === "H", 0);
   const f = floatAt(x, y); if (f >= 0) g.drawImage(IMG.water_objects, FLOATS[f] * 16, 0);
   // in the order they lie: the ground, the hill's levels from the lowest (noted from the top down, so read back in reverse), then what is laid
   // on top. From the last one that hides all under it.
