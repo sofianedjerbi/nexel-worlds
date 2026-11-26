@@ -9,9 +9,9 @@ its section thicker, no shade outside its rim."""
 import pytest
 from test_e2e_hd_sun import hd
 
-# every frame: [your x, the eye's pitch, land over you, the window open on your tile (half its px or more), your body's y on the screen (px), the level drawn, the level the game has you at, how open the window is]
+# every frame: [your x, the eye's pitch, land over you, the window open on your tile (half its px or more), your body's y on the screen (px), the level drawn, the level the game has you at, how open the window is, ms]
 REC = """(() => { window.__r = []; window.__on = true; const f = () => { const e = ents.get('agent' + myId), tx = Math.round(e.x), ty = Math.round(e.y), lv = HdLook.level, b = HdLook.screenOf(e.x + .5, e.y + .5, lv[2]);
-  if (b && myAt) __r.push([e.x, HdLook.cam.pitch, topAt(tx, ty) > myAt.z ? 1 : 0, HdLook.win.a >= .5 && HdLook.winAt(tx, ty) ? 1 : 0, b[1], lv[0], myAt.z, HdLook.win.a]); if (__on) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; })()"""
+  if (b && myAt) __r.push([e.x, HdLook.cam.pitch, topAt(tx, ty) > myAt.z ? 1 : 0, HdLook.win.a >= .5 && HdLook.winAt(tx, ty) ? 1 : 0, b[1], lv[0], myAt.z, HdLook.win.a, performance.now()]); if (__on) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; })()"""
 PX = """([x, y, z]) => { const a = HdLook.screenOf(x, y, z), k = devicePixelRatio; return [...HdLook.read(Math.round(a[0] * k), Math.round(a[1] * k), 1, 1).data.slice(0, 3)]; }"""
 lum = lambda c: (c[0] * 3 + c[1] * 6 + c[2]) / 10
 
@@ -67,7 +67,9 @@ def test_down_a_covered_stair_the_window_is_open_on_every_frame_and_your_body_is
     part = [i for i, v in enumerate(r) if v[2] and v[7] < 1]
     assert len(part) <= 4, (len(part), part[:8])                                 # (where the search for your space was late: half its px that frame, all of them within three more; it was all in one frame: a pop)
     assert all(v[5] == v[6] for v in r), [(v[0], v[5], v[6]) for v in r if v[5] != v[6]][:6]    # drawn at the level the game has you at, never on the grass over it
-    steps = [(round(a[0], 2), round(b[4] - a[4], 1)) for a, b in zip(r, r[1:]) if abs(b[4] - a[4]) > 9]
+    # (a frame's way is the body's speed for that frame's time: at 60 a second a step down is up to 6 px a frame, 360 px a
+    # second, 9 the most. On a runner drawing every 117 ms the hop down the first open step went 9.5 in one frame: its way)
+    steps = [(round(a[0], 2), round(b[4] - a[4], 1), round(b[8] - a[8])) for a, b in zip(r, r[1:]) if abs(b[4] - a[4]) > max(9, .36 * (b[8] - a[8]))]
     assert not steps, steps[:8]                                                  # your body does not jump on the screen (it went 16 px at each tile's middle, and 100 at the roof; a level is 16 px now: a frame's way down a step is up to 6; from 58 degrees a level is 8.5 px on the screen, not 3: under the roof one frame's step was 7.6)
     assert turns(r) == 0 and r[0][1] < 37 and r[-1][1] > 57.9, (turns(r), r[0][1], r[-1][1])    # one tilt, on the way down
     # and back up: one tilt back, near the top
