@@ -182,6 +182,8 @@ PUT = """async ([list, stand]) => { const bad = [];
   for (const [x, y, z, item] of list) { const s = stand.find((q) => (q[0] - x) ** 2 + (q[1] - y) ** 2 + ((z - q[2]) * .5) ** 2 <= 6 && !(q[0] === x && q[1] === y));
     await rpc('dev_teleport', {x: s[0], y: s[1], z: s[2]}); const r = await rpc('act', {tool: 'place', args: {x, y, item, z}}); if (!r.ok) bad.push([x, y, z, item, r.detail || r.error]); } return bad; }"""
 ROOF = "([x, y]) => (HdThings.at(x, y) || []).some((b) => b.z >= 16)"
+# until the HD look's land is made (not being made, the look live), `n` frames at the most -> the frames it took, -1 if it was not
+MADE = """(n) => new Promise((ok) => { let k = 0; const f = () => { if (HdLook.live && !HdLook.busy) ok(k); else if (++k > n) ok(-1); else requestAnimationFrame(f); }; f(); })"""
 
 
 def test_a_built_house_has_its_roof_outside_and_is_open_inside(browser, server):
@@ -197,6 +199,10 @@ def test_a_built_house_has_its_roof_outside_and_is_open_inside(browser, server):
         assert g.js(PUT, [[[x0 + i, y0 + j, 3, "roof"] for j in (2, 1, 0) for i in range(4)], room]) == []
         over = [x0 + 1.5, y0 + 1.5, 3]                                      # (a point of the roof's top, over the room)
         g.rpc("dev_teleport", x=x, y=y, z=0); g.arrive()
+        # (outside: read once the page has the roof, the window you had in the room while it was laid is shut, and the land is
+        # made again: read before, it was the meadow under it, [174, 212, 153]: the roof came a tick later, or still cut by the window)
+        g.wait(f"({ROOF})([{x0 + 1}, {y0 + 1}]) && HdLook.win.a === 0", timeout=8000)
+        g.rest()
         out = g.js(AT, over)
         assert g.js(ROOF, [x0 + 1, y0 + 1]) and not green(out), out                # outside: the roof, drawn
         wall = max(b["z"] + b["h"] for b in g.js("([x, y]) => HdThings.at(x, y)", [x0, y0 + 1]) if b["z"] < 32)
@@ -204,10 +210,23 @@ def test_a_built_house_has_its_roof_outside_and_is_open_inside(browser, server):
         g.rpc("dev_teleport", x=x0 + 1, y=y0 + 1, z=0); g.arrive()
         # (the view come to the room: read once you are seen whole. Read the frame you arrived, a runner's view was still opening
         # over you, the roof's cut on its way: 0.59 of you seen)
+        # (the land made again with you in the room, then the eye and the disc at rest, then read: the look makes its land a few
+        # ms a frame, so at 200 ms frames that takes seconds where 16 ms frames take a fraction: waited for in frames, not in a
+        # time. Read on a fixed 8 s, the land shown was the last one finished, from before you came in: its south wall whole
+        # over you, 0.6 of you seen, busy still: #291)
+        made = g.js(MADE, 900)
+        g.rest()
         try:
-            g.wait("HdLook.catSeen() > .8", 8000)
+            assert made >= 0 and g.js("HdLook.catSeen()") > .8
         except Exception:
-            raise AssertionError(("you are not seen whole in the room", g.js("HdLook.catSeen()"))) from None
+            probe = g.js(f"""(() => {{ const dx = {x0} + 1, dy = {y0} + 2, me = myPos(); return {{
+              seen: HdLook.catSeen(), me: me && [me.x, me.y], door: combAt(dx, dy), occ: [...occupied].join(" "),
+              doorTile: HdLook.win.tiles.some((t) => t[0] === dx && t[1] === dy), win: [HdLook.win.n, HdLook.win.a], tiles: HdLook.win.tiles.map((t) => t.slice(0, 4).join(",")).join(" "),
+              roof: HdLevel.cover.roof, key: HdThings.key(), builds: HdLook.builds, busy: HdLook.busy, rise: Floors.rise(ents.get("agent" + myId)),
+              place: HdLevel.place && [HdLevel.place.tx, HdLevel.place.ty, HdLevel.place.L, HdLevel.place.free], fver: Floors.ver, landVer: typeof landVer !== "undefined" ? landVer : null,
+              doorBoxes: (HdThings.at(dx, dy) || []).map((b) => [b.z, b.h]), wallBoxes: (HdThings.at(dx + 1, dy) || []).map((b) => [b.z, b.h]),
+              cells: [...(Floors.cells(dx, dy) || new Map()).keys()], thing0: Floors.thingAt(dx, dy, 0) }}; }})()""")
+            raise AssertionError(("you are not seen whole in the room", g.js("HdLook.catSeen()"), "frames to make the land", made, probe)) from None
         inside = g.js(AT, over)
         assert not g.js(ROOF, [x0 + 1, y0 + 1]) and not g.js(ROOF, [x0 + 3, y0 + 2]), "the roof is still there inside"
         assert sum(abs(p - q) for p, q in zip(out, inside)) > 20, (out, inside)   # (the roof's wood, then the north wall's planks seen crisp: nothing nearer than ten tiles is under the lens now)
