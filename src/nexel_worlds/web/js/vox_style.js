@@ -183,6 +183,7 @@ const VoxStyle = (() => {
       gl.blendFuncSeparate(gl.ONE_MINUS_DST_ALPHA, gl.ONE, gl.ONE_MINUS_DST_ALPHA, gl.ONE); gl.uniform1f(u("wu"), 1); go(bufs.water, 0, cnt.water); gl.uniform1f(u("wu"), 0);   // (and under what it left half there: whole where nothing is behind it, vox_style_glsl.js)
       gl.depthMask(true); gl.disable(gl.BLEND); run(3);
       if (S.me) { run(1); if (cnt.model) { gl.uniform1f(u("rd"), 1); go(bufs.land, cnt.main, cnt.model); gl.uniform1f(u("rd"), 0); } } run(2);   // (rd: what stands as boxes south of you and over your feet, again over you: one px in two, in the disc)
+      const MUL = (q) => { const f = self.__mulAt; if (!f) return null; const b = new Uint8Array(4); gl.readPixels(Math.floor(f[0] * el.width), Math.floor((1 - f[1]) * el.height), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, b); return [b[0], b[1], b[2]]; }; self.__mul = {pre: MUL(), post: null, hr: hr ? (hr.lit ? 'lit' + (hr.lit._v || 0) : hr.tint ? 'tint' : 'wash') : 'none'};   // (PROBE #106, not for merge: the land's px under you before the hour's light)
       if (hr) {   // the hour's light, here and not on a canvas of the page's (not four of them laid on each other every frame, the last cut out by this picture: slow on a phone, and a phone can draw such chains wrong): a wash of the hour's colour where something is drawn, then all of it times the light's picture (the lamps in it)
         const a = hr.wash[3], quad = (t, sf, df) => { gl.bindTexture(gl.TEXTURE_2D, t); gl.blendFuncSeparate(sf, df, gl.ZERO, gl.ONE); go(bufs.spr, S.quad, 6); }, one = (t, c, k) => { if (k !== t._k) { gl.bindTexture(gl.TEXTURE_2D, t); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([c[0], c[1], c[2], 255])); near(); t._k = k; } };
         gl.useProgram(sp); gl.uniform1f(us("xr"), 0); gl.disable(gl.DEPTH_TEST); gl.enable(gl.BLEND); gl.activeTexture(gl.TEXTURE1);
@@ -191,6 +192,7 @@ const VoxStyle = (() => {
         else if (hr.tint) { one(ltx, hr.tint, hr.tint.join()); quad(ltx, gl.DST_COLOR, gl.ZERO); }   // (hour.tint: the light one colour all over)
         gl.disable(gl.BLEND); gl.enable(gl.DEPTH_TEST); gl.activeTexture(gl.TEXTURE0); gl.useProgram(pr);
       }
+      if (self.__mul) self.__mul.post = MUL();   // (PROBE #106: and after it)
       gl.bindVertexArray(null); cost = performance.now() - t0;
       return el;
     }
