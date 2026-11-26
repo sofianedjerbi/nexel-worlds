@@ -38,7 +38,7 @@ function update(now) {
     //  can make it 1.53 off, and at 8 tiles a second past 1.5 that is .8 of a tile in a frame, a snap every few tiles: "it teleported")
     const mine = p.e && p.e.kind === "agent" && p.e.id === myId, far = d > (mine ? LEAD[1] + 2 : 2.5);   // (you, a few tiles behind where the world has you as your walk ends: walked there, a little quicker. Not 8 tiles a second: at the foot of the cave stairs, a teleport)
     const step = (far ? d * 8 : Math.min(pace, jp) * (d > (mine ? 1.5 : 1) ? 1.3 : 1.05)) * dt;
-    if (d <= step) { p.x = p.tx; p.y = p.ty; Leap.after(p); }
+    if (d <= step) { p.x = p.tx; p.y = p.ty; Leap.after(p); if (mine && walking && p.walking && step > d) walkOn(p, dt * (1 - d / step), now); }   // (there with time left in the frame, the walk on again: it walks that time. Else the rest of a runner's 100 ms frame is lost at each landing: 7.4 tiles a second of 10)
     else if (far) { p.x += dx / d * step; p.y += dy / d * step; }    // far behind (lag, teleport): straight there
     else if (Math.abs(dx) > 1e-3 && Math.abs(dy) > 1e-3) {              // on the grid, one axis at a time: line up first
       if (Math.abs(dx) < Math.abs(dy)) p.x += Math.sign(dx) * Math.min(step, Math.abs(dx)); else p.y += Math.sign(dy) * Math.min(step, Math.abs(dy));
