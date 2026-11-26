@@ -10,7 +10,7 @@ pytestmark = pytest.mark.e2e
 
 # every frame drawn while you go down: the top of your body's own px on the screen, in art px (HdLook.art().body / u), how it is drawn (BodyPlace mode, up),
 # the landing's lift (levels), the body's height (art px), the leap (L: in the air, G: the eye gliding after it), the row (tiles), the frame's time (ms)
-LOG = """(() => { window.__fr = []; const f = () => { if (!window.__fr) return; const a = HdLook.art(), b = a && a.body, q = ents.get('agent' + myId); if (b && q) { const pl = BodyPlace.of(q); window.__fr.push([Math.round(b.y / a.u * 10) / 10, pl.mode, pl.up, Math.round(Leap.lift(q) * 100) / 100, Math.round(b.h / a.u), Leap.on() ? 'L' : Leap.gliding() ? 'G' : '', Math.round(q.y * 100) / 100, Math.round(performance.now())]); } requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; })()"""
+LOG = """(() => { window.__fr = []; const f = () => { if (!window.__fr) return; const a = HdLook.art(), b = a && a.body, q = ents.get('agent' + myId); if (b && q) { const pl = BodyPlace.of(q); window.__fr.push([Math.round(b.y / a.u * 10) / 10, pl.mode, pl.up, Math.round(Leap.lift(q) * 100) / 100, Math.round(b.h / a.u), Leap.on() ? 'L' : Leap.gliding() ? 'G' : '', Math.round(q.y * 100) / 100, Math.round(performance.now()), (() => { const r = window.__ref, w = r && HdLook.screenOf(r[0], r[1], 0); return w ? Math.round(w[1] / a.u * 10) / 10 : null; })(), Math.round(cam.lift * 100) / 100]); } requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; })()"""
 LOGGED = "(() => { const l = window.__fr; window.__fr = null; return l; })()"
 
 
@@ -30,6 +30,7 @@ def test_off_a_high_ledge_into_water_your_body_does_not_jump_up_the_screen(brows
     g.face(1, 0)
     g.wait("!HdLook.busy", timeout=8000)
     g.rest()
+    g.js(f"(() => {{ window.__ref = [{x + 3.5}, {y + .5}]; return 1; }})()")   # (probe: a fixed place of the pond, its row on the screen each frame)
     g.js(LOG)
     g.page.keyboard.down("d")
     try:
@@ -46,6 +47,6 @@ def test_off_a_high_ledge_into_water_your_body_does_not_jump_up_the_screen(brows
     # move after a landing on the ground: 6 art px in a 60th of a second, by the frame's own time: test_e2e_leap_terrain)
     cap = lambda a, b: 6 * max(1, (b[7] - a[7]) / 16.67)
     jolts = [(a, b) for a, b in zip(fr[k - 1:], fr[k:]) if abs(b[0] - a[0]) > cap(a, b)]
-    assert not jolts, str(jolts[:4])
+    assert not jolts, str(jolts[:4]) + ' PROBE ' + str(fr[max(0, k - 3):k + 14])
     g.rest()
     assert g.server()["swimming"] and not g.errors, g.errors
