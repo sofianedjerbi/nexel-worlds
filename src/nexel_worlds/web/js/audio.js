@@ -115,8 +115,7 @@ const between = ([lo, hi]) => (lo + Math.random() * (hi - lo)) * 1000;
 const piece = (file) => fetch(`audio/${file}?v=${sounds.manifest.version}`)
   .then((r) => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
   .then((raw) => ac().decodeAudioData(raw)).catch(() => null);
-// from: on the page's clock, when the piece began (Nyxwing's song, from its entrance: boss.js); it comes in where it is by now
-async function stream(tr, done, from) {
+async function stream(tr, done, from) {                  // from: when the piece began, page clock (Nyxwing's, its entrance: boss.js): it comes in where it is by now
   const m = sounds.manifest.tracks[tr.key], a = ac(), rate = a.sampleRate, run = ++tr.run;
   for (const src of tr.nodes.keys()) src.stop();           // (what was left of it fading out)
   tr.on = true; tr.at = 0;
@@ -136,12 +135,9 @@ async function stream(tr, done, from) {
     const end = i === m.files.length - 1, len = Math.floor((end ? m.last : m.seg) * rate + 1e-6);
     if (next < (a.currentTime + .05) * rate) next = Math.ceil((a.currentTime + .15) * rate);   // the first; or late (a slow line, a sleeping tab): a gap, then on
     const src = a.createBufferSource(), starts = next / rate;
-    let skip = 0;                                          // (the first part of a piece come in late: from where it is, once it is fetched)
-    if (first) {
-      skip = Math.round((by(performance.now() + (starts - a.currentTime) * 1000) - i * m.seg) * rate);
-      if (skip < 0 || skip >= len) { next = 0; continue; } // (it took so long to come that the piece is past it: the part it is in now)
-      first = false;
-    }
+    const skip = first ? Math.round((by(performance.now() + (starts - a.currentTime) * 1000) - i * m.seg) * rate) : 0;   // (come in late: from where it is, once fetched)
+    if (skip < 0 || skip >= len) { next = 0; continue; }   // (so slow to come that the piece is past this part: the one it is in now)
+    first = false;
     src.buffer = buf; src.connect(tr.gain); src.start(starts, m.pad + skip / rate, (len - skip) / rate);
     tr.nodes.set(src, {i, starts}); src.onended = () => { tr.nodes.delete(src); src.disconnect(); };
     next += len - skip; tr.at = (i + 1) % m.files.length;
