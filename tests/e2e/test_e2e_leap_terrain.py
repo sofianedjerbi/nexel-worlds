@@ -99,7 +99,7 @@ def test_off_a_high_ledge_the_fall_is_smooth_on_the_screen(game, how):
             game.wait(f"myPos().x >= {x - .3}", 3000); game.page.keyboard.press("Space")
         # (till down on the ground under the ledge, and its landing's squash and settle drawn: 1 s held was a runner's few frames, #47)
         game.wait("!!myAt && myAt.z === 0 && !Leap.on() && !Leap.gliding()", 8000)
-        game.frames(6)
+        game.wait("!jumping(ents.get('agent' + myId), lastT)", 4000)          # (its landing's squash and settle over: not six frames, which on 16 ms frames were a tenth of it)
         game.page.keyboard.up("d"); game.page.keyboard.up("Shift")
     try:
         rec = frames(game, act, z0=0)

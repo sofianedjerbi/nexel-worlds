@@ -66,7 +66,7 @@ def test_walk_and_sprint_speeds(game):
             game.start_recording()
             game.hold(k, 1500)
             recs.append(game.recording())
-            game.sleep(400)
+            game.still()
             if len(walked(recs[0])) >= 3:
                 break
         return recs[0], recs[1:]
@@ -74,7 +74,7 @@ def test_walk_and_sprint_speeds(game):
     assert 4.3 < speed(walk, also=more) < 5.7, (speed(walk, also=more), slow(walk, 5))
     sprint, more = run(["Shift", "a"], ["Shift", "d"])
     assert 8.5 < speed(sprint, also=more) < 11.5, (speed(sprint, also=more), slow(sprint, 10))
-    game.sleep(500)
+    game.still()
     assert game.pos() == (game.server()["x"], game.server()["y"])
 
 
@@ -90,7 +90,7 @@ def test_taps_move_one_tile_and_never_snap_back(game):
         x0, _ = game.pos()
         game.start_recording()
         game.hold(["d"], hold)
-        game.sleep(500)
+        game.still()
         rec = game.recording()
         assert backward_jumps(rec, "x", 1) < .1
         down = game.js("(() => { const d = __down[__down.length - 1]; return d[1] - d[0]; })()")
@@ -102,8 +102,8 @@ def test_taps_move_one_tile_and_never_snap_back(game):
     game.start_recording()
     for _ in range(6):                                    # rapid taps: never thrown back to the start
         game.hold(["a"], 40)
-        game.sleep(50)
-    game.sleep(600)
+        game.sleep(50)                                    # (the gap between two taps: the input under test)
+    game.still()
     assert backward_jumps(game.recording(), "x", -1) < .1
     assert game.pos() == (game.server()["x"], game.server()["y"])
 
@@ -130,10 +130,10 @@ def test_letting_go_and_pressing_another_key_never_stalls(game):
 
     still = []                                                # (frames that did not move you: [ms, tiles ahead of the world])
     corner = turns("ds")
-    game.sleep(600)
+    game.still()
     assert game.pos() == (game.server()["x"], game.server()["y"])
     back = turns("da")
-    game.sleep(600)
+    game.still()
     assert game.pos() == (game.server()["x"], game.server()["y"])
     assert corner > 7.5 and back > 6.5, (corner, back, still[:30])        # (sprinting is 10 a second; it was 5.4 and 3)
 
@@ -162,15 +162,11 @@ def test_swimming_never_goes_tile_by_tile(game):
     tile ahead of the server and waited for it, at every tile."""
     game.clear_area(14)
     game.stamp(-12, -1, ["~" * 25] * 3); game.rest()
-    page = game.page
+    x0 = game.pos()[0]
     game.start_recording()
-    page.keyboard.down("Shift")
-    page.keyboard.down("d")
-    game.sleep(1800)
-    page.keyboard.up("d")
-    page.keyboard.up("Shift")
+    game.hold_until(["Shift", "d"], f"ents.get('agent' + myId).x >= {x0 + 4}")     # (four tiles of the water: how far, not how long)
     rec = game.recording()
-    game.sleep(600)
+    game.still()
     assert not stops(rec), stops(rec)
     assert game.pos() == (game.server()["x"], game.server()["y"])
 
@@ -181,17 +177,20 @@ def test_late_ticks_do_not_stop_you(game):
     ever allowed a tile ahead of its last word: sprinting, you stopped at every tile), and you end where it has you."""
     game.clear_area(14)
     game.rpc("dev_teleport", x=game.pos()[0] - 12, y=game.pos()[1])
-    game.sleep(700)
+    game.arrive()
     game.js("(() => { const o = onTick, q = []; onTick = (d) => q.push(d); setInterval(() => { for (const d of q.splice(0)) o(d); }, 220); return 1; })()")
-    page = game.page
+    page, (x0, y0) = game.page, game.pos()
+    at = "ents.get('agent' + myId)"
+    # (east six tiles, south three, east on to ten: how far, not how long. Held for times, the walk went less far the
+    #  slower the frames, every frame cut at 0.1 s of the game's)
     game.start_recording()
     page.keyboard.down("Shift")
     page.keyboard.down("d")
-    game.sleep(900)
+    game.wait(f"{at}.x >= {x0 + 6}", 8000)
     page.keyboard.down("s")
-    game.sleep(600)
+    game.wait(f"{at}.y >= {y0 + 3}", 8000)
     page.keyboard.up("s")
-    game.sleep(600)
+    game.wait(f"{at}.x >= {x0 + 10}", 8000)
     page.keyboard.up("d")
     page.keyboard.up("Shift")
     rec = game.recording()
@@ -199,7 +198,7 @@ def test_late_ticks_do_not_stop_you(game):
     # frames not cut: on a runner the lumps of late ticks put you past LEAD[0] and the walk slowed for them, as it
     # should, 6.8. Stopped at a tile ahead of the server's last word, as it was, the free frames would stand still)
     pace = speed(rec, 0)
-    game.sleep(900)
+    game.still()
     # (a runner's own late ticks on top of the 220 ms lumps put you LEAD[1] ahead, and the walk waited there for the world,
     # as it should: "[117]", 133 ms frames. A stop short of it is the fault: one tile ahead, as it was)
     wait = game.js("LEAD[1]")
@@ -210,15 +209,18 @@ def test_late_ticks_do_not_stop_you(game):
 
 @pytest.mark.realtime
 def test_two_keys_never_slide_diagonally(game):
+    way = {"d": (1, 0), "a": (-1, 0), "w": (0, -1), "s": (0, 1)}
     for first, second in (("d", "w"), ("s", "a")):
+        x0, y0 = game.js("(() => { const p = ents.get('agent' + myId); return [p.x, p.y]; })()")
+        gone = lambda k, n: f"(() => {{ const p = ents.get('agent' + myId); return (p.x - {x0}) * {way[k][0]} + (p.y - {y0}) * {way[k][1]} >= {n}; }})()"
         game.start_recording()
         game.page.keyboard.down(first)
-        game.sleep(130)
+        game.wait(gone(first, .25), 4000)                   # (the second key mid-step: a quarter of the way into the tile)
         game.page.keyboard.down(second)
-        game.sleep(700)
+        game.wait(gone(second, 2), 8000)                    # (two tiles the second way)
         game.page.keyboard.up(second)
         game.page.keyboard.up(first)
-        game.sleep(500)
+        game.still()
         rec = game.recording()
         # sliding diagonally is being off both lanes at once (sub-pixel snaps onto the lane don't count). (It was moving on
         # both axes in one frame: a frame of 85 ms on the runners finished the step east and began the one north, an L)
@@ -234,7 +236,7 @@ def test_walls_stop_you_and_turn_you(game):
     game.stamp(1, 0, ["M"])                               # a rock right in front
     x0, y0 = game.pos()
     game.hold(["d"], 400)
-    game.sleep(300)
+    game.still()
     assert game.pos() == (x0, y0)                         # blocked: you stay
     assert game.js("ents.get('agent' + myId).fx") == 1    # but you now face it
 
@@ -267,8 +269,7 @@ def test_moved_far_just_as_you_stop_walking_you_are_drawn_where_the_world_has_yo
     place the world gave (agent.js refresh)."""
     x, y = game.pos()
     game.page.keyboard.down("d")
-    game.wait("walking !== null && ents.get('agent' + myId).walking")
-    game.sleep(150)
+    game.wait(f"walking !== null && ents.get('agent' + myId).walking && ents.get('agent' + myId).x >= {x + .3}")   # (mid-step)
     # (the key let go and the world moving you, in one go: the next tick already has you far from here)
     game.js("""([x, y]) => { window.dispatchEvent(new KeyboardEvent('keyup', {key: 'd', code: 'KeyD'})); rpc('dev_teleport', {x, y}); return 1; }""", [x + 200, y + 200])
     game.page.keyboard.up("d")

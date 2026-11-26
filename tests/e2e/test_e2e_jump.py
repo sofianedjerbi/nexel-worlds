@@ -45,7 +45,7 @@ def test_auto_jump_is_on_by_default_and_walking_into_a_step_jumps_up_it(game):
     game.rest()
     # (and the world come to the tile you stop on: let go, the page has you on it at once (walk.js pred), the world a tick
     #  or two on. Read before that, it was a tile behind on a busy machine: "(4, 1, (5, 22))". Not there in 3 s: the assert says so)
-    game.settle("pred === null", timeout=3000)
+    game.still()                                              # (the world on your tile: settle gave up silently after 3 s)
     s = game.server()
     assert s["x"] >= x + 3 and s["z"] == 1 and game.pos()[0] == s["x"], (s["x"], s["z"], game.pos(), game.js("[pred, trail.slice()]"))
     xs = [r[1] for r in rec if r[1] < x + 2.5]                # (up to past the step: never back, never a stop)
@@ -106,7 +106,7 @@ def test_the_jump_is_a_crouch_an_arc_over_the_step_and_a_landing(game):
     x, y = game.pos()
     game.js(ARC)
     walk_up(game, ["d"])
-    game.sleep(300)
+    game.still()                                              # (the landing's frames in the record: until you stand, not a time)
     rec = game.js("(() => { __arcOn = false; return __arc; })()")
     game.rest()
     assert game.server()["z"] == 1
@@ -200,7 +200,8 @@ def test_the_way_out_shows_the_jump_key_on_its_step(game):
     game.arrive()
     game.rest()
     game.wait("WayShow.cur && !WayShow.busy && WayShow.offer() && WayShow.offer().key === 'jump'", 8000)
-    game.frames(3)
+    # (until the bar and the way's caption show it: drawn when they are, not after three frames)
+    game.settle("$('actions').innerText.includes('Jump') && (() => { const e = document.getElementById('waycap'); return !!e && e.style.display === 'block' && e.innerText.includes('Space'); })()")
     assert "Jump" in game.js("$('actions').innerText")
     cap = game.js("(() => { const e = document.getElementById('waycap'); return e && e.style.display === 'block' ? e.innerText : ''; })()")
     assert "Space" in cap, cap
@@ -213,10 +214,14 @@ def test_you_jump_up_a_layer_but_not_two(game):
     # north of you: a ledge one layer up (2 rows), then ground three layers up
     game.stamp(-3, -6, ["......."] * 5, levels=["3333333"] * 3 + ["1111111"] * 2)
     x, y = game.pos()
+    at = "ents.get('agent' + myId)"
     game.page.keyboard.down("w")                                # one tile, a jump up (Space: walking into it stops you), along the ledge, then the wall
-    game.sleep(100); game.page.keyboard.press("Space"); game.sleep(1000)
+    # (Space once you have set off, and held until against the wall: the ledge's far end, stopped on its tile. A time held
+    #  went less far on slow frames, and a fixed wait before Space came before the first frame had moved you)
+    game.wait(f"{at}.y <= {y - .25}", 4000); game.page.keyboard.press("Space")
+    game.wait(f"myAt && myAt.z === 1 && myPos().y === {y - 3} && {at}.y === {at}.ty", 8000)
     game.page.keyboard.up("w")
-    game.sleep(500)
+    game.still()
     s = game.server()
     assert (s["x"], s["y"]) == (x, y - 3) and game.pos() == (s["x"], s["y"])
     assert game.js(f"levelAt({s['x']}, {s['y']})") == 1
@@ -232,14 +237,14 @@ def test_hop_down_off_a_hill_edge(game):
     game.page.keyboard.down("a")
     game.wait(f"myPos().x <= {x - 3}", 5000)
     game.page.keyboard.up("a")
-    game.settle("pred === null", timeout=3000)
+    game.still()                                              # (the world on your tile: settle gave up silently after 3 s)
     s = game.server()
     assert s["x"] <= x - 3 and game.js(f"levelAt({s['x']}, {s['y']})") == 0 and game.pos() == (s["x"], s["y"])
     low = s["x"]
     game.page.keyboard.down("d")                                # and a jump back up the same edge (Space)
-    game.sleep(100); game.page.keyboard.press("Space"); game.wait(f"myAt && myAt.z === 1 && myPos().x >= {x - 2}", 5000)
+    game.wait(f"ents.get('agent' + myId).x >= {low + .25}", 4000); game.page.keyboard.press("Space"); game.wait(f"myAt && myAt.z === 1 && myPos().x >= {x - 2}", 5000)
     game.page.keyboard.up("d")
-    game.settle("pred === null", timeout=3000)
+    game.still()                                              # (the world on your tile: settle gave up silently after 3 s)
     s = game.server()
     assert s["x"] > low and s["x"] >= x - 2 and game.js(f"levelAt({s['x']}, {s['y']})") == 1 and game.pos() == (s["x"], s["y"])
 
@@ -278,7 +283,7 @@ def test_a_hop_is_one_arc_over_the_edge_at_the_pace_of_a_step(game):
     game.wait(f"Math.abs(ents.get('agent' + myId).x - {x}) > .05", 3000)
     game.hold(["d"], 700)
     rec = game.recording()
-    game.sleep(500)
+    game.still()
     rec = rec[next(i for i, (a, b) in enumerate(zip(rec, rec[1:])) if abs(b[1] - a[1]) > 1e-6):]
     # (each tile's time, read off the frames: the hop's tile in its jump's third of a second, the next in a walk's step, each a
     # frame late at the most. A mean speed over the frames was 2.9 at 50 ms frames, the long ones and the world's lead left out,

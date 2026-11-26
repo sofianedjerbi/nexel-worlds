@@ -99,10 +99,10 @@ def test_on_the_lower_step_behind_a_higher_one_your_legs_are_behind_it(game):
     game.stamp(-4, -4, ["." * 9] * 9, levels=["1" * 9] * 4 + ["2" * 9] * 5)
     x, y = game.pos()
     game.rpc("dev_teleport", x=x, y=y - 1, z=1); game.arrive(); game.face(0, 1); game.rest()
-    game.frames(3)
+    game.settle("HdLook.hid === 0")                                                # (until the look has it, not three frames)
     assert game.js("HdLook.hid") == 0
     game.stamp(-4, 1, ["." * 9] * 4, levels=["4" * 9] * 4)                      # (a wall three levels up just south of you)
-    game.frames(3)
+    game.settle("HdLook.hid === 1")
     assert game.js("HdLook.hid") == 1
     assert not game.errors, game.errors
 
