@@ -43,6 +43,18 @@ Two ways: a phone simulated on this Mac (`tools/phone_sim.py`), and the real pho
 In the game itself: F3 (or `?perf=1`) shows the same per frame: fps, frame and script ms, and `GPU x ms a frame`
 ("n/a" where the browser has no timer: Safari).
 
+**The phone's budget** (#10, `PERF_BUDGET` in `js/f3.js`): first paint under 1.5 s, in the world under 6 s, a frame
+while you move under 33 ms at p95. F3's section under the frames says them, `OVER` past the budget:
+
+    load: paint 0.6 s, in the world 4.1 s (budget 1.5 / 6 s)
+    moving: frame p95 24.1 ms, 2/180 over 33 ms (budget p95 33)
+
+"In the world" is from the visit's start to the land drawn round you, less the time spent on the first screen before
+Wake up. The moving frames are counted while F3 is open: on the phone, open the demo, Wake up, open F3 (hold the goals'
+chip), walk and sprint for a few seconds, then read (or screenshot) the two lines. `F3.report()` gives the same numbers.
+The browser tests check only that they are measured (`test_e2e_demo.py`): a runner drawing on its CPU is not a phone,
+so the budget is checked on a real one.
+
 ## The real phone: Android (Chrome), by USB
 
 1. On the phone: Settings, About phone, tap "Build number" seven times. Then Settings, Developer options: USB debugging on.
