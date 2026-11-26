@@ -60,7 +60,7 @@ class Wild(Gust, Stump, Bloom, Hob, Boss, Nyxwing):
         if abs(self.height(prey) - self.height(c)) > BITE_HIGH:
             return                                             # (up on a ledge, down a drop: out of its reach, as it is out of yours)
         dmg = self.guarded(prey, dmg or CREATURES[c.kind]["damage"])     # (armor: wear.py)
-        self.emit("attack", c.x, c.y, attacker=f"a {c.kind}", target=prey.name, who=ref(c), whom=ref(prey), damage=dmg, id=c.id)
+        self.emit("attack", c.x, c.y, who=ref(c), whom=ref(prey), damage=dmg, id=c.id)
         self.damage(prey, dmg, "bitten", who=c)
 
     def wind_up(self, c, direction, seconds):

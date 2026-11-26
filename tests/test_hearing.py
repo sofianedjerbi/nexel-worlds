@@ -60,7 +60,7 @@ def test_the_worlds_news_what_names_you_and_the_land_reach_every_screen(gs):
     sim.emit("leave", ash.x, ash.y, name="Ash")
     sim.emit("mail", ash.x, ash.y, **{"from": "Ash"}, to="Far")                            # a letter for Far: told wherever Far is
     sim.emit("mail", ash.x, ash.y, **{"from": "Ash"}, to="Someone")
-    sim.emit("attack", ash.x, ash.y, attacker="Ash", target="cow#1", damage=1)
+    sim.emit("attack", ash.x, ash.y, who={"kind": "agent", "id": ash.id, "name": "Ash"}, whom={"kind": "cow", "id": 1, "name": None}, damage=1)
     sim.emit("tile", ash.x, ash.y, ground="dirt", block="none")
     sim.emit("shout", ash.x, ash.y, everywhere=True, **{"from": "[Ash]"}, text="server going down")
     assert [(e["type"], e.get("to")) for e in far.events] == [("leave", None), ("mail", "Far"), ("shout", None)]

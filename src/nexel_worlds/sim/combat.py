@@ -7,14 +7,9 @@ from .entities import CREATURES, ActionError, Agent, Creature, ref, roll_drops
 from .progress import XP_KILL
 
 
-# A death's cause is a code (#6), its words for people made from it here alone: the `cause` the agents read till they read
-# `code` (nexel-agent), as they were
-CAUSES = {"killed": "killed by {who}", "burnt": "burnt by a hob", "bitten": "{kind}", "fell": "fell", "starvation": "starvation",
-          "fire": "fire", "admin": "admin", "dev": "dev"}
-
-
-def cause_text(code: str, who: dict | None) -> str:
-    return CAUSES[code].format(who=(who or {}).get("name") or "", kind=(who or {}).get("kind") or "")
+# A DEATH'S CAUSE is a code (#6): killed, bitten, burnt, fell, starvation, fire, admin, dev; who did it with it ({kind, id, name}).
+# Its words are its readers' own: the page's (web/js/death.js WHY_DIED), the agents' (nexel-agent rl/facts.py told)
+CAUSES = ("killed", "bitten", "burnt", "fell", "starvation", "fire", "admin", "dev")
 
 
 class Combat:
@@ -66,7 +61,7 @@ class Combat:
             dmg = self.gust_struck(t, a, dmg)                        # spinning up, it scatters; otherwise it runs (wild.py)
         self.tire(a, "attack")
         name = t.name if isinstance(t, Agent) else f"{t.kind}#{t.id}"
-        self.emit("attack", a.x, a.y, attacker=a.name, target=name, who=ref(a), whom=ref(t), damage=dmg, weapon=weapon or "fists")
+        self.emit("attack", a.x, a.y, who=ref(a), whom=ref(t), damage=dmg, weapon=weapon or "fists")
         a.bump("attacks")
         if isinstance(t, Creature):
             t.cooldown = 0
@@ -91,8 +86,9 @@ class Combat:
                 self.kill_creature(target, by)
 
     def kill_agent(self, a: Agent, code: str, by: Agent | None, who=None):
+        if code not in CAUSES:
+            raise ValueError(f"a death's code is one of CAUSES, not {code!r}")
         who = ref(who) if who is not None else None
-        cause = cause_text(code, who)
         for item in a.worn.values():             # what you wore falls with the rest
             a.add(item)
         a.worn = {}
@@ -103,7 +99,7 @@ class Combat:
         self.stats["deaths"] += 1
         if by:
             by.bump("kills")
-        self.emit("death", a.x, a.y, name=a.name, code=code, who=who, cause=cause, by=by.name if by else None,
+        self.emit("death", a.x, a.y, name=a.name, code=code, who=who, by=by.name if by else None,
                   dropped=dropped)
         if a.action or a.aside:
             self.interrupt(a, "you died")
@@ -122,7 +118,7 @@ class Combat:
             a.spawn = None
             a.x, a.y = self.find_spawn(a.id * 31 + a.deaths)
         a.hp, a.hunger, a.sat, a.tired = HP_MAX, FOOD_MAX, SAT_START, 0.0
-        a.events.append({"tick": self.tick, "type": "respawn", "code": code, "who": who, "cause": cause,
+        a.events.append({"tick": self.tick, "type": "respawn", "code": code, "who": who,
                          "by": by.name if by else None, "x": a.x, "y": a.y})
 
     def kill_creature(self, c: Creature, by: Agent | None):
