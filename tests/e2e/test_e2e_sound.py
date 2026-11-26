@@ -99,17 +99,14 @@ def test_a_piece_of_music_plays_as_a_moment_and_m_silences_it(game):
     assert not game.js("music.on") and game.js("moment.next") > game.js("performance.now()")     # silence first: the first piece waits
     game.js("moment.next = 0")                                 # (not the 8 to 20 s a player waits)
     game.wait("music.on && music.nodes.size > 0", 30000)
-    game.sleep(1500)
-    assert game.js("music.gain.gain.value") > 0.05
+    game.wait("music.gain.gain.value > 0.05", 15000)          # (it comes in: waited for, not timed)
     assert game.js("sounds.manifest.play.day.includes(music.key)") and game.js("music.nodes.size") <= 2
     assert game.js("moment.next") == float("inf") or game.js("moment.next === Infinity")       # none is due while one plays
     game.press("m")
-    game.sleep(2600)
-    assert game.js("music.gain.gain.value") < 0.02 and not game.js("music.on") and game.js("music.nodes.size") == 0
+    game.wait("music.gain.gain.value < 0.02 && !music.on && music.nodes.size === 0", 15000)
     game.press("m")
     game.wait("music.on && music.nodes.size > 0", 15000)
-    game.sleep(1500)
-    assert game.js("music.gain.gain.value") > 0.05
+    game.wait("music.gain.gain.value > 0.05", 15000)
 
 
 @pytest.mark.parametrize("fight", ["boss", "nyxwing"])
@@ -131,8 +128,7 @@ def test_the_boss_piece_takes_over_during_a_fight_and_hands_back(game, fight):
     # the boss's piece comes in and the moment recedes (SOUND.giveWay): waited for, not timed (a slow runner's timers are late)
     game.wait("bossTrack.gain.gain.value > 0.3 && !music.on && music.gain.gain.value < 0.02", 20000)
     assert game.js("bossTrack.key") == game.js(f"sounds.manifest.play['{fight}']")
-    game.js("moment.next = 0")
-    game.sleep(1500)
+    game.js("(() => { moment.next = 0; moments(); return 1; })()")   # (what its timer does once a second, done now: one look, at any frame's length)
     assert not game.js("music.on")                             # no moment starts while the fight is on
     game.js("realBossMusic(false)")
     game.wait("!bossTrack.on", 3000)
@@ -163,16 +159,13 @@ def test_moving_the_selection_makes_its_own_quiet_sound(game):
     game.wait(ALL_LOADED, 60000)
     assert game.js("sounds.manifest.sounds.pick.category") == "Interface"
     game.press("c")
-    game.wait("isOpen('craft')", 5000)
-    game.sleep(300)
+    game.wait("isOpen('craft') && craftFocus", 5000)          # (open, a recipe lit: what opening sounds is done)
     t0 = game.js("performance.now()")
     game.press("ArrowDown")
-    game.sleep(200)
-    assert game.js("sounds.lastAt.pick || 0") > t0             # the recipe below
+    game.wait(f"(sounds.lastAt.pick || 0) > {t0}", 5000)       # the recipe below
     tab = game.js("sounds.lastAt.ui || 0")
     game.press("e")
-    game.sleep(200)
-    assert game.js("sounds.lastAt.ui || 0") > tab              # another kind: the tab's own sound, as before
+    game.wait(f"(sounds.lastAt.ui || 0) > {tab}", 5000)        # another kind: the tab's own sound, as before
     game.press("c")
 
 
@@ -246,15 +239,13 @@ def test_the_first_screen_has_its_own_piece_that_comes_in_slowly_and_recedes_in_
     page.wait_for_function("menuTrack.on && menuTrack.nodes.size > 0", timeout=30000)
     assert js("menuTrack.key") == "high_tide"
     early = js("menuTrack.gain.gain.value")
-    page.wait_for_timeout(2500)
+    page.wait_for_function(f"menuTrack.gain.gain.value > {early}", timeout=15000)
     mid = js("menuTrack.gain.gain.value")
     assert early < 0.3 and early < mid, (early, mid)                  # the gradient: it rises, it does not pop
-    page.wait_for_timeout(6000)
-    assert js("menuTrack.gain.gain.value") > 0.5 and js("menuTrack.far.frequency.value") > 8000      # full and clear
+    page.wait_for_function("menuTrack.gain.gain.value > 0.5 && menuTrack.far.frequency.value > 8000", timeout=20000)      # full and clear
     assert not js("music.on")                                         # the day's pieces wait
     page.keyboard.press("Enter")                                      # into the world
     page.wait_for_function("!!me", timeout=20000)
-    page.wait_for_timeout(8500)
-    assert not js("menuTrack.on") and js("menuTrack.nodes.size") == 0 and js("menuTrack.gain.gain.value") < 0.06
+    page.wait_for_function("!menuTrack.on && menuTrack.nodes.size === 0 && menuTrack.gain.gain.value < 0.06", timeout=20000)
     page.close()
     assert not errors, errors

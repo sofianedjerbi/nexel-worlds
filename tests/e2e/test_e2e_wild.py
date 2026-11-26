@@ -25,7 +25,7 @@ def test_the_tusker_warns_charges_and_hurts_if_you_stay(game):
     e = kind(game, "tusker")
     assert e["dir"] == [-1, 0]                                 # pawing the ground, facing us
     shot(game, "tusker_windup")
-    game.sleep(2200)
+    game.wait("meObs.self.hp < 20", 15000)                     # (the blow, as the page is told it: waited for, not timed)
     assert game.server()["hp"] < 20                           # we stood in its line
     shot(game, "tusker_after")
     assert not game.errors
@@ -37,7 +37,7 @@ def test_the_pincer_and_the_strawman_are_drawn_in_every_direction(game):
     game.spawn("pincer", 3, 1, still=10 ** 6)
     game.spawn("strawman", -3, 0, still=10 ** 6)
     game.spawn("tusker", 0, -6, still=10 ** 6)
-    game.sleep(700)
+    game.wait("['pincer', 'strawman', 'tusker'].every((k) => [...ents.values()].some((q) => q.e && q.e.kind === k))", 8000)
     assert kind(game, "pincer") and kind(game, "strawman") and kind(game, "tusker")
     drawn = game.js("""(() => {                       // every row of every sheet has pixels in its first frame
       const out = {};
@@ -58,11 +58,11 @@ def test_the_wisp_and_the_wyrm_are_in_the_game(game):
     game.stamp(2, -2, ["=====", "=====", "=====", "=====", "====="])      # a pool of deep water to the east
     game.spawn("wyrm", 4, 0)
     game.spawn("wisp", -3, -2, still=10 ** 6)
-    game.sleep(900)
+    game.wait("['wyrm', 'wisp'].every((k) => [...ents.values()].some((q) => q.e && q.e.kind === k))", 8000)
     assert kind(game, "wyrm") and kind(game, "wisp")
     shot(game, "wisp_wyrm")
     game.wait("[...ents.values()].some((q) => q.e && q.e.kind === 'wyrm' && q.e.act === 'windup')", 8000)   # it lines up on us and rears
-    game.sleep(1500)
+    game.wait("meObs.self.hp < 20", 15000)                     # (the blow, as the page is told it: waited for, not timed)
     assert game.server()["hp"] < 20                           # we stood on the shore, on its line
     shot(game, "wyrm_lunge")
     assert not game.errors
@@ -76,7 +76,7 @@ def test_the_gustling_spins_up_and_snatches_what_is_in_your_hand(game):
     game.spawn("gustling", 1, 0)
     game.wait("[...ents.values()].some((q) => q.e && q.e.kind === 'gustling' && q.e.act === 'windup')", 4000)
     shot(game, "gustling_spin")                                # the warning: it draws up thin and spins
-    game.sleep(1300)
+    game.wait("(meObs.self.inventory.wood || 0) === 5", 15000)  # (what it took, as the page is told it)
     assert game.inv("wood") == 5                               # we stood there: it took five of what we held
     e = kind(game, "gustling")
     assert e and e["act"] == "flee"                            # ...and runs off with it
@@ -95,7 +95,7 @@ def test_a_creature_comes_up_a_step_as_you_do(game):
     # ...and is drawn up there (from the next frames: the server's z comes with a tick, the body is drawn by the frame
     # after it; read at the very instant the tick came, it was not drawn yet, at a load of 8)
     game.wait(f"(() => {{ const q = ents.get('tusker{boar}'); return !!q && liftOf(q) > 0; }})()", 2000)
-    game.sleep(600)
+    game.wait("meObs.self.hp < 20", 15000)                     # (the blow, as the page is told it: waited for, not timed)
     assert game.server()["hp"] < 20
     assert not game.errors
 
@@ -117,7 +117,7 @@ def test_a_named_animal_carries_its_name(game):
     assert "named a chicken Daisy" in game.js("document.querySelector('#chatlog').innerText")
     page.keyboard.press("/")
     page.keyboard.type("feed target=")
-    game.sleep(300)
+    game.wait("[...$('sayhelp').children].some((d) => d.textContent.includes('Daisy'))")
     assert any("Daisy" in row for row in game.js("[...$('sayhelp').children].map((d) => d.textContent)"))
     page.keyboard.press("Escape")
 
@@ -127,11 +127,11 @@ def test_a_tusker_that_is_hit_shows_it_is_angry(game):
     """Hit, a tusker is angry (sim/wild.py): it stamps, a red mark beats by its head (characters.js), and it comes for you."""
     game.rpc("dev_needs", hp=20, hunger=17)
     boar = game.spawn("tusker", 3, 0, still=10 ** 6)
-    game.sleep(400)
+    game.wait(f"ents.has('tusker{boar}')", 8000)
     assert game.js(f"ents.get('tusker{boar}').e.angry") is None                 # calm: no mark
     game.js(f"act('attack', {{target: {boar}}})")
     game.wait(f"ents.get('tusker{boar}') && ents.get('tusker{boar}').e.angry === true", 5000)
-    game.sleep(2500)
+    game.wait("meObs.self.hp < 20", 15000)                     # (the blow, as the page is told it: waited for, not timed)
     assert game.server()["hp"] < 20                                              # ...and it came
 
 
@@ -169,7 +169,7 @@ def test_a_blow_is_said_in_hearts_whoever_takes_it(game):
     hearts": bare hands take half a heart from a cow (three hearts: six blows), and the number over it is in hearts,
     with a small heart beside it, as over a player."""
     cow = game.spawn("cow", 1, 0, still=10 ** 6)
-    game.sleep(400)
+    game.wait(f"ents.has('cow{cow}')", 8000)
     game.hold_item(None)
     game.face(1, 0)
     game.press("x", 500)
