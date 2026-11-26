@@ -100,7 +100,8 @@ const Leap = (() => {
   function ledge(p, dx, dy) {
     const x = Math.round(p.x), y = Math.round(p.y), h = myZ(x, y), nx = x + dx, ny = y + dy;
     if (!can(p, true) || solidAt(nx, ny, h + 1) || solidAt(nx, ny, h + 2)) return false;
-    return settleAt(nx, ny, h + 1e-6) <= h - FALL.from;
+    const z = settleAt(nx, ny, h + 1e-6);
+    return z <= h - FALL.from && !Climb.onLadder(x, y, h, nx, ny, z);   // (down a ladder: climbed rung by rung, walk.js Climb.pace, not fallen past its foot)
   }
   // Would a jump from where p is, at v tiles/s the way w and vz levels/s up, meet the face of the land before it comes down? Played ahead as frame plays it (1/120 s a
   // step, the same stops). A run up a hill with the jump key: the whole jump at a run is four tiles long, and came down past the next rise, against its face (18 frames

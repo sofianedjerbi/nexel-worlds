@@ -55,6 +55,7 @@ class Agent:
     ready: int = field(default=0, repr=False)   # first tick the next stride may start (movement cooldown)
     via: list = field(default_factory=list, repr=False)   # (x, y, n): tiles a player's screen has already walked to, to make in order (Movement.follow)
     via_done: int = field(default=0, repr=False)
+    walked: list = field(default_factory=list, repr=False)   # (x, y, z): where the running walk has been, in order (Movement._tool_stop)
     flying: int | None = field(default=None, repr=False)   # in the air (leaping.py): the height it left from, kept until it lands
     flying_n: int = field(default=0, repr=False)          # ...the tiles of its flight made so far, and the tick of the last
     flying_at: int = field(default=0, repr=False)   # the number of the last of them reached (or given up)
