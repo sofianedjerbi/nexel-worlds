@@ -9,7 +9,8 @@ Printed: the e2e test files to run (and the unit test files), one a line. The ma
   test_e2e_hd*.py; and the unit tests naming the file (a vox_* file: those naming vox_, test_vox_layer.py); a part of
   another (its globals used by that one file alone: hd_cards.js's HdCards by hd_things.js, build_do.js's by build.js):
   and what that file selects (the tests name the whole: a part's change ran none of them);
-- a .css file: the ui, menu, title and phone tests; web/index.html: those and the e2e tests naming an id it has changed (not
+- a .css file: the ui, menu, title and phone tests; web/scripts.txt (the page's scripts): those, the bundle and loading tests and
+  test_web.py, test_bundle.py; web/index.html: those and the e2e tests naming an id it has changed (not
   read: all of the ui set);
 - a python file of the game (src/nexel_worlds/**.py, not web/): the unit tests that name its module, all of them if
   none does, and the server-facing e2e (tests naming the module, test_e2e_world.py, test_e2e_edits.py);
@@ -163,10 +164,14 @@ def affected(changed, root: Path = ROOT, why=None):
                     if Path(t).name.startswith("test_e2e_hd"):
                         add(e2e, t, f"{name}: the HD look")
             continue
-        if name.endswith(".css") or (f.startswith("src/nexel_worlds/web/") and name.endswith(".html")):
+        if name.endswith(".css") or (f.startswith("src/nexel_worlds/web/") and name.endswith(".html")) or f == "src/nexel_worlds/web/scripts.txt":
             for t in E:
-                if Path(t).name in UI_SET:
-                    add(e2e, t, f"{name}: the screen's layout")
+                if Path(t).name in UI_SET or (name == "scripts.txt" and Path(t).name in ("test_e2e_bundle.py", "test_e2e_loading.py")):
+                    add(e2e, t, f"{name}: the screen's layout" if Path(t).name in UI_SET else f"{name}: the page's scripts, their order")
+            if name == "scripts.txt":
+                for t in U:
+                    if Path(t).name in ("test_web.py", "test_bundle.py"):
+                        add(unit, t, f"{name}: the page's scripts, their order")
             continue
         if f.startswith("src/nexel_worlds/") and name.endswith(".py") and "/web/" not in f:
             mod = p.stem

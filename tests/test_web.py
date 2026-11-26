@@ -36,3 +36,10 @@ def test_scripts_parse_together(tmp_path):
     bundle.write_text("\n".join(p.read_text() for p in scripts()))
     r = subprocess.run([NODE, "--check", str(bundle)], capture_output=True, text=True)
     assert r.returncode == 0, r.stderr
+
+
+def test_the_page_s_scripts_have_one_owner():
+    """index.html says where its scripts go and names none of them: their list and order are web/scripts.txt's alone, so a
+    module split in parts adds lines there, not to the page (#203: the page was 299 lines of its 300, most of them scripts)."""
+    page = (WEB / "index.html").read_text()
+    assert "<script src=" not in page and page.count("<!-- scripts.txt -->") == 1
