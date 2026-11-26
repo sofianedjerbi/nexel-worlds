@@ -1,0 +1,4 @@
+#!/bin/sh
+# The commit message, checked as CI's "Conventional Commits" job checks it: the same commitlint and the same
+# rules (commitlint.config.mjs). Installed for every worktree by tools/install_hooks.sh.
+exec npx --yes -p @commitlint/cli@21 -p @commitlint/config-conventional@21 commitlint --edit "$1"
