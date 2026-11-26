@@ -69,10 +69,14 @@ def test_a_phone_plays_on_the_one_script_and_keeps_it(browser, bundled):
         touch = lambda kind, x=0, y=0: cdp.send("Input.dispatchTouchEvent", {"type": kind, "touchPoints": [] if kind == "touchEnd" else [{"x": x, "y": y}]})
         for way in (1, -1):                                         # east, then back west: one of the two is open ground
             touch("touchStart", 90, 600)
-            for i in range(1, 6):
+            x0 = page.evaluate("myPos().x")
+            for i in range(1, 6):                                   # (a move a frame drawn, not one every 30 ms of the machine's: #47)
                 touch("touchMove", 90 + way * i * 8, 600)
-                page.wait_for_timeout(30)
-            page.wait_for_timeout(1200)
+                page.evaluate("new Promise((ok) => requestAnimationFrame(() => ok(1)))")
+            try:                                                    # (held till three tiles gone that way, not 1.2 s; the closed way of the two ends it at 3 s)
+                page.wait_for_function(f"Math.abs(myPos().x - {x0}) >= 3", timeout=3000)
+            except Exception:
+                pass
             touch("touchEnd")
         page.wait_for_function("HdLook.builds > 1 && HdLook.catSeen() > .8", timeout=8000)      # (the land was made again as you went, and you are still drawn on it)
         assert not errors, errors
