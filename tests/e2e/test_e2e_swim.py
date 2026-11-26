@@ -181,7 +181,11 @@ def test_a_sprints_wake_thins_out_to_nothing_at_its_end_and_is_not_cut(game):
     last = max(i for i, n in enumerate(b) if n)                                     # (its end, counted from them)
     peak = max(b[: max(1, last // 2)])
     tail = b[last - 3: last + 1]
-    assert peak > 0 and max(tail) <= .5 * peak and tail[-1] <= .25 * peak, (b, last)   # thinner and thinner to its end: no edge
+    # (the end against the wake's thick part over as long a stretch, four bands: a mark is laid each frame, and on a runner
+    # drawing every 117 ms they fell 7.5 px apart in bands 8 px wide, one band two marks and the next one, so a band alone read
+    # an even fade as an edge, "[9, 6, 4, 1]" under 14. A wake cut off is as thick at its end over four bands as anywhere)
+    thick = max(sum(b[i: i + 4]) for i in range(max(1, last // 2 - 3)))
+    assert peak > 0 and sum(tail) <= .5 * thick and tail[-1] <= .25 * peak, (b, last, sum(tail), thick)   # thinner and thinner to its end: no edge
     assert not game.errors
 
 
