@@ -204,7 +204,7 @@ def test_sprinting_over_steps_up_and_down_keeps_its_speed(game):
             continue
         b = run[j]
         v = (b[1] - a[1]) / (game_ms[id(b)] - game_ms[id(a)]) * 1000
-        assert v >= 8, ("slowed", round(v, 1), a[:5], b[:5])
+        assert v >= 8, ("slowed", round(v, 1), [(round(game_ms[id(r)]), round(r[1], 2), r[4], round(r[15], 2), r[16]) for r in run[max(0, i - 2):j + 3]])
     assert "crouch" not in {r[4] for r in rec} and "rise" in {r[4] for r in rec}
     smooth(rec)
     agree(game)
