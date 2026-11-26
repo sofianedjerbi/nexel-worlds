@@ -150,14 +150,39 @@ def pytest_terminal_summary(terminalreporter):
         terminalreporter.write_line(f"Pace: {MACHINE[1]} (a frame of the game: {MACHINE[0]:.0f} ms; E2E_PACE={os.environ.get('E2E_PACE', '4')})")
 
 
+# RUNNER-LIKE (#275, tools/e2e_local.sh): E2E_RUNNER_LIKE=<rate> plays a GitHub runner on the Mac, to loop one flaky test
+# in minutes: the land drawn on the CPU (SwiftShader, as the runners' lavapipe) and every page's CPU slowed `rate` times
+# (CDP Emulation.setCPUThrottlingRate), its frames ~100-120 ms as in the CI logs. Never the whole suite: that is GitHub's
+RUNNER_LIKE = float(os.environ.get("E2E_RUNNER_LIKE") or 0)
+
+
+def throttled(b):
+    """The browser `b`, each page it makes slowed RUNNER_LIKE times (its contexts' pages too)."""
+    def slow(page):
+        page._throttle = page.context.new_cdp_session(page)    # (kept: the rate holds while the session lives)
+        page._throttle.send("Emulation.setCPUThrottlingRate", {"rate": RUNNER_LIKE})
+        return page
+    new_page, new_context = b.new_page, b.new_context
+    b.new_page = lambda *a, **kw: slow(new_page(*a, **kw))
+    def context(*a, **kw):
+        ctx = new_context(*a, **kw)
+        ctx.on("page", slow)
+        return ctx
+    b.new_context = context
+    return b
+
+
 @pytest.fixture(scope="session")
 def browser():
     pw = pytest.importorskip("playwright.sync_api").sync_playwright().start()
+    args = shlex.split(os.environ.get("E2E_CHROME_ARGS", "")) + (["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] if RUNNER_LIKE else [])
     try:
-        b = pw.chromium.launch(channel="chrome", headless=True, args=shlex.split(os.environ.get("E2E_CHROME_ARGS", "")))
+        b = pw.chromium.launch(channel="chrome", headless=True, args=args)
     except Exception as e:  # noqa: BLE001 - no Chrome here: skip the suite rather than fail it
         pw.stop()
         pytest.skip(f"Chrome is needed for the end-to-end suite: {e}")
+    if RUNNER_LIKE:
+        b = throttled(b)
     RENDERER.append(webgl_renderer(b))
     yield Pages(b)                                        # (its pages on the tests' clock, counted and shut: pages.py)
     b.close()
