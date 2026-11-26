@@ -151,13 +151,12 @@ function fallHurts(p, now, mine) {
   floats.push({x: Math.round(p.x), y: Math.round(p.y), text: "-" + hearts(n), heart: true, color: "#ff8a7a", t: now / 1000});
   if (mine) { sfx("hurt"); fallQuake = {t0: now, amp: FALL.shake[0] + Math.min(3, hearts(n))}; }
 }
-// The ground shaking under you after a fall that hurt: art px to move the camera by, dying away
+// The ground shaking under you after a fall that hurt, and under a nyxwing's entrance (Nyx.quake): art px to move the camera by
 function fallShake(now) {
-  if (!opt("shake")) fallQuake = null;
-  if (!fallQuake) return 0;
-  const k = (now - fallQuake.t0) / 1000 / FALL.shake[1];
-  if (k >= 1) { fallQuake = null; return 0; }
-  return Math.round(Math.sin(k * 34) * fallQuake.amp * (1 - k) * (1 - k));
+  if (!opt("shake")) { fallQuake = null; return 0; }
+  const k = fallQuake ? (now - fallQuake.t0) / 1000 / FALL.shake[1] : 1;
+  if (k >= 1) fallQuake = null;
+  return (fallQuake ? Math.round(Math.sin(k * 34) * fallQuake.amp * (1 - k) * (1 - k)) : 0) + Nyx.quake(now);
 }
 
 // Called as a body is drawn: dust as it leaves the ground, dust and a sound as it lands. -> its hop (or its fall), or null
