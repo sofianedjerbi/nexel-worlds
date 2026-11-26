@@ -31,6 +31,7 @@ now = 1.0           # the pace of the test that is running (conftest.py: the `pa
 # tests marked `stepped` are, their world on its own clock, and the others run on the fast clock (PACE)
 LOCKSTEP = os.environ.get("E2E_LOCKSTEP", "1") != "0"
 step = False        # the test that is running is `stepped`: its pages' time goes 1/60 s a frame, whatever the machine (STEP)
+seed = coming_seed = 0   # the chances of the test that is running, and of the one after it (SEED; conftest.py: from their ids)
 coming = None       # the pace of the test after it, if it plays on the `game` fixture's page; None: it does not, or there is none (conftest.py)
 
 # (a sleep is never cut under SHORT ms of the machine's time, or its own length: what it waited for may be an answer
@@ -90,6 +91,13 @@ STEP = """(() => { if (window.__step) return; window.__step = 1;
   raf(tick); })()"""
 
 
+# SEEDED (#276): a page's Math.random is a sequence of its test's own (mulberry32 from the test's id), the same at every
+# run whatever ran before: what the game draws by chance (a burst of dust, the splash's line, a sound's pick) as well
+SEED = """(() => { if (window.__seed !== undefined) return; let a = window.__seed = %d >>> 0;
+  Math.random = () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; })()"""
+
+
 def stepped_wait(page, ms: float):
     """ms of a stepped page's own time (STEP): until its T has gone on by ms (the machine's time it takes, as it comes)."""
     t = page.evaluate("performance.now()")
@@ -126,6 +134,7 @@ def paced(page, pace=None):
     """A page whose clocks run at the pace of the test that made it (or at `pace`: the next test's, pages.py)."""
     mine = pace is None                          # (this test's own page; a page asked for ahead is the next test's: pages.py)
     pace = pace or now
+    page.add_init_script(SEED % (seed if mine else coming_seed))
     if step and mine and pace == 1:
         page.add_init_script(STEP)
         page.wait_for_timeout = lambda ms: stepped_wait(page, ms)
@@ -154,21 +163,21 @@ def drive(game):
         game.js(f"__lockstep({int(r['tick'])}, {TICK_HZ})")
 
 
-def let_go(url: str):
-    """The world at `url` back on the wall's clock, whoever drove its ticks (LOCKSTEP)."""
+def tell_world(url: str, *ops: dict):
+    """The world at `url` (http://host:port) told the dev ops `ops`, in order, by a player of the tests' own."""
     from websockets.sync.client import connect
     with connect(url.replace("http", "ws", 1) + "/agent") as ws:
-        for i, m in enumerate(({"op": "hello", "name": f"clock{os.getpid() % 100000}", "token": "clock", "persona": "clock"}, {"op": "dev_lockstep", "on": False, "force": True})):
+        for i, m in enumerate(({"op": "hello", "name": f"clock{os.getpid() % 100000}", "token": "clock", "persona": "clock"}, *ops)):
             ws.send(json.dumps({"id": i, **m}))
             r = json.loads(ws.recv(timeout=10))
             assert r.get("ok"), r
+
+
+def let_go(url: str):
+    """The world at `url` back on the wall's clock, whoever drove its ticks (LOCKSTEP)."""
+    tell_world(url, {"op": "dev_lockstep", "on": False, "force": True})
 
 
 def set_world(url: str, pace: float):
-    """The world at `url` (http://host:port) makes `pace` times its ticks from now on."""
-    from websockets.sync.client import connect
-    with connect(url.replace("http", "ws", 1) + "/agent") as ws:
-        for i, m in enumerate(({"op": "hello", "name": f"clock{os.getpid() % 100000}", "token": "clock", "persona": "clock"}, {"op": "dev_pace", "pace": pace})):
-            ws.send(json.dumps({"id": i, **m}))
-            r = json.loads(ws.recv(timeout=10))
-            assert r.get("ok"), r
+    """The world at `url` makes `pace` times its ticks from now on."""
+    tell_world(url, {"op": "dev_pace", "pace": pace})

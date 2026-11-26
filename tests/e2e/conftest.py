@@ -9,6 +9,7 @@ import socket
 import subprocess
 import sys
 import time
+import zlib
 from pathlib import Path
 
 import clock
@@ -105,8 +106,14 @@ def pytest_runtest_makereport(item, call):
     return rep
 
 
+def seed_of(item) -> int:
+    """A test's own chances (clock.py SEED, devtools.py dev_seed): from its id, the same at every run, in any order."""
+    return zlib.crc32(item.nodeid.encode())
+
+
 def pytest_runtest_protocol(item, nextitem):
     """What the test after this one will play on, for the page that is loaded ahead (pages.py)."""
+    clock.seed, clock.coming_seed = seed_of(item), seed_of(nextitem) if nextitem is not None else 0
     clock.coming = pace_of(nextitem) if nextitem is not None and "game" in getattr(nextitem, "fixturenames", ()) and not stepped(nextitem) else None
 
 
@@ -258,6 +265,7 @@ def pace(request):
         if _world_pace.get(url, 1.0) != clock.now:
             clock.set_world(url, clock.now)
             _world_pace[url] = clock.now
+        clock.tell_world(url, {"op": "dev_seed", "seed": clock.seed})   # (its world's chances from its own seed)
     yield
     if "browser" in request.fixturenames:                 # (a page left open is a player left awake in the next test's world: pages.py)
         rep = getattr(request.node, "rep_call", None)

@@ -122,3 +122,14 @@ def test_in_lockstep_the_world_ticks_when_its_driver_asks_and_never_stays_frozen
     assert held == 0 and to == again == still == t0 + 3, (held, to, again, still)
     assert refused["ok"] is False and refused["error"] == "not_driver" and far == still + 100
     assert freed >= 2                                         # (back on the wall's clock: 10 a second)
+
+
+def test_a_seeded_worlds_chances_are_the_same_at_every_run(world):
+    """dev_seed (#276): the world's chances (sim.rng) from a test's own seed: the same seed, the same draws."""
+    sim, a = world
+    assert dev_op(sim, a, "dev_seed", {"seed": 12345}) == {"seed": 12345}
+    one = [sim.rng.random() for _ in range(5)]
+    dev_op(sim, a, "dev_seed", {"seed": 12345})
+    assert [sim.rng.random() for _ in range(5)] == one
+    dev_op(sim, a, "dev_seed", {"seed": 54321})
+    assert [sim.rng.random() for _ in range(5)] != one
