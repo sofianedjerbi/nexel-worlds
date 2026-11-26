@@ -10,7 +10,8 @@
 //          own: [[x, y, lo, hi, sky]...] boxes of the window that are yours whatever the search found (your tile, where you came from), rim: the level of the land round your hole (the depth told in the window, vox_style_glsl.js), sky: land under the open sky hides you (its tiles of your space are in the window), behind: 0..1: land taller than you stands in front of you (the disc round you is opened in it, as in a roof or a tree), hid: 0: what land hides of you is not drawn at all (in a hole seen from above you are drawn at its rim: hd.js lift); behind land with the disc open you are drawn WHOLE in it (not one px in two of you in a disc one px in two of the land: the same px, a checker cat), hole: 0..1: you are in a hole of the land looked at from above (its open walls get the strata too),
 //          t, sprites: [{canvas, x, y, z, fx, fy, on: stands on the land, lie: lies flat on the land at level z (its canvas a px an art px of it), drawn after the water, zh: the level its depth is taken at, if not z}] (its foot at px (fx, fy) of its canvas, drawn px for px; canvas._v: goes up when its picture changed),
 //          way: {on: Map "x,y" -> level, dim, key} | null (a way shown: `light`; its floors are in the window too), win: 0 | 1: the x-ray window shut or open (it goes there over 100 ms), sect: [ink, , , the dark behind the land]: the tone its rim is darkened to,
-//          hour: {wash: [r, g, b, a], lit: canvas | tint: [r, g, b]} the hour's light, laid here over what is drawn and not over the air}
+//          hour: {wash: [r, g, b, a], lit: canvas | tint: [r, g, b]} the hour's light, laid here over what is drawn and not over the air, or a
+//          function giving it, called once this frame's matrix is set: its lamps are placed (at) where this frame draws them}
 // What a frame costs the GPU: the land is ONE list (the chunks' faces, what stands, the far land, the frame's ghosts at its end), the shadows one, the water one;
 // the sprites are one list from one sheet of their pictures (a picture is sent when it changed, not each frame); a frame that is the last one again is not drawn at all (fresh: false).
 const VoxStyle = (() => {
@@ -111,9 +112,9 @@ const VoxStyle = (() => {
     const GLOW = VoxStyleGlow.create({get gl() { return gl; }, get stx() { return stx; }, near, sameN, get space() { return space; }});
     function draw(v) {
       if (!start()) return was ? false : null; GLOW.light(v.t || 0, v.way || null);   // (false: lost, none given yet: the host keeps its last picture, hd.js lost; null: no WebGL 2 at all)
-      const t0 = performance.now(), L = v.light, RW = v.w, RH = v.h, W = v.water, hr = v.hour, sized = el.width !== RW || el.height !== RH;
+      const t0 = performance.now(), L = v.light, RW = v.w, RH = v.h, W = v.water, sized = el.width !== RW || el.height !== RH;
       if (sized) { el.width = RW; el.height = RH; }
-      const {m, eye} = matrix(v); if (!sameN(m, 16, lastM, 16) || lastB[0] !== (v.bend || 0) || lastB[1] !== v.at[1]) mver++; lastM = m; lastB = [v.bend || 0, v.at[1]]; const lamp = gp(...v.at);   // (mver: goes up when where a place is drawn (at) changes: marks drawn from it are kept till then)
+      const {m, eye} = matrix(v); if (!sameN(m, 16, lastM, 16) || lastB[0] !== (v.bend || 0) || lastB[1] !== v.at[1]) mver++; lastM = m; lastB = [v.bend || 0, v.at[1]]; const lamp = gp(...v.at), hr = typeof v.hour === "function" ? v.hour() : v.hour;   // (mver: goes up when where a place is drawn (at) changes: marks drawn from it are kept till then)
       // what this frame is made of, before anything is sent: the ghosts and the moving shadows (view.ghosts: [[x, y, box]...], made each frame), the sprites, every number the painter takes
       const gh = GW[lastG === GW[0] ? 1 : 0], sd = DW[lastD === DW[0] ? 1 : 0]; gh.n = sd.n = 0; for (const g of v.ghosts || []) land.model(g[0], g[1], g[2], g[2].shade ? sd : gh);   // (into the writer the last frame drawn is not in: GW, DW)
       const mef = (v.sprites || []).find((s) => s.top), mf = mef && project(m, mef.x, mef.y, mef.z), mp = mf && [(mf[0] * .5 + .5) * RW, (.5 - mf[1] * .5) * RH], disc = mp ? [mp[0], RH - mp[1] + 1, 12] : [0, 0, 0];   // (the disc round you: what covers you is seen through there only)
