@@ -44,10 +44,11 @@ def test_the_bends_creases_stay_where_they_are_on_the_land_as_you_walk(browser, 
     g = hd(browser, server)
     try:
         x, y = g.pos()
-        g.js("(() => { Curve.force = null; setOpt('curve', true); setOpt('view', 65); return 1; })()")
+        g.js("(() => { Curve.force = null; setOpt('curve', true); setOpt('view', 65); zoom = ZOOM.to = 2; return 1; })()")   # (zoomed out: this short picture sees farthest)
         g.rest()
-        g.wait("HdLook.bend > 0 && HdLook.view.n >= 25")
+        g.wait("HdLook.bend > 0")
         n = g.js("HdLook.view.n")
+        assert n >= 25, n                                        # (room for creases between 9 tiles off and the horizon)
         rows = (y - 12, y - n + 3)                               # (9 tiles off at the least, past the curve near you; short of the horizon)
         seen = []
         for k in range(4):
@@ -58,5 +59,5 @@ def test_the_bends_creases_stay_where_they_are_on_the_land_as_you_walk(browser, 
         assert len(seen[0]) >= 2 and all(s == seen[0] for s in seen), (n, rows, seen)
         assert not g.errors, g.errors
     finally:
-        g.js("setOpt('view', OPT_DEFAULT.view)")
+        g.js("(() => { setOpt('view', OPT_DEFAULT.view); zoom = ZOOM.to = 3; return 1; })()")
         g.page.close()
