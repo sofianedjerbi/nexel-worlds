@@ -1,4 +1,5 @@
 """Close-ups of every face kind (#4), for the owner's look: saved, never asserted. Run by the faces-shots workflow, not the suite."""
+import base64
 import os
 from pathlib import Path
 
@@ -9,15 +10,16 @@ OUT = Path(os.environ.get("FACES_OUT", "faces"))
 pytestmark = pytest.mark.skipif(not os.environ.get("FACES_OUT"), reason="close-ups for the owner's look: FACES_OUT=<folder>")
 
 
-HIDE_HUD = "(() => { for (const e of document.body.children) if (e.tagName !== 'CANVAS' && !e.querySelector('canvas')) e.style.visibility = 'hidden'; return 1; })()"
+# the land's own picture (#hd: an art px a px, under the HUD's canvas) round (x, y, z), w x h art px, as a PNG
+CROP = """([x, y, z, w, h]) => { const a = HdLook.screenOf(x + .5, y + .5, z), u = artPx(), src = document.getElementById('hd'), c = document.createElement('canvas');
+  c.width = w; c.height = h; c.getContext('2d').drawImage(src, Math.round(a[0] / u - w / 2), Math.round(a[1] / u - h / 2), w, h, 0, 0, w, h); return c.toDataURL('image/png'); }"""
 
 
-def shot(g, name, x, y, z, w=360, h=260):
-    """The picture round (x, y, z), w x h CSS px, at the page's own px, nothing of the HUD over it."""
+def shot(g, name, x, y, z, w=140, h=100):
+    """The land round (x, y, z), w x h art px, from its own canvas: nothing of the HUD over it."""
     OUT.mkdir(parents=True, exist_ok=True)
-    g.js(HIDE_HUD)
-    p = g.js(f"HdLook.screenOf({x} + .5, {y} + .5, {z})")
-    g.page.screenshot(path=str(OUT / f"{name}.png"), clip={"x": max(0, p[0] - w / 2), "y": max(0, p[1] - h / 2), "width": w, "height": h})
+    url = g.js(CROP, [x, y, z, w, h])
+    (OUT / f"{name}.png").write_bytes(base64.b64decode(url.split(",", 1)[1]))
 
 
 def scene(g, rows, levels, roofs=None, heads=None):
@@ -40,7 +42,7 @@ def test_faces_shots(browser, server, hill):
     g.arrive()
     g.rest()
     g.frames(6)
-    shot(g, f"{hill}-tops-fronts", x, y + 4, int(lv) - 2, 420, 300)        # (the hill's top, then its south edge stepping down: tops, fronts, risers)
+    shot(g, f"{hill}-tops-fronts", x, y + 4, int(lv) - 2, 160, 110)        # (the hill's top, then its south edge stepping down: tops, fronts, risers)
     room = [[x + i, y + j] for j in range(-2, 2) for i in range(-2, 3)]
     g.rpc("dev_col", tiles=room, col=[int(lv) - 4, int(lv) - 2, int(lv)])
     g.rest()
@@ -49,6 +51,6 @@ def test_faces_shots(browser, server, hill):
     g.wait("HdLook.win.a === 1 && !HdLook.busy", timeout=10000)
     g.rest()
     g.frames(8)
-    shot(g, f"{hill}-cut-section", x, y - 2, int(lv) - 2, 420, 320)
+    shot(g, f"{hill}-cut-section", x, y - 2, int(lv) - 2, 160, 120)
     shot(g, f"{hill}-under-floor", x, y, int(lv) - 4)
     g.page.close()
