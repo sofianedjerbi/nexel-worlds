@@ -264,3 +264,14 @@ def test_a_wild_creature_does_not_see_who_is_far_over_it_or_under_it(world):
         if boar.mode:
             break
     assert boar.mode == "windup"
+
+
+def test_a_bare_fist_takes_half_a_heart_from_a_cow(world):
+    """The world's half of tests/e2e/test_e2e_wild.py::test_a_blow_is_said_in_hearts_whoever_takes_it: "default
+    player hit damage should be 0.5 not 5 hearts": bare hands take half a heart from a cow (three hearts: six blows).
+    The number over it ("-0.5", in hearts) stays the page's."""
+    sim, a = world
+    cow = put(sim, "cow", a.x + 1, a.y, cooldown=10 ** 6)
+    assert cow.hp == 6
+    assert run(sim, a, "attack", {"target": cow.id})["ok"]
+    assert cow.hp == 5                                         # six half hearts, one gone

@@ -74,3 +74,17 @@ def test_eating_halves_your_speed_and_the_water_halves_it_again(world):
     assert sim.stride(a, {}) == 0.8 and sim.stride(a, {"run": True}) == 0.4
     a.aside = None
     assert sim.stride(a, {}) == 0.4
+
+
+def test_off_a_ledge_six_high_into_a_pond_you_come_down_swimming(world):
+    """The world's half of tests/e2e/test_e2e_hd_splash.py and test_e2e_leap_terrain.py's walk off a high ledge into
+    water: a ledge six high, a pond under its east end; a step off it and you are in the water, swimming."""
+    from nexel_worlds.devtools import dev_op
+    sim, a = world
+    x, y = a.x, a.y
+    dev_op(sim, a, "dev_stamp", {"x": x - 3, "y": y - 1, "rows": ["...."] * 3, "levels": ["6666"] * 3})   # the ledge, you on its east end
+    dev_op(sim, a, "dev_stamp", {"x": x + 1, "y": y - 1, "rows": ["~~~~~"] * 3})                         # the pond under it
+    dev_op(sim, a, "dev_teleport", {"x": x, "y": y, "z": 6})
+    assert sim.height(a) == 6 and not sim.swimming(a)
+    assert run(sim, a, "step", {"dir": "E"})["ok"]
+    assert sim.swimming(a) and sim.observe(a)["self"]["swimming"]

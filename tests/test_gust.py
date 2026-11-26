@@ -26,6 +26,7 @@ def test_the_gustling_spins_up_then_snatches_what_is_in_your_hand_and_runs(world
     for _ in range(sec(2)):
         sim.step()
     assert max(abs(gust.x - a.x), abs(gust.y - a.y)) >= 4         # and ran off with it
+    assert a.hp == 20                                             # it never hurts anyone (tests/e2e/test_e2e_wild.py's gustling)
 
 
 def test_an_empty_hand_is_left_alone(world):
