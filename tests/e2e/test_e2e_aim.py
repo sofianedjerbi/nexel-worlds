@@ -45,7 +45,6 @@ def test_the_selected_box_in_your_own_column_is_drawn_whole_over_you_or_under_yo
         assert drew[0]["over"] == (lv >= 0), (lv, drew)              # over you at your body and above; under you: under your feet
         if lv < 0:
             continue
-        share = game.js("(() => { const B = HdLook.art().body, r = Target.drew.find((d) => d.over || d.sel).r, w = Math.min(B.x + B.w, r.x + r.w) - Math.max(B.x, r.x), h = Math.min(B.y + B.h, r.y + r.h) - Math.max(B.y, r.y); return w > 0 && h > 0 ? w * h / (B.w * B.h) : 0; })()")   # (before the box is hidden for a frame below: the frame after that read had none)
         on, off = game.js(BODY, ["", True]), game.js(BODY, ["", False])
         n = len(on) // 3
         changed = sum(1 for i in range(n) if sum(abs(on[3 * i + j] - off[3 * i + j]) for j in range(3)) > 24)
@@ -54,6 +53,7 @@ def test_the_selected_box_in_your_own_column_is_drawn_whole_over_you_or_under_yo
         # the box is on your sprite's box, where the two meet on the screen. (From the surface's pitch, the eye's in this nook open to the south
         # (hd_eye.js: it looked from above here by the old "shut in" rule), the cell over your head lies on your head only, the one over that on
         # none of you: `share`, how much of your sprite's box the cell's box covers)
+        share = game.js("(() => { const B = HdLook.art().body, r = Target.drew.find((d) => d.over || d.sel).r, w = Math.min(B.x + B.w, r.x + r.w) - Math.max(B.x, r.x), h = Math.min(B.y + B.h, r.y + r.h) - Math.max(B.y, r.y); return w > 0 && h > 0 ? w * h / (B.w * B.h) : 0; })()")
         assert lv > 0 or share > .5, (lv, share)
         assert share == 0 or changed > n * .05 * share, (lv, changed, n, share)
         assert line < n * .5, (lv, line, n)                          # ...and you show through it, not covered by its line
