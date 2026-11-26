@@ -54,3 +54,23 @@ def test_faces_shots(browser, server, hill):
     shot(g, f"{hill}-cut-section", x, y - 2, int(lv) - 2, 160, 120)
     shot(g, f"{hill}-under-floor", x, y, int(lv) - 4)
     g.page.close()
+
+
+@pytest.mark.parametrize("hill", ["earth3", "stone7"])
+def test_riser_shots(browser, server, hill):
+    """A stair dug down north into the hill under its roof (#4: the risers of steps you can take, vox_style_glsl.js), seen from its foot."""
+    g = hd(browser, server)
+    g.js("setOpt('names', false); setOpt('hints', false); setOpt('clouds', 0); setOpt('rays', 0); setOpt('shimmer', 0)")
+    g.hour(.3, still=True)
+    lv = 3 if hill == "earth3" else 7
+    x, y = g.pos()
+    scene(g, ["." * 17] * 17, [str(lv) * 17] * 17)
+    for k in range(5):                                         # (treads a level down a row south, a roof two over each)
+        g.rpc("dev_col", tiles=[[x + i, y - 4 + k] for i in (-1, 0, 1)], col=[lv - 1 - k, lv + 1 - k, lv])
+    g.rest()
+    g.rpc("dev_teleport", x=x, y=y, z=lv - 5)
+    g.arrive()
+    g.rest()
+    g.frames(8)
+    shot(g, f"stair-{hill}", x, y - 2, lv - 4, 160, 120)
+    g.page.close()

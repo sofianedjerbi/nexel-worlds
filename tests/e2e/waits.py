@@ -1,6 +1,7 @@
 """Waiting for the game instead of sleeping (a Game's, game.py): the land at rest, the hour on the page, you arrived, a
 tick heard, frames drawn. tests/e2e/README.md says which to use when."""
 
+import time
 import warnings
 
 from playwright.sync_api import TimeoutError as NotYet
@@ -46,6 +47,14 @@ MADE = """() => typeof dirtyTiles === 'undefined' || !me || (dirtyTiles.length =
 FRAMES = "(n) => new Promise((ok) => { const f = () => (n-- > 0 ? requestAnimationFrame(f) : ok(1)); f(); })"
 
 
+# arrive's look, up to 10 frames: {ok: drawn where the server has you (x, y), the camera on you; d: how far from it, n: frames}
+ARRIVE = """async ([x, y]) => { const frame = () => new Promise(requestAnimationFrame); let d = 1e9, n = 0;
+  for (; n < 10; n++) { const p = ents.get('agent' + myId), s = myPos();
+    if (p && s && s.x === x && s.y === y) { d = Math.abs(p.x - x) + Math.abs(p.y - y) + Math.abs(cam.x - camT.x) + Math.abs(cam.y - camT.y); if (d < .04 && Math.abs(p.x - x) < .01 && Math.abs(p.y - y) < .01 && Math.abs(cam.x - camT.x) < .01 && Math.abs(cam.y - camT.y) < .01) return {ok: true, d, n}; }
+    await frame(); }
+  return {ok: false, d, n}; }"""
+
+
 class Waits:
     def frames(self, n=2):
         """Until `n` more frames are drawn (what was set on the page is in the picture of the next one)."""
@@ -61,13 +70,23 @@ class Waits:
             warnings.warn(f"the land was not at rest after {timeout} ms: frames, frames since its last piece, tiles to draw, arriving, the eye's way to go, frames nothing faded, the land on the screen all come: {late}", stacklevel=2)
 
     def arrive(self, timeout=8000):
-        """After a teleport: until you are drawn where the server has you, and the land there is at rest."""
+        """After a teleport: until you are drawn where the server has you, and the land there is at rest. It fails when
+        you stop getting there: no nearer for `timeout` ms AND 30 frames (#67: once 0.82 of a tile short for 8 s), not
+        when frames are slow: on a renderer drawing a frame every 2 s you glide there a step a frame, and arrive."""
         s = self.server()
-        try:
-            self.page.wait_for_function("([x, y]) => { const p = ents.get('agent' + myId), s = myPos(); return !!p && !!s && s.x === x && s.y === y && Math.abs(p.x - x) < .01 && Math.abs(p.y - y) < .01 && Math.abs(cam.x - camT.x) < .01 && Math.abs(cam.y - camT.y) < .01; }",
-                                        arg=[s["x"], s["y"]], timeout=timeout)
-        except NotYet as e:
-            raise AssertionError(f"not drawn where the server has you, {s['x']}, {s['y']}: " + str(self.js("(() => { const p = ents.get('agent' + myId); return [p && [p.x, p.y, p.tx, p.ty], myPos(), [cam.x, cam.y], [camT.x, camT.y]]; })()"))) from e
+        t0 = last = time.monotonic()
+        best, still = None, 0
+        while True:
+            r = self.page.evaluate(ARRIVE, [s["x"], s["y"]])
+            if r["ok"]:
+                break
+            now = time.monotonic()
+            if best is None or r["d"] < best - 1e-3:
+                best, still, last = r["d"], 0, now
+            else:
+                still += r["n"]
+            if (still >= 30 and now - last >= timeout / 1000) or now - t0 > 120:
+                raise AssertionError(f"not drawn where the server has you, {s['x']}, {s['y']}: " + str(self.js("(() => { const p = ents.get('agent' + myId); return [p && [p.x, p.y, p.tx, p.ty], myPos(), [cam.x, cam.y], [camT.x, camT.y]]; })()")))
         self.rest()
 
     def hour(self, phase, timeout=20000, still=False):
