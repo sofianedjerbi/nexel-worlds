@@ -53,6 +53,7 @@ def rules_table() -> dict:
                   **{k: k for k in KINDS if k not in T.FILLERS}},
         "sown": sown,
         "fills": {item: {char(g): char(to) for g, to in fill.items()} for item, fill in T.FILLERS.items()},
+        "picked": {char(full): char(bare) for full, (bare, _) in T.PICKED.items()},     # (a plant picked: what is left of it, until it grows back)
         "land_blocks": list(LAND_BLOCKS),
         "food": T.FOOD, "feed": T.FEED, "weapons": T.WEAPONS, "tools": {k: list(v) for k, v in T.TOOLS.items()}, "crops": T.CROPS,
         "wear": T.WEAR, "slots": list(SLOTS),

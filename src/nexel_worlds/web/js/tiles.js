@@ -26,8 +26,7 @@ const combAt = (x, y) => { const b = blockOf(x, y); return b ? b.comb[(y - b.by 
 const gndAt = (x, y) => { const b = blockOf(x, y); return b ? b.gnd[(y - b.by * B) * B + (x - b.bx * B)] : null; };
 const dirtyTiles = [];                 // tiles to redraw (x, y), processed within a per-frame budget
 function touch(x, y) { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) dirtyTiles.push(x + dx, y + dy); }
-// picked plants: full -> bare (fruit flies to the picker); bare -> full when it grows back
-const PICK = {F: "U", b: "v"};
+// picked plants: full -> bare (fruit flies to the picker, RULES.picked); bare -> full when it grows back
 // What a tile is made of, as the world says it (views.py mats and stones, a tile event's `mat`, landblocks.py): "s", "d": the block put on its top (matAt);
 // "": none; then "~" and its highest stone cell, the generator's (stoneAt: for good, whatever is dug: chunks.py)
 const NO_STONE = -32768;
@@ -56,10 +55,10 @@ function setTile(x, y, comb, gnd, who = null, col = null, mat = null) {    // (c
     for (let d = -2; d <= 2; d++) touch(x + d, y);
   }
   const old = b.comb[i], now = performance.now();
-  if (PICK[old] === comb) picked(x, y, old, who, now);
+  if (RULES.picked[old] === comb) picked(x, y, old, who, now);
   else if (old === "T" && comb !== "T") felled(x, y, who, now);
-  else if (old !== comb && isObject(comb) && comb !== "x" && PICK[old] !== comb) pops.set(x + "," + y, now);
-  const spr = old !== comb && old !== "T" && PICK[old] !== comb && isObject(old) && !isObject(comb) ? objectSprite(old, x, y, now / 1000) : null;
+  else if (old !== comb && isObject(comb) && comb !== "x" && RULES.picked[old] !== comb) pops.set(x + "," + y, now);
+  const spr = old !== comb && old !== "T" && RULES.picked[old] !== comb && isObject(old) && !isObject(comb) ? objectSprite(old, x, y, now / 1000) : null;
   if (spr && PLUCKED.includes(old)) plucked(x, y, spr, who, now);   // small plants come up and go to the picker
   else if (spr) {                              // anything else taken away falls apart into its own pixels
     shatter(x, y, spr);
