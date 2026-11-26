@@ -9,6 +9,7 @@
   dark, a second at a time. The last picture stays now, and the look comes back when a context is given."""
 
 import pytest
+from playwright.sync_api import TimeoutError as NotYet
 
 OPEN = "typeof TitleScene !== 'undefined' && TitleScene.on && document.body.classList.contains('scene') && HdLook.live && !HdLook.busy"
 STILL = "(() => { TitleScene.stop(); document.getElementById('joinbox').style.display = ''; TitleScene.start(5); clearInterval(TitleScene.S.timer); })()"
@@ -41,9 +42,15 @@ def test_the_water_picture_lies_on_all_the_water_the_island_shows(browser, serve
         page.evaluate(f"(() => {{ cam.x = camT.x = -8000 + {x}; cam.y = camT.y = -8000 + {y}; }})()")
         page.wait_for_function("!HdLook.busy", timeout=10000)
         ver = page.evaluate("Voxels.wver")
-        page.wait_for_function(f"Voxels.wver > {ver} + 1", timeout=5000)          # (a picture made with the view where it is now)
-        page.wait_for_timeout(100)
+        page.wait_for_function(f"Voxels.wver > {ver} + 1", timeout=5000)          # (a picture made since the view moved)
         assert page.evaluate("Math.abs(cam.x - camT.x) < .01 && Math.abs(cam.y - camT.y) < .01")
+        # (the land round the new place may come after those pictures: !busy above was read before any frame saw the move, and the
+        #  picture is laid over the land the look made last, hd.js box. So: until a picture covers it all; one over the flat view's
+        #  rectangle, as it was, never does. It was read 100 ms after: on a slow runner the north rows still the old place's, 81 tiles)
+        try:
+            page.wait_for_function(f"!({UNCOVERED})().length", timeout=8000)
+        except NotYet:
+            pass
         left = page.evaluate(UNCOVERED)
         if left:
             off[(x, y)] = (len(left), left[:4])
