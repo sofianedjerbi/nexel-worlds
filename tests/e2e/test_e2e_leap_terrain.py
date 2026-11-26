@@ -144,6 +144,7 @@ def test_running_uphill_with_the_jump_key_never_meets_a_step_s_face(game, prof):
     game.clear_area(14)
     x, y = game.pos()
     prof = [0, 1, 1, 2, 2, 2, 3, 4, 4, 5, 5, 6, 7, 7, 7] if prof == "hill" else [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13]
+    prof += [prof[-1]] * 10          # (a top as long as a jump goes: the last one, the keys let go of in the air, comes down on it, not off its end)
     for i, h in enumerate(prof[1:], 1):
         game.rpc("dev_col", tiles=[[x + i, y - 1], [x + i, y], [x + i, y + 1]], col=[h])
     game.rest(); game.face(1, 0)

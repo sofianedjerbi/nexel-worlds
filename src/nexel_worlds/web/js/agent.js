@@ -3,6 +3,7 @@
 let agentWs = null, aid = 0, pending = {}, busy = false;
 function joinGame(name) {
   if (agentWs && agentWs.readyState <= 1) return;
+  F3.woke();                                          // (Wake up: the phone's budget times the wait from here, f3.js)
   const key = "nexel-token-" + name;
   let token = localStorage.getItem(key); if (!token) { token = crypto.randomUUID(); localStorage.setItem(key, token); }
   agentWs = openSocket("/agent");
