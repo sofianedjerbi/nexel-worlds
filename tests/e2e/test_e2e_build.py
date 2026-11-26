@@ -111,8 +111,8 @@ def test_what_the_audit_of_build_mode_found_is_mended(game):
     game.js(f"Build.S.at = {{x: {x + 3}, y: {y + 1}}}")
     kb.down("Space")
     for _ in range(3):
-        game.press("ArrowRight", 120)
-    kb.up("Space")
+        kb.press("ArrowRight"); game.frames(2)                 # (a frame for each tile of the row; not press(): it waited for the page to be quiet,
+    kb.up("Space")                                             #  the work too: on a slow runner all four were built before you left, none waited)
     game.press("b")                                            # out of the mode at once: the plans wait where they are
     left = game.js("Build.S.plans.size")
     # (the count and the line read at one moment: the plan begun was done between the two, "4 plans wait" asked of a line saying 3.
