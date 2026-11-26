@@ -136,7 +136,7 @@ class Building:
         if self.world.rim(x, y):
             raise ActionError("cliff_edge", "nothing stays on the edge of a hill: build further in")
         if not a.count(item):
-            raise ActionError("missing_item", f"you have no {item}")
+            raise ActionError("missing_item", f"you have no {item}", item=item, have=0)
         if item == "hob":                                  # a hob set down is lit: a creature, and yours (hob.py)
             return (yield from self._place_hob(a, x, y))
         g, b = self.world.ground(x, y), self.world.block(x, y)
