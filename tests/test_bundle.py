@@ -32,7 +32,7 @@ def test_notes_and_indents_go_and_strings_templates_and_regular_expressions_stay
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node is not installed")
 def test_the_one_script_is_every_script_smaller_and_node_reads_it():
-    page = (WEB / "index.html").read_text()
+    page = web_bundle.plain_page(WEB)
     names = web_bundle.SCRIPT.findall(page)
     js = web_bundle.script(WEB, page)
     plain = sum(len((WEB / "js" / n).read_text()) for n in names)
@@ -45,7 +45,7 @@ def test_the_one_script_is_every_script_smaller_and_node_reads_it():
 def test_the_one_script_is_cut_at_files_starts_into_parts_of_about_the_same_size():
     """Each part is run as a script of its own, a task of its own: the page answers between them (index.html's wait moves).
     A part begins where a file does: the files share the page's scope as the plain ones do in development."""
-    page = (WEB / "index.html").read_text()
+    page = web_bundle.plain_page(WEB)
     starts = []
     js = web_bundle.script(WEB, page, starts=starts).encode()
     cut = web_bundle.cuts(starts, len(js))

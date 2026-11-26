@@ -17,7 +17,20 @@ import json
 import re
 from pathlib import Path
 
-SCRIPT = re.compile(r'<script src="js/([\w.]+)"></script>\n?')   # (a module split in files has them on one line of index.html: race_*.js)
+SCRIPT = re.compile(r'<script src="js/([\w.]+)"></script>\n')
+MARK = "<!-- scripts.txt -->\n"     # (where index.html names its scripts: scripts.txt has them, one owner of their order: plain_page)
+
+
+def scripts(web: Path) -> list[str]:
+    """The page's scripts, in the order they run: web/scripts.txt, one file a line (# a note)."""
+    return [n for n in (line.strip() for line in (web / "scripts.txt").read_text().splitlines()) if n and not n.startswith("#")]
+
+
+def plain_page(web: Path) -> str:
+    """index.html as the browser is sent it unbundled: its scripts named where it says, in scripts.txt's order."""
+    html = (web / "index.html").read_text()
+    assert html.count(MARK) == 1, "index.html no longer says where its scripts go"
+    return html.replace(MARK, "".join(f'<script src="js/{n}"></script>\n' for n in scripts(web)))
 STYLE = re.compile(r'<link rel="stylesheet" href="css/([\w.]+)">\n?')
 # after one of these a "/" begins a regular expression; after a name, a number or a closing bracket it divides
 BEFORE_REGEX = set("(,=:[!&|?{};+-*%<>~^")
@@ -148,7 +161,7 @@ def mark(*parts: bytes) -> str:
 def packed(web: Path, page: str | None = None, skip=(), inline_styles=True) -> tuple[str, dict[str, bytes]]:
     """The page with one script, its styles in it and the pack's table; and the files it now names: path -> bytes."""
     import gzip
-    page = (web / "index.html").read_text() if page is None else page
+    page = plain_page(web) if page is None else page
     starts = []
     js = script(web, page, skip, starts).encode()
     body, table, need = pack(web)

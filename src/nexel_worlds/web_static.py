@@ -33,7 +33,8 @@ def serve_http(connection, request, accounts=None):
     path = request.path.split("?")[0]
     page, files = _bundle() if BUNDLE[0] else (None, {})
     if path in ("/", "/index.html"):
-        body = page.encode() if page else (WEB / "index.html").read_bytes()
+        from . import web_bundle                                 # (index.html with its scripts named, scripts.txt)
+        body = page.encode() if page else web_bundle.plain_page(WEB).encode()
         if accounts:
             body = body.replace(b"<body>", f'<body data-accounts="{accounts}">'.encode(), 1)
         return _answer(request, body, "text/html; charset=utf-8", "no-cache", ("page", bool(page), accounts, web_stamp()))
@@ -61,7 +62,7 @@ def web_stamp() -> int:
     """When the client's code last changed: a page that reconnects and finds a newer one reloads itself (state.js)."""
     if not (WEB / "index.html").exists():
         return 0                                             # (the in-browser demo: the page is the client, nothing to compare)
-    return int(max(f.stat().st_mtime for f in [WEB / "index.html", *(WEB / "js").glob("*.js"), *(WEB / "css").glob("*.css")]))
+    return int(max(f.stat().st_mtime for f in [WEB / "index.html", WEB / "scripts.txt", *(WEB / "js").glob("*.js"), *(WEB / "css").glob("*.css")]))
 
 
 def _bundle():

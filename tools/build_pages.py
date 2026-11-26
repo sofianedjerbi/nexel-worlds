@@ -33,7 +33,8 @@ def build(out: Path):
         import build_audio
         build_audio.build()
     shutil.copytree(WEB, out, ignore=shutil.ignore_patterns(".DS_Store"))
-    page = (out / "index.html").read_text()
+    page = web_bundle.plain_page(out)                        # (index.html with its scripts named, scripts.txt's order)
+    (out / "scripts.txt").unlink()
     # the world's own start is in the page, first of all, and so are the styles: nothing to wait for before the first
     # picture, and the game's Python comes with the page (js/local.js; it was a script among seventy, loaded in its turn)
     hook = '<canvas id="c"></canvas>'

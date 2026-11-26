@@ -14,8 +14,9 @@ pytestmark = pytest.mark.skipif(NODE is None, reason="node is not installed")
 
 
 def scripts() -> list[Path]:
-    """The scripts index.html loads, in order."""
-    names = re.findall(r'<script src="js/([\w.]+)"></script>', (WEB / "index.html").read_text())
+    """The scripts the page loads, in order (web/scripts.txt, named where index.html says: web_bundle.plain_page)."""
+    from nexel_worlds.web_bundle import plain_page
+    names = re.findall(r'<script src="js/([\w.]+)"></script>', plain_page(WEB))
     return [WEB / "js" / n for n in names]
 
 
