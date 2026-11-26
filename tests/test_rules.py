@@ -123,14 +123,14 @@ KEPT = {
     "world_decor.js VARIANTS": "art: the farm animals' looks",
     # (keyed by something else that happens to be spelt like a tile's char: keys, faces, palettes)
     "keyboard.js BOOK_KEYS": "the keyboard's keys", "keyboard.js HELD": "the keyboard's keys", "mouse.js FACE": "a block's faces",
-    "target.js FACES": "a block's faces", "races.js BASE": "a palette's letters", "races.js EXTRA": "a palette's letters",
+    "target_box.js FACES": "a block's faces", "races.js BASE": "a palette's letters", "races.js EXTRA": "a palette's letters",
     "wear.js BASE": "a palette's letters", "wear.js BODY": "a palette's letters", "render.js WATCH": "a place: x, y, z",
     "voxpaint.js SLIM": "a shape's letters",
 }
 # the kept tables with keys of their own besides the world's (a group's title, a goal's words, a material, a pose): in
 # every other one, each key is a tile, an item or a creature the world has (a name dropped or changed there fails here)
 MIXED = {"assets.js LATE", "craft.js RECIPE_GROUPS", "effects.js PCOL", "goals.js GOALS", "sound_of.js STRIKE", "sound_of.js BREAK", "sprites.js ANIM",
-         "keyboard.js BOOK_KEYS", "keyboard.js HELD", "mouse.js FACE", "target.js FACES", "races.js BASE", "wear.js BASE", "render.js WATCH", "voxpaint.js SLIM"}
+         "keyboard.js BOOK_KEYS", "keyboard.js HELD", "mouse.js FACE", "target_box.js FACES", "races.js BASE", "wear.js BASE", "render.js WATCH", "voxpaint.js SLIM"}
 
 
 def _client_tables():
