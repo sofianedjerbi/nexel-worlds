@@ -49,13 +49,18 @@ def test_walking_back_the_far_land_is_not_made_again(browser, server):
     g.page.keyboard.up("ArrowRight")
     g.wait(FAR, 15000)
     g.rest()
-    f1 = g.js("HdLook.work.fars")
+    f1, k1, b1 = g.js("HdLook.work.fars"), g.js("HdLook.work.forgot"), g.js("[...blocks.keys()]")
     g.page.keyboard.down("ArrowLeft")
     g.wait(f"myPos().x <= {x}", timeout=8000)
     g.page.keyboard.up("ArrowLeft")
     g.rest()
-    f2 = g.js("HdLook.work.fars")
-    assert f1 - f0 > 200 and f2 - f1 < (f1 - f0) / 3, (f0, f1, f2, g.js("HdLook.work"), g.js("[blocks.size, HdLook.far]"))   # (the way back: its patches were made on the way there)
+    f2, k2 = g.js("HdLook.work.fars"), g.js("HdLook.work.forgot")
+    # (the way back makes again what the world changed meanwhile, rightly: a tile changed lets go of the far patches that
+    # read it (vox_land_far.js forget). Those are not counted; the blocks that came on the way back are said. 367 made
+    # against 342, one run in seven: which of the two it was, the message says now, #240)
+    came = sorted(set(g.js("[...blocks.keys()]")) - set(b1))
+    assert f1 - f0 > 200 and f2 - f1 - min(k2 - k1, f2 - f1) < (f1 - f0) / 3, \
+        {"made": (f0, f1, f2), "forgot on the way back": k2 - k1, "blocks come on the way back": came, "work": g.js("HdLook.work"), "far": g.js("HdLook.far")}   # (the way back: its patches were made on the way there)
 
 
 def test_a_persons_sheet_is_made_between_frames(browser, server):
