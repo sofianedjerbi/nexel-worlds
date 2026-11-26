@@ -39,7 +39,7 @@ function genCell(name) { return [GEN[name] * 16, 0]; }
 // a shore's is cut the same (the bank, the foam, the water); and a thing's foot is at the bottom of its tile, in
 // the middle. A tree on such a tile stood on the face of the cliff, or in the water. So what grows or lies there
 // (trees, stumps, bushes, rocks, mushrooms, flowers) is drawn 8 px back from a drop to the south, 4 from one to a
-// side, less from one only at a corner. Its tile, and what it stops, are what they were.
+// side, less from one only at a corner. Its tile, and what it stops, are unchanged.
 const BRINK = new Set("TFUtbvM*Qf");
 const BK = [0, 0], lowBy = (x, y, l, dx, dy) => !!blockOf(x + dx, y + dy) && (standAt(x + dx, y + dy) < l || !(isLand(gndAt(x + dx, y + dy)) || Bridge.rests(x, y, x + dx, y + dy)));   // (lower ground beside it, its ground read as it is: no pair made)
 function brinkAt(x, y) {                             // -> BK: [dx, dy], art px (kept: no pair made)
@@ -49,7 +49,7 @@ function brinkAt(x, y) {                             // -> BK: [dx, dy], art px 
 }
 function brink(x, y) { brinkAt(x, y); return [BK[0], BK[1]]; }
 // object sprite for a tile char: [img, sx, sy, sw, sh, dx (from tile left), dy (from tile top)]
-// out: an array of the caller's to write it into (the HD look's things, each frame: hd.js stood), returned; it was seven numbers made a thing a frame
+// out: an array of the caller's to write it into (the HD look's things, each frame: hd.js stood), returned: no seven new numbers a thing a frame
 let spOut = null;
 const S7 = (a, b, c, d, e, f, g) => { const o = spOut; spOut = null; if (!o) return [a, b, c, d, e, f, g]; o[0] = a; o[1] = b; o[2] = c; o[3] = d; o[4] = e; o[5] = f; o[6] = g; return o; };
 function objectSprite(c, x, y, t, out) {
@@ -91,7 +91,7 @@ function spriteOf(c, x, y, t) {
     case "V": return S7(IMG.boats, (Math.floor(t * 1.5 + h * 9) % 2) * 48, 32, 48, 32, -16, -10);   // moored, rocking
     case "W": return S7(IMG.house_walls, 48, 16, 16, 16, 0, 0);                         // (a wall as a thing: a small plank block; standing, structures.js draws it)
     case "l": return S7(IMG.gen, GEN["ladder"] * 16, 0, 16, 16, 0, -2);                    // (as a thing in hand; standing, climbing.js draws it up to its top)
-    case "+": return S7(IMG.door, 80, 0, 16, 16, 0, 0);                                 // a door, shut (it was a wall with a small hole in it: a window, to look at)
+    case "+": return S7(IMG.door, 80, 0, 16, 16, 0, 0);                                 // a door, shut (not a wall with a small hole in it: that looks like a window)
     case "^": return S7(IMG.gen, GEN[Math.floor(t * 6 + x) % 2 ? "campfire1" : "campfire0"] * 16, 0, 16, 16, 0, -2);
     case "x": return S7(IMG.gen, GEN[Math.floor(t * 8 + x + y) % 2 ? "fire1" : "fire0"] * 16, 0, 16, 16, 0, -3);
     case "&": return S7(IMG.gen, GEN["workbench"] * 16, 0, 16, 16, 0, -3);

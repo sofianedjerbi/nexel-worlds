@@ -1,5 +1,5 @@
-// The help (H, or ?): a window in the recipe book's manner, a page at a time. It was one small panel of four long lines,
-// every key of the game run together with dots between. Now: five pages (Move, Do, Carry, Build, Talk), five rows at most
+// The help (H, or ?): a window in the recipe book's manner, a page at a time. Not one small panel of four long lines,
+// every key of the game run together with dots between: five pages (Move, Do, Carry, Build, Talk), five rows at most
 // on each, a row a key drawn as a key and a few words on one line. Left and Right (or a click on a tab) turn the page; H or
 // Esc shuts it. Its looks are css/help.css.
 
@@ -38,4 +38,4 @@ window.addEventListener("keydown", (e) => {               // (before the game's 
   if (d) turnHelp(helpPage + d); else if (e.key === "Escape") toggleHelp(); else return;
   e.preventDefault(); e.stopImmediatePropagation();
 }, true);
-localStorage.removeItem("nexel-help");            // (it used to open by itself at each join: a window in the middle does not)
+localStorage.removeItem("nexel-help");            // (it does not open by itself at each join: a window in the middle should not)

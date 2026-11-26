@@ -13,7 +13,7 @@
 // A bed depends on the land round it: when a tile changes, the beds within reach of it are looked at again, and
 // what changed is made again with what is drawn from it (`changed`, `flush`: voxels.js). What is worked out is kept a
 // chunk at a time, made once (`grids`), forgotten only round a tile that changed.
-// Off: none of this; the water is water.js's picture on one face, as it was.
+// Off: none of this; the water is water.js's picture on one face.
 const WaterBed = (() => {
   const REACH = 2, FAR = 4, SMALL = 12, LOOK = 6, cfg = {clear: false, dark: 4};      // (cfg: the engine's cfg.water; LOOK: how far a tile's change is looked for in the beds)
   // The tint over a bed, by its depth (0: none; 1 to 3 levels): water.js's own hues, thicker: a pond one level deep is
@@ -23,7 +23,7 @@ const WaterBed = (() => {
   // What is worked out, kept a chunk (B x B tiles) at a time in typed arrays, made as it is first asked for and kept
   // until a tile near it changes (not when other land comes: a sprint into new land threw it all away every block):
   // d the bed's depth, r its depth before smoothing, s is that land a piece that only stands in the water (1) or a bank
-  // (0), sh the depth it was painted with (-1: none of it, unknown, not painted), w is it water (1, 0; -1 unknown), col its column (an array: the engine's)
+  // (0), sh the depth it is painted with (-1: none of it, unknown, not painted), w is it water (1, 0; -1 unknown), col its column (an array: the engine's)
   const grids = new Map(), gk = (bx, by) => bx * 4194304 + by, N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
   let hx = NaN, hy = NaN, hg = null, gi = 0;
   function G(x, y) {                                            // -> the grid of tile (x, y), its index in gi
@@ -114,14 +114,14 @@ const WaterBed = (() => {
     }
     for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) px[at + j * stride + i] = data[j * 16 + i] | 0xff000000;
   }
-  // A tile was drawn again: the beds within reach of it may have changed (looked at in `flush`). What is kept of the
+  // A tile is drawn again: the beds within reach of it may have changed (looked at in `flush`). What is kept of the
   // tile itself is forgotten at once: is it water, its bed. The land is made again from it before the next flush
-  // (the HD look's chunk of it at once, hd.js; flush waits for the tiles drawn to run out): a tile that became water
-  // was still land there, a slab at the water's face, a flat beige strip round you in a gorge just made
+  // (the HD look's chunk of it at once, hd.js; flush waits for the tiles drawn to run out): else a tile turned to water
+  // is still land there, a slab at the water's face, a flat beige strip round you in a gorge just made
   const changed = (x, y) => { if (!cfg.clear) return; pending.push(x, y); forget(x, y, x, y, 0, "s"); forget(x, y, x, y, 0, "d"); };
   // ...looked at, before the land is made. What changed, a box a chunk (a block of land coming is B x B tiles drawn: one
   // box), and round it: the pieces of land within SMALL (s), the depths within LOOK (r, d) are forgotten; a bed in that
-  // ring that was painted is worked out again, and if it is not as it was painted it is made again, with the tiles whose
+  // ring that is painted is worked out again, and if it differs from its paint it is made again, with the tiles whose
   // faces are made from it (the bank north of it down to it; the faces south, west and east of it, which know its depth).
   // Those it has no time for this frame (MS) wait for the next.
   const MS = 2, AGAIN = [[0, 0], [0, -1], [0, 1], [0, 2], [-1, 0], [1, 0], [-1, 1], [1, 1], [-1, -1], [1, -1]], check = [];

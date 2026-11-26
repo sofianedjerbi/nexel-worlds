@@ -7,7 +7,7 @@ const mouse = {x: 0, y: 0, in: false};
 let drag = null;
 // THE BLOCK UNDER THE POINTER (build mode, the cursor riding the land): the pointer's ray through the cubes as the HD camera draws them, the first solid cell it meets -> {x, y, z: its top, face: "T" its top, "S", "W", "E", "N"}, or null.
 // The ray: the place on the screen's px at each height (HdLook.screenOf solved for x, y at that height), from over the highest land in view down, a straight piece every half level, cell by cell along it
-// (Amanatides-Woo). (It was each tile's top at the cursor's riding height, nearest row first, no side faces: on terraces the pointer on a block's side picked a block two tiles off, or nothing)
+// (Amanatides-Woo), side faces too: on terraces the pointer on a block's side picks that block, not one two tiles off, or nothing
 let rayHi = null;
 function rayHit(mx, my) {
   const s = myPos(); if (!s || !HdLook.on || !HdLook.screenOf(s.x, s.y, 0)) return null;
@@ -19,9 +19,9 @@ function rayHit(mx, my) {
   const solid = (x, y, top) => ((w) => w && top > w[1])(win(x, y)) ? 0 : solidAt(x, y, top) ? 1 : HdThings.is(Floors.thingAt(x, y, top - 1) || "-", x, y) && solidAt(x, y, top - 1) ? 2 : 0;
   const FACE = [["W", "E"], ["N", "S"], ["T", "T"]];
   // THE RAY'S POINTS, a level's half apart, from its highest down: followed from your own level up and down, each from the one
-  // before. (It was followed from its top down, begun where you stand: on a curved world (HdLook.bend) a level meets the screen's
-  // point a second time far past the bend, where the land drops away, and begun 20 levels up, over a tall hill near you, it found
-  // that far one and went down it: the cursor was 30 tiles north of the tile pointed at, on the land there)
+  // before. (Not from its top down: on a curved world (HdLook.bend) a level meets the screen's
+  // point a second time far past the bend, where the land drops away, and from 20 levels up, over a tall hill near you, the ray
+  // would find that far one and go down it: the cursor 30 tiles north of the tile pointed at, on the land there)
   const zl = Math.max(rayHi.lo - 2, z0 - 64), zm = Math.round(z0 * 2) / 2, pts = [], walk = (z, step, end, g) => { for (; step > 0 ? z <= end : z >= end; z += step) { const r = on(z, g); if (!r || Math.hypot(r[0] - g[0], r[1] - g[1]) > 3) return; (step > 0 ? pts.unshift(r) : pts.push(r)); g = [r[0], r[1]]; } };
   const m = on(zm, [s.x + .5, s.y + .5]); if (m) { pts.push(m); walk(zm + .5, .5, rayHi.hi + 1, [m[0], m[1]]); walk(zm - .5, -.5, zl, [m[0], m[1]]); }
   else { let g = [s.x + .5, s.y + .5]; for (let z = rayHi.hi + 1; z >= zl; z -= .5) { const r = on(z, g); pts.push(r); if (r) g = [r[0], r[1]]; } }
@@ -41,7 +41,7 @@ function rayHit(mx, my) {
 // from the screen to the world. (Where it had none the classic flat picture's maths answered: a click on the sky was a walk to some tile far north.)
 function tileAtScreen(mx, my) {
   if (HdLook.on && Build.on && Build.S.plane === null && Build.S.deep === null) { const h = rayHit(mx, my); if (h) return {x: h.x, y: h.y, fy: .5, z: h.z, cz: h.cz, face: h.face !== "T", side: h.face}; }   // (build mode: the block under the pointer, its top or a side)
-  if (HdLook.on && !Build.on && me && LAND_BLOCKS.has(selected)) {      // (a block of the land in hand: over ground lower than yours, the pointer is on the plane of your own level, where the block goes, floors.js intent. It was on the ground far down the cliff, the tile drawn there)
+  if (HdLook.on && !Build.on && me && LAND_BLOCKS.has(selected)) {      // (a block of the land in hand: over ground lower than yours, the pointer is on the plane of your own level, where the block goes, floors.js intent, not on the ground far down the cliff)
     const s = myPos(), h = s && myZ(s.x, s.y), q = HdLook.pick(mx, my); if (!s || (q && topAt(q.x, q.y) >= h)) return q;
     const a = HdLook.pick(mx, my, () => h); return a && topAt(a.x, a.y) < h ? a : q;
   }

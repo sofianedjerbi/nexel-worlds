@@ -4,8 +4,8 @@
 // of a tile to the middle of the next, as a thrown thing goes: high enough to clear the edge it goes over. Its
 // shadow stays on the ground under it (the ground it leaves, until it is over the edge), it holds the pose it took
 // off in (no walking on air), and there is dust where it leaves the ground and where it lands.
-// It was quick: a hop took the time of a step (it is the time a jump takes now: below). Seen frame by frame,
-// what looked wrong before was the hang: a step and a half long, the body near the top of its arc for most of it.
+// A hop takes the time a jump takes (below), not a step's. Seen frame by frame, what must not show
+// is a hang: a step and a half long, the body near the top of its arc for most of it.
 // And then ("Jump looks unnatural"): it left the ground the moment the step began and landed the moment it ended,
 // stiff, in the pose it stood in. Then ("improve the jumping animation") each part has a pose drawn for it (jump_art.js):
 // a crouch on the ground it leaves (JUMP.crouch), the push off a px taller, the legs tucked going up, the
@@ -18,7 +18,7 @@
 // high as 1 block and more ... right now it looks like a weird 1/10th block animation"): the hop on the level went 6 px
 // up, a tenth of the body's height; up a step the arc was squeezed into the step's 200 ms, 4 px up the screen in a
 // frame, then 3 px a frame down in the "apex" pose (the pose turned to "fall" for a frame at the most) and its head 4
-// rows lower at once as it landed; down a step it went 2 px under the ground and back up. Now a jump is thrown and
+// rows lower at once as it landed; down a step it dipped 2 px under the ground and back up. Now a jump is thrown and
 // falls by its weight (JUMP.g, as a fall's): a hop goes a block and more up (JUMP.top), a step's jump the same, its top
 // JUMP.over over the step's (or the ledge it leaves, going down), and it takes the time that takes (jumpMs: about a
 // third of a second up or down a step: the walk waits for it, walk.js; the world takes 0.3 s for a step up at a walk,
@@ -62,7 +62,7 @@ function jumpOf(p) {
   const fwd = (ax === bx ? p.ty - p.y || p.fy : p.tx - p.x || p.fx) >= 0;        // from the first to the second?
   const g = fwd ? f : 1 - f, D = fwd ? d : -d, line = D * g, key = ax + "," + ay + "," + bx + "," + by;   // the way it goes: how far along, levels up by, the straight line
   if (D > 0 && mineWalking(p) && (fwd ? Leap.leapable(ax, ay, la, bx, by) : Leap.leapable(bx, by, lb, ax, ay))) return null;   // (yours walking up to a step you jump: on your own level until you do, leap.js due)
-  if (D <= -FALL.from && mineWalking(p) && Leap.ledge(p, ...DIRV[walking.dir])) return null;   // (yours walking to a ledge: on your own level to its edge, then the jump's fall, leap.js dropDue: drawn as a step down it went 13 px up the screen a frame, then back)
+  if (D <= -FALL.from && mineWalking(p) && Leap.ledge(p, ...DIRV[walking.dir])) return null;   // (yours walking to a ledge: on your own level to its edge, then the jump's fall, leap.js dropDue: not drawn as a step down: that jumps 13 px up the screen a frame, then back)
   if (D < 0) {                                                                    // down: no jump, a drop off the edge at the walk's pace
     const k = Math.max(0, (g - STEPDOWN.from) / (1 - STEPDOWN.from)), h = D * k ** STEPDOWN.q;
     return {body: h - line, ground: (g < .5 ? 0 : D) - line, squash: false, tuck: false, pose: null, d: D, key};

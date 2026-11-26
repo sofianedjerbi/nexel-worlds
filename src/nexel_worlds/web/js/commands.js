@@ -2,7 +2,7 @@
 // /tp, /summon, /give... The server says which you may use (asked each time the line opens: an admin made a moment
 // ago has them at once) and what their words can be; it checks every one again when it is sent. A line that names
 // one of them, written as a command is ("/give Joe wood 5", no "="), goes to the server, and its answer is a line of
-// the chat. A bot's action written with its arguments ("/give target=3 item=wood") is an action, as it was.
+// the chat. A bot's action written with its arguments ("/give target=3 item=wood") is still an action.
 let serverCmds = null;                               // {cmds: [{name, usage, desc, args}], all: [names], admin, creatures, items, times}
 
 function askCmds() {

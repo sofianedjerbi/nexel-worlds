@@ -164,7 +164,10 @@ def test_a_sprints_wake_thins_out_to_nothing_at_its_end_and_is_not_cut(game):
     game.hold(["d"], 600)
     game.page.keyboard.down("Shift")
     game.page.keyboard.down("d")
-    game.sleep(2200)                                           # (longer than a mark lives: the wake is whole, its end thinning)
+    # until the first sprint mark has lived its whole life, in the page's own time (the wake is whole, its end thinning). A
+    # 2.2 s sleep was 0.1 s past it: a runner that began the sprint late read the sprint's fresh start as a cut end
+    game.wait("(() => { const p = ents.get('agent' + myId), m = p && p.wake && p.wake.find((w) => w.dash); if (m && window.__dash0 === undefined) window.__dash0 = m.t;"
+              " return window.__dash0 !== undefined && performance.now() - window.__dash0 > SWIM.dashLife + 300; })()", timeout=15000)
     w = game.js(WAKE)
     game.page.keyboard.up("d")
     game.page.keyboard.up("Shift")

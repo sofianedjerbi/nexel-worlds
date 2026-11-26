@@ -16,19 +16,20 @@ function resize() {
   cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); cv.style.width = W + "px"; cv.style.height = H + "px";
 }
 addEventListener("resize", resize); resize();
-// Called each frame with its length: when frames have been long for a good while on a dense screen, draw at 1 px a
-// CSS px from then on (a quarter of the paint; the art is as sharp, only the lettering loses a little)
+// Called each frame with its length: when frames have been long for a good while on a dense screen, draw with fewer px
+// from then on (a quarter of the paint at 2), by a whole number only: 3 to 1, 2.5 to 1.25, under 2 none. At 1.25 drawn at 1,
+// the canvas was stretched by 1.25, a canvas px 1 or 2 of the screen's by where it fell: a walker's letters changed each step (#61)
 function slowFrame(dt, settled) {
-  const now = performance.now();
-  if (!settled || document.hidden || DPR <= 1) { paceFrom = now; return; }   // (loading, in the background: says nothing)
+  const now = performance.now(), d = window.devicePixelRatio || 1, low = Math.floor(d) >= 2 ? d / Math.floor(d) : d;
+  if (!settled || document.hidden || DPR <= low) { paceFrom = now; return; }   // (loading, in the background, nothing to lower: says nothing)
   frameMs += (Math.min(dt, .1) * 1000 - frameMs) * .02;
   if (frameMs < 30) paceFrom = now;
-  else if (now - paceFrom > 4000) { DPR_MAX = 1; frameMs = 16; resize(); }
+  else if (now - paceFrom > 4000) { DPR_MAX = low; frameMs = 16; resize(); }
 }
 let zoom = 3;
 const TS = () => P * zoom;
 // THE LAND'S PIXEL ON THE SCREEN: an art px is a whole number of the screen's own px (devicePixelRatio's): zoom x density, rounded where that is not whole. At a density of 1.25 or
-// 1.75 (a laptop's, a page zoomed in the browser) a zoom of 3 was 3.75 px: art px 3 and 4 px wide in turn, the land shimmering as it went by, and what is written over it
+// 1.75 (a laptop's, a page zoomed in the browser) a zoom of 3 unrounded is 3.75 px: art px 3 and 4 px wide in turn, the land shimmering as it goes by, and what is written over it
 // (names, bubbles, hearts) put at fractions of a px: soft, and another px each step. artPx: CSS px an art px (the land's canvas is shown at that, hd_view.js); onArt: a place
 // put on that pixel. What is written over a body is put there by its place on the land's pixel plus fixed offsets: it goes with the body px for px.
 const artPx = () => { const d = window.devicePixelRatio || 1; return Math.max(1, Math.round(zoom * d)) / d; };
@@ -90,11 +91,11 @@ const sendSpec = (o) => spec && spec.readyState === 1 && spec.send(JSON.stringif
 // no more: your own land at its own height from yours (off the screen, its top), the rest of the screen earth, or sky.
 // away: on: so now; a: how far gone the other land is (0 to 1, a moment: render.js); y: your own row; shift: rows from
 // where you are drawn to the land drawn there, when it is high or low itself (a plateau); sky: over the land, not under;
-// t: when it was worked out (not this moment's: nobody plays, the first screen: the camera alone says where)
+// t: when it is worked out (not this moment's: nobody plays, the first screen: the camera alone says where)
 const away = {on: false, a: 0, y: 0, shift: 0, sky: false, high: false, t: -1e9};
 function viewRect(margin) {
-  // (THE HD LOOK'S LAND IS THE VIEW: the land it makes tile by tile (HdLook.box, hd.js viewOf: the screen and the view distance), not the flat picture's rows. They were two extents: the box reaches
-  //  farther north, and its north rows were asked for only as far land, 3 to 6 s late on new land)
+  // (THE HD LOOK'S LAND IS THE VIEW: the land it makes tile by tile (HdLook.box, hd.js viewOf: the screen and the view distance), not the flat picture's rows. One extent, not two: the box reaches
+  //  farther north, and its north rows asked only as far land come 3 to 6 s late on new land)
   const hb = typeof HdLook !== "undefined" && HdLook.live && HdLook.box; if (hb) return [hb[0] - margin, hb[1] - margin, hb[2] - hb[0] + 1 + 2 * margin, hb[3] - hb[1] + 1 + 2 * margin];
   const more = typeof Curve === "undefined" ? 0 : Math.min(40, Math.ceil(Curve.over() / TS()));      // (the curved world shows further north: curve.js)
   const w = Math.ceil(W / TS()) + margin * 2, h = Math.ceil(H / TS()) + margin * 2 + more, x = Math.floor(cam.x - w / 2), y = Math.floor(cam.y - (h - more) / 2) - more;
@@ -117,8 +118,8 @@ setInterval(() => {
       const stale = b && now - b.at > 30000;
       if ((!b || stale) && !(requested.get(k) > now - 3000)) { requested.set(k, now); if (b) b.at = now; sendSpec({op: "region", x: bx * B, y: by * B, w: B, h: B}); }
     }
-  // THE FAR LAND the HD look draws to its horizon (HdLook.far: its patches, 40 tiles past its box): asked for too, nearest first, four blocks a tenth of a second. (It was the top-down
-  // screen's blocks only: past them the far land was not known, drawn as a flat sea, and the sky's line over a gap of the backdrop's flat colours: "a flat blue mass", seen from a mountain)
+  // THE FAR LAND the HD look draws to its horizon (HdLook.far: its patches, 40 tiles past its box): asked for too, nearest first, four blocks a tenth of a second. (Not the top-down
+  // screen's blocks only: past them the far land would not be known, drawn as a flat sea, and the sky's line over a gap of the backdrop's flat colours: "a flat blue mass", seen from a mountain)
   const f = typeof HdLook !== "undefined" && HdLook.live && HdLook.far, fb = f && [f[0], f[1], f[2], f[3]].map((v) => Math.floor(v / B));
   if (fb) { const cx = Math.floor(cam.x / B), cy = Math.floor(cam.y / B), far = [];
     for (let by = fb[1]; by <= fb[3]; by++) for (let bx = fb[0]; bx <= fb[2]; bx++) { const k = bkey(bx, by), b = blocks.get(k); if ((!b || now - b.at > 30000) && !(Math.abs(requested.get(k)) > now - 3000)) far.push([Math.abs(bx - cx) + Math.abs(by - cy), bx, by]); }

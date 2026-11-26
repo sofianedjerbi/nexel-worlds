@@ -12,7 +12,7 @@
 const HdThings = (() => {
   const SW = 1024, SH = 1024, sheet = {px: new Uint32Array(SW * SH), w: SW, id: "hd"}, rooms = new Map(), pixs = new Map(), UP = RELIEF_STEP, LEAN = 0, PITCH = 4, plans = new Set(), FH = 16 + UP;   // (FH: a built block's picture: its 16 rows of top, a level of face under them) (KF: a front's px on the screen a px of its height, hd.js cam.pitch; LEAN: px a top's row leans, a px off the middle: none, it read as broken; PITCH: px a roof rises a tile; plans: walls only planned, "x,y,z")
   let nx = 0, ny = 0, tall = 0, ids = 0, scratch = null;
-  const KF = () => Math.cos((HdLook.cam.base || HdLook.cam.pitch) * Math.PI / 180);   // (a front's px on the screen a px of its height: the eye's pitch, 36 degrees, up to 52 on a screen held upright: it was 36 always, and a wall's 12 rows of planks were squeezed into 9 px on a phone)
+  const KF = () => Math.cos((HdLook.cam.base || HdLook.cam.pitch) * Math.PI / 180);   // (a front's px on the screen a px of its height: the eye's pitch, 36 degrees, up to 52 on a screen held upright: at 36 always, a wall's 12 rows of planks would squeeze into 9 px on a phone)
   // room for w x h px of paint in the sheet, filled once by fill(put(i, j, px)) -> [u, v]
   function room(key, w, h, fill) {
     let p = rooms.get(key); if (p) return p;
@@ -130,7 +130,7 @@ const HdThings = (() => {
   }
   // ---- built blocks (floors.js): a floor's planks, a step, a roof's shingles. The game's own picture of the block: its 16 rows the top, the rows under them its face
   // inside a house, the land's own rule (your space, vox_style_land.js): what is built over YOUR ROOM is not drawn (the roofed tiles walked to from yours on your level; a wall, a door stop it),
-  // nor what is over the tiles right beside it and south of it (the eye's side); the north wall, its storeys and the roof over it stand whole: the room's back. (Round your body: hd_level.js place. It was the tile your walk went to, and key() the one you were on) (It was all that is over your head, the house a low tray.) Build mode: the game's rule, over the cursor's level.
+  // nor what is over the tiles right beside it and south of it (the eye's side); the north wall, its storeys and the roof over it stand whole: the room's back. (Round your body: hd_level.js place, one tile, not the walk's goal and key()'s tile apart) (Not all that is over your head: that leaves the house a low tray.) Build mode: the game's rule, over the cursor's level.
   let roomK = "", room0 = null, roomZ = 0, roomS = 0;
   function roomNow() { const P = HdLevel.place; if (!P || P.free) return null; const p = {x: P.tx, y: P.ty}, L = P.L, k = [p.x, p.y, L, Floors.ver, landVer].join(); if (k === roomK) return room0; roomK = k; room0 = null; roomZ = L; roomS = -1e9;
     const over = (x, y) => { const c = Floors.cells(x, y); if (c) for (const z of c.keys()) if (z > L) return true; return false; }; if (!over(p.x, p.y)) return null;

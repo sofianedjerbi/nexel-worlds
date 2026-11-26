@@ -40,7 +40,7 @@ function bootLocal() {
 }
 
 // How far the world is (local_worker.js: 0 to 1): the strip at the foot of Wake up is that long (title.css), in whole
-// pixels of the window's art. It was a strip that ran from left to right for as long as it took, saying nothing.
+// pixels of the window's art. Not a strip that runs from left to right for as long as it takes, saying nothing.
 let bootAt = 0;
 function bootShow(p) {
   bootAt = Math.max(bootAt, p);

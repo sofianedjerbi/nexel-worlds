@@ -1,6 +1,6 @@
 // What Tab shows while it is held (keyboard.js; a tap on the goals, on a phone): the day, and who is awake.
 // Drawn as the recipe book is (craft.js: one pixel size, --q; a window, sunk cells, a sunk list, all of them shadows
-// of a box; its pixel is a size under the book's, --w: it was the book's own, and too big): at the top the sun or
+// of a box; its pixel is a size under the book's, --w: the book's own is too big): at the top the sun or
 // the moon, the day and the hour, and under them the day as a bar in the sky's colours hour by hour (daylight.js:
 // bands and checkers in big cells, not a gold part and a dark one), with a mark where the hour is. Then a line for each one awake: their picture (their own sheet, as they
 // are dressed), their name, their level; you first, and lit. At the foot, where you are and how many are asleep.

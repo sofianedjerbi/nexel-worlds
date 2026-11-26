@@ -3,7 +3,7 @@
 // =====================================================================================
 //  Tile store: 32x32 blocks, filled from the server and patched by tile events
 // =====================================================================================
-const B = 32, P = 16;
+const B = 32;
 const smooth = (v) => { v = Math.max(0, Math.min(1, v)); return v * v * (3 - 2 * v); };   // 0..1, eased
 const blocks = new Map();
 const bkey = (bx, by) => bx + "," + by;
@@ -189,7 +189,7 @@ function drawTile(x, y, to = null) {                 // (to: the px it is painte
   if (isLand(gr)) groundMarks(g, x, y, gr);
   if (c === "H") drawBlobLayer(g, IMG.hedge, x, y, (cc) => cc === "H", 0);
   const f = floatAt(x, y); if (f >= 0) g.drawImage(IMG.water_objects, FLOATS[f] * 16, 0);
-  // in the order they lie: the ground, the hill's levels from the lowest (they were noted from the top down), then what is laid
+  // in the order they lie: the ground, the hill's levels from the lowest (noted from the top down, so read back in reverse), then what is laid
   // on top. From the last one that hides all under it.
   const order = [];
   for (let j = hills; j < base; j++) order.push(j);
@@ -210,7 +210,7 @@ function floatAt(x, y) {
 }
 // What is laid on the ground, the same at any height: a layer each, a sheet laid by the one rule (on: the grounds that are of it), or a
 // cell picked by its place (cell: paths, pavement.js; furrows, furrows.js: made to run on from tile to tile). Tilled soil: soil to its
-// edges, its furrows (it was the pack's patch, a line 10 px inside its outer tiles, up on a hill, and furrows on the meadow: two fields by their height)
+// edges, its furrows, the same up on a hill as on the meadow (not the pack's patch, a line 10 px inside its outer tiles: one field, not two)
 const SOIL = {cell: (x, y) => [IMG.soil, ...plainCell(IMG.soil, x, y, 0)]}, FURROWS = {cell: (x, y) => Furrows.cell(x, y)};
 const MARKS = {o: [SOIL, FURROWS], u: [SOIL, FURROWS, {sheet: "tilled_wet", on: "u"}],
   "'": [{sheet: "ash", on: "'"}], n: [{cell: () => [IMG.house_walls, 16, 16]}], _: [{cell: (x, y) => Pave.cell(x, y)}]};   // (n: a floor, the pack's house floor, solid all over)
@@ -221,7 +221,7 @@ function groundMarks(g, x, y, gr) {
 // UNDER SEA LEVEL the land is the same earth, darker the deeper: ONE tone by depth, laid on the land's own paints (a floor's soil,
 // tiles.js drawTile and hd.js under; a wall's front, voxpaint.js front): 1 at sea level and over, a step a level down to eight
 // levels (as dark as it gets), still warm brown; a floor less than a wall: where you walk is told from what stops you.
-// (It was a second family of sheets, the soil's and the hill's recoloured a copy a level: dugSheet.) No grass grows down there:
+// (One tone on the same paints: no second family of sheets recoloured a copy a level.) No grass grows down there:
 // a hole three deep with a grass floor looked like a raised table.
 const DEEP = {wall: [[.075, .45], [.09, .38], [.11, .3]], floor: [[.0475, .62], [.054, .57], [.0625, .5]]};
 const deepTone = (z, kind) => DEEP[kind].map(([k, lo]) => Math.max(lo, 1 - k * Math.min(8, Math.max(0, -z))));

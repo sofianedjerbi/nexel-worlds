@@ -22,9 +22,9 @@ const DigUp = (() => {
     if (roof) return landSolid(s.x, s.y, h + 2) ? {x: s.x, y: s.y, z: h + 2, text: "Dig up", way} : null;       // (a floor somebody built over you: build mode's X takes it)
     return landSolid(q.x, q.y, h + 2) ? {x: q.x, y: q.y, z: h + 2, text: "Dig a step", way} : null;      // (way: the way out is shown: its marks alone, mark.js)
   }
-  // One dig at a time, the block named by its own place. (It was named by `actTarget`, read by act() after its wait for
-  // the server to come to where you stopped: a second press during that wait sent a second dig with no place, which
-  // took the first one's turn: in the river at a cliff's foot, where the server is slow to come, Space dug nothing.)
+  // One dig at a time, the block named by its own place. (Not by `actTarget`, read by act() after its wait for
+  // the server to come to where you stopped: a second press during that wait would send a second dig with no place, which
+  // takes the first one's turn: in the river at a cliff's foot, where the server is slow to come, Space digs nothing.)
   let going = false;
   const send = (tool, args) => { going = true; act(tool, args).finally(() => { going = false; }); };
   // The way's next block, by its key ("up" R; "alt" X: dig on, or dig down where you stand) -> true: the press was the way's (done, or waiting for your hands)

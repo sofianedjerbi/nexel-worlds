@@ -1,5 +1,5 @@
-// What is built, drawn a piece at a time. A house was walls drawn as small blocks until they closed a room; then
-// a roof and a tall front were drawn over the lot in one go: a house dropped onto the world. Now each wall is
+// What is built, drawn a piece at a time, not a house dropped onto the world in one go (a roof and a tall front
+// laid over the lot once small blocks of wall close a room). Each wall is
 // itself from the first one laid, and a roof is tiles laid one by one (the server keeps where: sim/roofing.py).
 //   A wall is thin, as the pack's own house walls are and as a fence is: it stands in the middle of its tile and
 //   everything of it is drawn on that tile (4 px over it), so it hides nothing behind it. Where nothing is built
@@ -38,13 +38,13 @@ const Structures = (() => {
   }
   // A WALL'S LOOK IS DATA: its line and its cap's colour (a px, as the land's paints are: 0xAABBGGRR), and where its front is in the pack:
   // 16 x 12 px, the house's planks, the stone wall's stones. The land's own painter lays them (hd_things.js wall: boxes in the land, lit as
-  // the land's faces). (It was a painter of its own here, drawWall: rects and sheet pieces on a 2D canvas at the zoom, kept from the flat
-  // picture and then only drawn off screen to read two colours back out of it; the front's place in the pack was written twice.)
+  // the land's faces). (No painter of its own here: its colours and its front's place in the pack
+  // are said once, here, not drawn off screen on a 2D canvas and read back out of it.)
   const abgr = (h) => (0xff000000 | parseInt(h.slice(5, 7), 16) << 16 | parseInt(h.slice(3, 5), 16) << 8 | parseInt(h.slice(1, 3), 16)) >>> 0;
   const look = (c) => (c === "%" ? {ink: abgr(STONE[0]), cap: abgr(STONE[1]), front: [IMG.gen, genCell("stone_wall")[0], genCell("stone_wall")[1] + 2]} : {ink: abgr(INK), cap: abgr(CAP), front: [IMG.house_walls, 56, 4]});
   // One roof block's top, as px (16 wide, 30 high: 7 rows over its tile, its 16, 7 under): the middle of the pack's roof, its edges laid over
-  // it where the roof ends. up, down: how many roof blocks go on north and south of it; w, e: one beside it. (It was painted on a 2D canvas
-  // at the zoom, drawRoof, and read back.)
+  // it where the roof ends. up, down: how many roof blocks go on north and south of it; w, e: one beside it. (Made as px here, not painted on
+  // a 2D canvas at the zoom and read back.)
   function roofPx(up, down, w, e) {
     const d = sheetData(IMG.house_roof), px = new Uint32Array(16 * 30), row = up + down >= 2 && up === Math.floor((up + down) / 2) ? 2 : up % 2 ? 3 : 1;      // (the ridge half way down its run)
     const lay = (sx, sy, h, at, dx) => { for (let k = 0; k < h; k++) for (let i = 0; i < 16; i++) { const X = i + dx, v = d.px[(sy + k) * d.w + sx + i]; if (X >= 0 && X < 16 && v >>> 24 > 127) px[(at + k) * 16 + X] = v; } };

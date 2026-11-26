@@ -1,6 +1,6 @@
 // The HD look (hd.js): what the x-ray window takes out of the picture goes, and comes back, over 120 ms (the painter draws
 // that much of it, a 2x2 dither in whole art px, vox_style_glsl.js SF): the plants on the land over your room, a tree over it.
-// (They were there one frame and gone the next when the window opened on their tile: a pop on every stair.)
+// (Not there one frame and gone the next when the window opens on their tile: a pop on every stair.)
 //   HdEase.frame(now): once a frame, before the things are asked
 //   HdEase.of(key, on) -> 0..1: how much of the thing named key is drawn this frame; on: it is wanted whole
 // A thing first met while it is not wanted starts at 0: nothing fades out that was never seen.

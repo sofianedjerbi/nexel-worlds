@@ -129,7 +129,7 @@ function aimedTile() {
 }
 const marked = (a) => !!a && !a.it.info && !a.it.walk;
 // What a key acts on that is marked, its keys beside it: what you face first (E's, else X's: a tree, a rock, a wall),
-// then E's (what you use) elsewhere, then X's. (X's "Dig down" on open meadow: its row in the corner, as it was)
+// then E's (what you use) elsewhere, then X's. (X's "Dig down" on open meadow: its row in the corner, unchanged)
 function keyAim() {
   const m = facedOnly(facingIntent(false)), x0 = facingIntent(true), x = marked(x0) && x0.it.ok !== false && !x0.it.low ? x0 : null, q = facingTile();
   const at = (a) => !!a && !!q && a.p.x === q.x && a.p.y === q.y;
@@ -280,7 +280,7 @@ addEventListener("keydown", (e) => {
   const fn = SHORTCUTS[u];
   if (fn) { e.preventDefault(); if (!e.repeat || HELD.has(u) || (u === " " && walking && !autoJump())) fn(e); }      // (Space held while walking: a jump each step, auto-jump off; on, a hop: walk.js)
 });
-// Tab: the next thing in hand at once; held, the day, you, who is awake (who.js, style.css), and the hand as it was
+// Tab: the next thing in hand at once; held, the day, you, who is awake (who.js, style.css), and the hand unchanged
 let tabWho = null; function tabDown(u, e) {
   const was = handSlot, who = () => { drawWho(); document.body.classList.add("tab"); };
   if (u !== "tab") return SHORTCUTS[u] ? SHORTCUTS[u](e) : who();      // (Tab given to another action, or none)

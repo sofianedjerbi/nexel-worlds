@@ -1,13 +1,13 @@
 // The curved world, the game's side ("a voxel world viewed top-down in Animal Crossing style"): the ground bends
 // away to a horizon in the upper part of the screen, with a sky over it. Where you stand nothing changes: under the
-// line where the bend starts the screen is exactly the flat one, and aiming is as it was. The maths is the engine's
+// line where the bend starts the screen is exactly the flat one, and aiming is unchanged. The maths is the engine's
 // (vox_curve.js: one function for the GPU and for this file); here are the numbers, where the eye is, the `sy`
 // everything that stands is placed with (render.js), and the sky's colours by the hour (vox_sky.js draws it).
 // The settings' "Curved world" (options.js: curve), ONE parameter of the HD look's view (hd.js viewOf): on, the land
 // bends away to the horizon the view distance puts, a sky over it; off, it is flat, the land to the picture's top,
 // no sky. (?curve=0 or 1 in the page's address, or Curve.force "off" / "on": that for this page whatever the setting.)
 //
-// x is as it was, and a height is as tall far off as near. Every point is pushed down the screen by the square
+// x is unchanged, and a height is as tall far off as near. Every point is pushed down the screen by the square
 // of how far it is past the line where the roll starts (vox_curve.js), so level ground goes up to a horizon and
 // comes down again behind it, and whatever rises to the north has its horizon too. What stands is never drawn
 // smaller (a pixel of a sprite is a pixel of the land): far rows are closer together, what stands on them stands
