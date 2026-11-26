@@ -13,7 +13,10 @@ Printed: the e2e test files to run (and the unit test files), one a line. The ma
   none does, and the server-facing e2e (tests naming the module, test_e2e_world.py, test_e2e_edits.py);
 - the sound pipeline (tools/build_audio.py, music/**, the CI workflow that builds the sounds): what web/js/audio.js
   selects, the tests that play sound (sounds, sfx, music, the boss's loop...), as their audio is rebuilt;
-- a test file: itself; a helper of tests/e2e (game.py, waits.py, conftest.py...): the quick set only (below).
+- a test file: itself and the test files that import it (test_e2e_hd_sun.py's hd()); a helper of tests/e2e (game.py,
+  waits.py, pages.py...): the test files that import it, directly or through another helper (game.py imports waits.py);
+  conftest.py, and what it imports: every e2e test (their fixtures). A file of tests/e2e that nothing imports: the quick
+  set (below). (A helper's change ran no browser test at all: #146.)
 --run: the e2e files with `pytest -m e2e -n 3`, then the quick set (`-m "e2e and quick"`), then the unit files, each
 with stdin from /dev/null. Exit code: the first run that failed."""
 
@@ -65,6 +68,37 @@ DOC = re.compile(r'^[ \t]*[rbu]?("""|\'\'\')[\s\S]*?\1', re.M)       # a docstri
 NOTE = re.compile(r"(?:^|(?<=\s\s))#\s.*$", re.M)                    # a comment ("  # ..." or a line of one; not '#tA' in a selector)
 
 
+IMPORT = re.compile(r"^[ \t]*(?:from[ \t]+([\w.]+)[ \t]+import|import[ \t]+([\w., \t]+))", re.M)
+
+
+def importers(root: Path) -> dict[str, set[str]]:
+    """A module of tests/e2e (its stem) -> the modules of tests/e2e that import it."""
+    mods = {p.stem: p for p in (root / E2E).glob("*.py")}
+    out: dict[str, set[str]] = {}
+    for stem, p in mods.items():
+        for m in IMPORT.finditer(p.read_text(errors="replace")):
+            names = [m.group(1)] if m.group(1) else [n.split()[0] for n in m.group(2).split(",") if n.split()]
+            for n in names:
+                n = n.split(".")[0]
+                if n in mods and n != stem:
+                    out.setdefault(n, set()).add(stem)
+    return out
+
+
+def users(stem: str, root: Path) -> tuple[list[str], str]:
+    """The e2e test files that use a module of tests/e2e, through the imports between them: every one if conftest.py is
+    among them (pytest gives its fixtures to all). -> (test files, why)"""
+    imp, seen, stack = importers(root), set(), [stem]
+    while stack:
+        for u in imp.get(stack.pop(), ()):
+            if u not in seen:
+                seen.add(u)
+                stack.append(u)
+    if stem == "conftest" or "conftest" in seen:
+        return [str(p.relative_to(root)) for p in sorted((root / E2E).glob("test_e2e_*.py"))], "conftest.py: every test's fixtures"
+    return [f"{E2E}{s}.py" for s in sorted(seen) if s.startswith("test_e2e_")], "imports it"
+
+
 def code(text: str) -> str:
     """A test's text without its docstrings and comments: the names it uses, not the words it says ("said", "xray")."""
     return NOTE.sub("", DOC.sub("", text))
@@ -88,11 +122,13 @@ def affected(changed, root: Path = ROOT, why=None):
         p = Path(f)
         name = p.name
         if f.startswith(E2E):
-            if name.startswith("test_e2e_") and name.endswith(".py"):
-                if (root / f).exists():
-                    add(e2e, f, "changed")
-            else:
-                quick = True                                   # (a helper: the quick set tries every area)
+            if name.startswith("test_e2e_") and name.endswith(".py") and (root / f).exists():
+                add(e2e, f, "changed")
+            us, how = users(p.stem, root) if name.endswith(".py") else ([], "")
+            for t in us:
+                add(e2e, t, f"{name}: {how}")
+            if not us and not name.startswith("test_e2e_"):
+                quick = True                                   # (nothing imports it: the quick set tries every area)
             continue
         if f.startswith("tests/") and name.startswith("test_") and name.endswith(".py"):
             if (root / f).exists():

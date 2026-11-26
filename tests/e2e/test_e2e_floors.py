@@ -3,6 +3,8 @@ the server: sim/storeys.py)."""
 
 import pytest
 
+from tap import step
+
 SLOT = "(n) => String((slots.indexOf(n) + 1) % 10)"           # the key of the bar's slot that holds it
 # the blocks at height z over w x h tiles: p planks, r roof, or the char of what stands on the block
 CELLS = "([x, y, w, h, z]) => { let s = ''; for (let j = 0; j < h; j++) { for (let i = 0; i < w; i++) { const c = Floors.get(x + i, y + j, z); s += c ? c[1] || c[0][0] : '.'; } s += '/'; } return s; }"
@@ -188,8 +190,8 @@ def test_earth_raises_the_ground_and_planks_go_on_from_a_floor(game):
     assert game.rpc("act", tool="place", args={"x": x + 3, "y": y + 3, "item": "plank", "z": 3})["ok"]       # one block on a wall
     game.rpc("dev_stamp", x=x + 4, y=y + 4, rows=["nn"])
     game.rpc("dev_teleport", x=x + 4, y=y + 5, z=0)
-    for step in ((x + 4, y + 4, 1), (x + 5, y + 4, 1), (x + 5, y + 4, 2)):                             # two steps up to it
-        assert game.rpc("act", tool="place", args={"x": step[0], "y": step[1], "item": "plank", "z": step[2]})["ok"]
+    for at in ((x + 4, y + 4, 1), (x + 5, y + 4, 1), (x + 5, y + 4, 2)):                             # two steps up to it
+        assert game.rpc("act", tool="place", args={"x": at[0], "y": at[1], "item": "plank", "z": at[2]})["ok"]
     assert game.rpc("act", tool="place", args={"x": x + 5, "y": y + 3, "item": "plank", "z": 3})["error"] == "bad_target"      # (not beside a block: nothing holds it)
     assert game.rpc("act", tool="place", args={"x": x + 4, "y": y + 3, "item": "plank", "z": 3})["ok"]
     game.rpc("dev_teleport", x=x + 4, y=y + 3, z=3); game.arrive()
@@ -198,6 +200,4 @@ def test_earth_raises_the_ground_and_planks_go_on_from_a_floor(game):
     assert "Lay planks" in game.actions()
     game.press("e", 700)
     assert game.js(f"!!Floors.get({x + 4}, {y + 2}, 3)") and game.inv("plank") == 0
-    game.hold(["ArrowUp"], 90)
-    game.sleep(500)
-    assert (game.server()["y"], game.server()["z"]) == (y + 2, 3) and not game.errors                  # and you walk out on it
+    assert step(game, "ArrowUp")[1:] == (y + 2, 3) and not game.errors                   # and you walk out on it (a tap: one tile, off the floor's end was two on a slow runner)

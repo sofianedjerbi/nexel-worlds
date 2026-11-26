@@ -23,13 +23,19 @@ def free(rec):
     return [(a, b) for a, b in zip(rec, rec[1:]) if b[0] > a[0] and -1 <= b[3] - gone(a, b) <= 2]
 
 
-def speed(rec, skip_ms=300):
+def walked(rec, skip_ms=300):
+    """The free frames of a walk, from skip_ms on, up to its last frame that moved you."""
+    moved = [k for k in range(1, len(rec)) if gone(rec[k - 1], rec[k]) > 1e-6]
+    return free([r for r in rec[: moved[-1] if moved else 0] if r[0] > skip_ms])
+
+
+def speed(rec, skip_ms=300, also=()):
     """Tiles per second of the game's time the walk went at its own pace (free frames; a frame cut at 0.1 s counts 0.1 s:
     game_s. A runner's frames are 67 to 280 ms, and by the page's clock a walk read 2 tiles a second), ignoring the start
     and what follows the walk: its last frame that moved you (it ends on a tile, short of a frame's walk), and you
-    standing after it (hold() waits for the server's answer once the key is up: 0.6 s of standing read 3.8)."""
-    moved = [k for k in range(1, len(rec)) if gone(rec[k - 1], rec[k]) > 1e-6]
-    pairs = free([r for r in rec[: moved[-1] if moved else 0] if r[0] > skip_ms])
+    standing after it (hold() waits for the server's answer once the key is up: 0.6 s of standing read 3.8). `also`: more
+    recordings of the same walk, their free frames counted with its own."""
+    pairs = [p for r in (rec, *also) for p in walked(r, skip_ms)]
     assert len(pairs) >= 3, ("too few frames at the walk's own pace", rec[:6])
     return sum(gone(a, b) for a, b in pairs) / sum(game_s(a, b) for a, b in pairs)
 
@@ -48,16 +54,24 @@ def backward_jumps(rec, axis, sign):
 def test_walk_and_sprint_speeds(game):
     # (on a meadow of its own: 7.5 tiles east at a walk, then 15 west at a sprint. It walked over whatever the test before
     # it left, water at half the pace or a step to jump, and read 2.7 to 4 tiles a second now and then: #28)
-    game.clear_area(14)
-    game.start_recording()
-    game.hold(["d"], 1500)
-    walk = game.recording()
-    game.sleep(400)
-    game.start_recording()
-    game.hold(["Shift", "a"], 1500)
-    sprint = game.recording()
-    assert 4.3 < speed(walk) < 5.7, (speed(walk), slow(walk, 5))
-    assert 8.5 < speed(sprint) < 11.5, (speed(sprint), slow(sprint, 10))
+    # (and a second time, back the way it came, when a loaded runner left too few frames at the walk's own pace: its
+    # server, late, then made two tiles in 140 ms, and every frame after was the page catching up: "too few frames", 117 ms)
+    game.clear_area(16)
+
+    def run(keys, back):
+        recs = []
+        for k in (keys, back):
+            game.start_recording()
+            game.hold(k, 1500)
+            recs.append(game.recording())
+            game.sleep(400)
+            if len(walked(recs[0])) >= 3:
+                break
+        return recs[0], recs[1:]
+    walk, more = run(["d"], ["a"])
+    assert 4.3 < speed(walk, also=more) < 5.7, (speed(walk, also=more), slow(walk, 5))
+    sprint, more = run(["Shift", "a"], ["Shift", "d"])
+    assert 8.5 < speed(sprint, also=more) < 11.5, (speed(sprint, also=more), slow(sprint, 10))
     game.sleep(500)
     assert game.pos() == (game.server()["x"], game.server()["y"])
 
