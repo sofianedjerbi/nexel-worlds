@@ -59,166 +59,188 @@ function drawBody(p, sx, sy, S, t, now) {
   const pl = BodyPlace.of(p), j = pl.jump, cl = pl.climb;       // where it is this frame: in a jump or a fall, on a ladder (body_place.js)
   if (cl) { x += Math.round(cl.dx * S); y += Math.round(cl.dy * S - cl.lift * z); }
   if (j && e.kind !== "agent") { jumpShadow(j, x, y, S, z, ANIMALS[e.kind] && ANIMALS[e.kind].fw === 32 ? 8 : 5); y -= Math.round(j.body * z); }
-  if (e.kind === "agent") {
-    const mine = me && e.id === myId; p.look = null;   // (the facing drawn while you aim: lookAt)
-    if (e.eats && !p.eatSince) p.eatSince = now;
-    if (!e.eats) p.eatSince = 0;
-    // what they are doing: you, as your own screen has it; the others, as the server says. Eating is done with the
-    // hands, beside walking (the walk's legs go on under it)
-    let action = mine && (myAside || myAction) ? myAside || myAction
-      : !mine && e.eats ? {tool: "eat", item: e.eats, t0: p.eatSince}
-      : e.doing ? {tool: e.doing, dir: e.dir, at: e.at, tid: e.tid, with: e.with, item: e.item, t0: p.doingSince || now} : null;
-    if ((!action || action.tool === "walk" || action.tool === "move_to") && p.swing && now - p.swing.t0 < 320)
-      action = {tool: "attack", t0: p.swing.t0, with: p.swing.with};   // a swing, even on the move
-    if (e.doing && !p.doingSince) p.doingSince = now;
-    if (!e.doing) p.doingSince = 0;
-    if (!mine) p.running = !!e.run;
-    const sheetImg = wornReady(agentTint(e.name), e.worn, e.race, e.bot); if (!sheetImg) return;        // (wear.js: their sheet, dressed; not made yet: they show once it is, made between frames)
-    let bob = j ? Math.round(j.body * z) : 0, anim = "idle", frame, lunge = 0, blow = null;
-    const tool = action && action.tool, k = action ? (now - action.t0) / 1000 : 0;
-    // (the pale mark under you. With the sun's shadows you have a shadow of your own: no mark, hd_sun.js)
-    if ((mine || e.name === follow) && !(cl && cl.on) && !(opt("depth") && opt("shadows") > 0)) {
-      ctx.fillStyle = mine ? "rgba(255,248,232,.55)" : "rgba(255,200,120,.55)";
-      pixelOval(x + S / 2, y - (j ? Math.round(j.ground * z) : 0) + S - 2 * z, 6, 2.5, 0, .5);   // (on the ground under you)
-    }
-    if (j) jumpShadow(j, x, y, S, z);
-    if (tool === "dig" || tool === "attack" || tool === "craft") {
-      // full 8-frame tool swings: wind-up, strike (frame 4, with the arc), follow-through
-      const [tx, ty] = action.at || [Math.round(p.tx) + p.fx, Math.round(p.ty) + p.fy], target = combAt(tx, ty);   // the tile worked on
-      // the sheet's swings show a tool: only use them when one is in hand; bare hands reach out and back
-      const held = action.with && SWING_ROW[toolArt(action.with)];
-      anim = held || "idle";
-      const fps = tool === "attack" ? 20 : 13, n = Math.floor(k * fps);
-      frame = n % 8;
-      if (!held) lunge = Math.round(Math.sin(Math.min(1, frame / 6) * Math.PI) * 3) * z;
-      // a sword cuts and a spear is thrust (swing_art.js), where the sheet's swing is a chop: the body stands and steps in
-      if (tool === "attack" && SwingArt.KINDS.includes(toolArt(action.with))) { blow = [toolArt(action.with), frame]; anim = "idle"; lunge = SwingArt.STEP[toolArt(action.with)][frame] * z; }
-      // the strike lands (frame 4 of each swing): debris, a shake and its sound on the target. Counted from the action's
-      // start, not from the frames drawn: on a slow device a frame can skip a swing's fourth, and the axe was silent (#47)
-      const strikes = n >= 4 ? Math.floor((n - 4) / 8) + 1 : 0;
-      if (p.struck == null || p.struckAt !== action.t0) { p.struckAt = action.t0; p.struck = 0; }
-      if (strikes > p.struck) {
-        p.struck = strikes;
-        if (tool === "dig" && target) {
-          const spr = GROUND.has(target) ? null : objectSprite(target, tx, ty, now / 1000);
-          debris(tx, ty, spr, GROUND.has(target) ? 5 : 4, {kind: "o", dy: "TFU".includes(target) ? -.5 : 0, dust: "M*%Y".includes(target) || GROUND.has(target)});
-          shakes.set(tx + "," + ty, now);
-          const mat = GROUND.has(target) ? "soil" : material(target);
-          sfx(!held && (mat === "wood" || mat === "stone") ? "punch" : STRIKE[mat], tx, ty);
-        } else if (tool === "craft") burst(Math.round(p.tx), Math.round(p.ty), "spark", 5, {dy: -.6, g: 4});
-      }
-      if (blow) frame = 0;
-    } else if (tool === "water") {
-      anim = "water"; const n = Math.floor(k * 10); frame = n % 8;
-      if (frame >= 3 && frame <= 6 && p.lastDrop !== n) { p.lastDrop = n; const [tx, ty] = action.at || [Math.round(p.tx) + p.fx, Math.round(p.ty) + p.fy];
-        parts.push({x: tx + .3 + Math.random() * .4, y: ty - .1, vx: (Math.random() - .5) * .6, vy: 1.5, g: 9, life: .35, age: 0, c: "#8fd3f4", s: 1});
-        if (n % 3 === 0) sfx("pour", tx, ty); }
-    } else if (tool === "milk" || tool === "feed" || tool === "sleep") {
-      bob = tool === "sleep" ? 0 : Math.round(Math.abs(Math.sin(k * 8)) * 2) * z;
-      if (tool === "sleep" && !emotes.has(e.name)) emote(e.name, "sleep");
-    } else if (tool === "eat") {                      // three bites (see eatPose): a small nod on each, crumbs fall
-      const pose = eatPose(k);
-      if (k < .05) p.lastBite = -1;                  // a new meal
-      bob += pose.biting ? z : 0;                    // (on top of a hop: you may be walking)
-      if (pose.biting && p.lastBite !== pose.n) {
-        p.lastBite = pose.n; sfx("eat", p.x, p.y);
-        const mx = p.x + .5 + (p.fx || 0) * .28, cols = spriteColors([fullIcon(action.item), 0, 0, 16, 16]);
-        for (let i = 0; i < 4; i++) parts.push({x: mx + (Math.random() - .5) * .25, y: p.y + .35 - UP, vx: (Math.random() - .5) * .8,
-          vy: -.3 - Math.random() * .6, g: 9, floor: p.y + .85 - UP + Math.random() * .1, life: .5 + Math.random() * .3, age: 0, c: cols[i % cols.length], s: 1});
-      }
-    } else if (tool === "place" || tool === "pick_up" || tool === "give" || tool === "store" || tool === "take" || tool === "drop") {
-      bob = Math.round(Math.sin(Math.min(1, k * 5) * Math.PI) * 3) * z;
-    }
-    if (frame === undefined && cl && cl.on) {         // on the rungs: facing the ladder, hand over hand
-      anim = "walk"; frame = Math.floor(cl.u * 24) % 8;
-      if (mine && frame % 4 === 0 && p.lastStep !== Math.floor(cl.u * 6)) { p.lastStep = Math.floor(cl.u * 6); sfx("tock"); }
-    }
-    if (frame === undefined) {
-      const moving = p.walking || (e.doing === "walk" && !mine) || now - p.moved < 220 || Math.abs(p.x - p.tx) + Math.abs(p.y - p.ty) > .05;
-      const running = moving && (p.running || (mine && sprinting()));
-      if (moving) {
-        anim = running ? "run" : "walk";
-        const ms = running ? 60 : 85;                 // 8-frame cycles
-        frame = Math.floor(now / ms) % 8;
-        if (frame % 4 === 0 && p.lastStep !== Math.floor(now / ms) && pl.mode !== "swim" && !j) {     // (a swimmer has no footsteps: swim.js; nor has a hop)
-          p.lastStep = Math.floor(now / ms);
-          if (running) kickDust(p); else burst(p.x, p.y + .35 - UP, "dust", 2, {up: .6, spread: 1.2, g: 2, life: .35});   // (effects.js)
-          { const P = HdLevel.place, C = HdLevel.cover; if (mine && P) sfx(P.L > C.top ? "tock" : STEP[gndAt(P.tx, P.ty)] || "step"); }      // (over the land: planks under your feet, or a ladder's rungs. Where your body is: hd_level.js place)
-        }
-      } else {
-        frame = Math.floor(now / 140 + e.id * 3) % 8;   // idle: the sheet's 8-frame breathing
-        // standing with a target: your face and paw at it, up, ahead or down (aim_art.js; the cell: target.js). Kept a moment when it goes: no flicker
-        const a = mine && !action && !j && !cl && typeof Target !== "undefined" ? Target.aim : null; if (a) { p.aimK = a; p.aimT = now; }
-        const k = a || (mine && !action && !j && !cl && now - (p.aimT || 0) < 150 ? p.aimK : null); if (k) { anim = "aim"; frame = AimArt.COL[k]; p.look = lookAt(p, a ? Target.sel : null, now); }
-      }
-    }
-    if (j && j.pose && ANIM[anim] <= ANIM.run) { anim = "jump"; frame = JPOSE[j.pose]; }   // a hop: crouch, push off, tuck, over the top, reach down, land, settle (jump_art.js)
-    if (j && j.air && ANIM[anim] <= ANIM.run) { anim = "run"; frame = Math.floor(now / FALL.flail) % 2 ? 2 : 6; }   // falling: its legs going
-    if (tool === "sleep" && action.dir && DIRV[action.dir]) {
-      // tucked into the bed: head on the pillow, the bed's blanket drawn over the body
-      const bx = Math.round(p.tx) + DIRV[action.dir][0], by = Math.round(p.ty) + DIRV[action.dir][1];
-      if (combAt(bx, by) === "B") {
-        const bed = objectSprite("B", bx, by, t), px0 = sx(bx), py0 = sy(by, bx);
-        ctx.drawImage(sheetImg, (Math.floor(now / 400) % 2) * 48, 0, 48, 48, px0 - 16 * z, py0 - 26 * z, 48 * z, 48 * z);
-        ctx.drawImage(bed[0], bed[1], bed[2] + 14, 16, 18, px0, py0 + (bed[6] + 14) * z, 16 * z, 18 * z);
-        return;
-      }
-    }
-    if (pl.mode === "swim") { drawSwimmer(p, e, sheetImg, x, y, z, now, sx, sy); return; }      // (swim.js; still in the air of a fall over water: not swimming yet: the swimmer lay on the water at once, its name still coming down from the rim)
-    BodyPlace.state(p).swam = false;
-    drawWake(p, now, sx, sy, z);                      // (just out of the water: their wake fades where it lies)
-    if (pl.mode === "boat") {                        // in a boat: the hull, a wake when moving, and the sailor sitting in it
-      y += STAND * z;                                 // (the boat is where a moored one is drawn: in the middle of its water)
-      const movingB = now - p.moved < 300 || Math.abs(p.x - p.tx) + Math.abs(p.y - p.ty) > .05;
-      const bf = movingB ? Math.floor(now / 140) % 3 : Math.floor(now / 600) % 2, brow = movingB ? 64 : 32;
-      ctx.save();
-      if (p.fx < 0) { ctx.translate(x + S / 2, 0); ctx.scale(-1, 1); ctx.translate(-(x + S / 2), 0); }
-      ctx.drawImage(IMG.boats, bf * 48, brow, 48, 32, x - 16 * z, y - 10 * z, 48 * z, 32 * z);
-      ctx.restore();
-      ctx.drawImage(sheetImg, (Math.floor(now / 500) % 2) * 48, DIR_ROW(p) * 48, 48, 28, x - 16 * z, y - 22 * z, 48 * z, 28 * z);
-      return;
-    }
-    const sxx = frame * 48, syy = (ANIM[anim] + DIR_ROW(p)) * 48;
-    const fl = flashes.get("agent" + e.id), hitK = fl ? (now - fl) / 1000 : 9;
-    const kb = hitK < .15 ? Math.round((1 - hitK / .15) * 2) * z : 0;
-    const cellX = x - 16 * z - p.fx * (kb - lunge), cellY = y - 18 * z - bob - p.fy * (kb - lunge), fi = syy / 48 * 8 + frame; p.fi = fi;   // (fi: the frame drawn, tests)
-    wearFx("back", e, sheetImg, fi, cellX, cellY, z, now, moving, [-p.fx, -p.fy]);      // a charm's effect (wear_items.js)
-    // the weapon of a cut or a thrust: in front of the body, behind it when they face away
-    const arm = () => blow && ctx.drawImage(SwingArt.sheetFor(blow[0], sheetImg), blow[1] * 48, DIR_ROW(p) * 48, 48, 48, cellX, cellY, 48 * z, 48 * z);
-    const inPaw = (ANIM[anim] <= ANIM.run || anim === "jump" || anim === "aim") && !blow && tool !== "eat" && tool !== "sleep" && !(cl && cl.on) ? mine ? selected : e.held : null, hand = Held.art(inPaw);   // what is in the paw (held.js)
-    if (DIR_ROW(p) === 1) { arm(); if (hand) Held.draw(hand, p, cellX, cellY, z, sheetImg, sxx, syy, inPaw); }
-    ctx.drawImage(sheetImg, sxx, syy, 48, 48, cellX, cellY, 48 * z, 48 * z);   // feet at frame y 32
-    wearFx("front", e, sheetImg, fi, cellX, cellY, z, now, moving, [-p.fx, -p.fy]);
-    if (DIR_ROW(p) !== 1) { arm(); if (hand) Held.draw(hand, p, cellX, cellY, z, sheetImg, sxx, syy, inPaw); }
-    if (tool === "eat" && action.item && p.fy >= 0) {   // the food, half size and crisp, held up to the mouth
-      const pose = eatPose(k), food = biteIcon(action.item, pose.bites);
-      if (food) {
-        // the mouth is at frame row 22 (screen y + 4z); side-on it is at the edge of the face
-        const mx = Math.round(x + S / 2 + (p.fx || 0) * 4 * z), my = Math.round(y + 5 * z);
-        const fx = mx - 4 * z + (p.fx || 0) * z * Math.round(2 * (1 - pose.lift)), fy = my - 3 * z + z * Math.round(5 * (1 - pose.lift));
-        ctx.drawImage(food, fx, fy - bob, 8 * z, 8 * z);
-      }
-    }
-    if (hitK < .12) { ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = .7; ctx.drawImage(sheetImg, sxx, syy, 48, 48, cellX, cellY, 48 * z, 48 * z); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }   // (over the body where it is drawn: at its feet's place, a hurt landing drew a second, white body under the jump's, 15 px off)
-  } else if (ANIMALS[e.kind]) {
-    const A = ANIMALS[e.kind], img = animalSheet(e.kind, e.id), fw = A.fw, big = fw === 32;
-    const moving = now - p.moved < 350 || Math.abs(p.x - p.tx) + Math.abs(p.y - p.ty) > .05;
-    let st;
-    if (moving) st = A.walk;
-    else if (e.love) st = A.love;
-    else if (clock.night) st = A.sleep;
-    else st = hash(e.id, Math.floor((now / 1000 + e.id) / 4), 7) < .45 ? A.idle : A.alt;   // a new whim every 4 s
-    const [row, n, ms] = st, f = Math.floor(now / (e.scared ? ms / 2 : ms) + e.id) % n;   // running scared: quick steps
-    const fl = flashes.get(e.kind + e.id), white = fl && now - fl < 120;
-    const w = fw * z, dx = big ? x - S / 2 : x, dy = big ? y - S : y;
-    ctx.save();
-    const blit = (ox) => { ctx.drawImage(img, f * fw, row * fw, fw, fw, ox, dy, w, w); if (white) { ctx.globalCompositeOperation = "lighter"; ctx.drawImage(img, f * fw, row * fw, fw, fw, ox, dy, w, w); } };
-    if (p.fx < 0) { ctx.translate(dx + w, 0); ctx.scale(-1, 1); blit(0); } else blit(dx);
-    ctx.restore();
-    if (e.love && A.hearts) ctx.drawImage(img, (Math.floor(now / 140) % A.hearts[1]) * 16, A.hearts[0] * 16, 16, 16, x, y - S + 2 * z, S, S);
-  } else if (WILD[e.kind]) {
-    drawWild(p, x, y, now);                           // (world_decor.js)
+  if (e.kind === "agent") drawAgent(p, sx, sy, S, t, now, x, y, moving, pl);
+  else if (ANIMALS[e.kind]) drawAnimal(p, x, y, S, z, now);
+  else if (WILD[e.kind]) drawWild(p, x, y, now);                     // (world_decor.js)
+}
+// a person: what they are doing, the pose it takes, then their sheet (dressed: wear.js) with what they hold and wear
+function drawAgent(p, sx, sy, S, t, now, x, y, moving, pl) {
+  const e = p.e, z = zoom, j = pl.jump, cl = pl.climb;
+  const mine = me && e.id === myId; p.look = null;   // (the facing drawn while you aim: lookAt)
+  const action = agentAction(p, e, mine, now);
+  const sheetImg = wornReady(agentTint(e.name), e.worn, e.race, e.bot); if (!sheetImg) return;        // (wear.js: their sheet, dressed; not made yet: they show once it is, made between frames)
+  let bob = j ? Math.round(j.body * z) : 0, anim, frame, lunge, blow;
+  const tool = action && action.tool, k = action ? (now - action.t0) / 1000 : 0;
+  // (the pale mark under you. With the sun's shadows you have a shadow of your own: no mark, hd_sun.js)
+  if ((mine || e.name === follow) && !(cl && cl.on) && !(opt("depth") && opt("shadows") > 0)) {
+    ctx.fillStyle = mine ? "rgba(255,248,232,.55)" : "rgba(255,200,120,.55)";
+    pixelOval(x + S / 2, y - (j ? Math.round(j.ground * z) : 0) + S - 2 * z, 6, 2.5, 0, .5);   // (on the ground under you)
   }
+  if (j) jumpShadow(j, x, y, S, z);
+  ({anim, frame, lunge, blow, bob} = toolPose(p, e, action, tool, k, z, now, bob));
+  ({anim, frame} = stepPose(p, e, mine, action, anim, frame, now, j, cl, pl));
+  if (j && j.pose && ANIM[anim] <= ANIM.run) { anim = "jump"; frame = JPOSE[j.pose]; }   // a hop: crouch, push off, tuck, over the top, reach down, land, settle (jump_art.js)
+  if (j && j.air && ANIM[anim] <= ANIM.run) { anim = "run"; frame = Math.floor(now / FALL.flail) % 2 ? 2 : 6; }   // falling: its legs going
+  if (tool === "sleep" && action.dir && DIRV[action.dir] && drawSleeper(p, action, sheetImg, sx, sy, z, t, now)) return;
+  if (pl.mode === "swim") { drawSwimmer(p, e, sheetImg, x, y, z, now, sx, sy); return; }      // (swim.js; still in the air of a fall over water: not swimming yet: the swimmer lay on the water at once, its name still coming down from the rim)
+  BodyPlace.state(p).swam = false;
+  drawWake(p, now, sx, sy, z);                      // (just out of the water: their wake fades where it lies)
+  if (pl.mode === "boat") { drawSailor(p, sheetImg, x, y, S, z, now); return; }   // in a boat: the hull, a wake when moving, and the sailor sitting in it
+  const sxx = frame * 48, syy = (ANIM[anim] + DIR_ROW(p)) * 48;
+  const fl = flashes.get("agent" + e.id), hitK = fl ? (now - fl) / 1000 : 9;
+  const kb = hitK < .15 ? Math.round((1 - hitK / .15) * 2) * z : 0;
+  const cellX = x - 16 * z - p.fx * (kb - lunge), cellY = y - 18 * z - bob - p.fy * (kb - lunge), fi = syy / 48 * 8 + frame; p.fi = fi;   // (fi: the frame drawn, tests)
+  wearFx("back", e, sheetImg, fi, cellX, cellY, z, now, moving, [-p.fx, -p.fy]);      // a charm's effect (wear_items.js)
+  // the weapon of a cut or a thrust: in front of the body, behind it when they face away
+  const arm = () => blow && ctx.drawImage(SwingArt.sheetFor(blow[0], sheetImg), blow[1] * 48, DIR_ROW(p) * 48, 48, 48, cellX, cellY, 48 * z, 48 * z);
+  const inPaw = (ANIM[anim] <= ANIM.run || anim === "jump" || anim === "aim") && !blow && tool !== "eat" && tool !== "sleep" && !(cl && cl.on) ? mine ? selected : e.held : null, hand = Held.art(inPaw);   // what is in the paw (held.js)
+  if (DIR_ROW(p) === 1) { arm(); if (hand) Held.draw(hand, p, cellX, cellY, z, sheetImg, sxx, syy, inPaw); }
+  ctx.drawImage(sheetImg, sxx, syy, 48, 48, cellX, cellY, 48 * z, 48 * z);   // feet at frame y 32
+  wearFx("front", e, sheetImg, fi, cellX, cellY, z, now, moving, [-p.fx, -p.fy]);
+  if (DIR_ROW(p) !== 1) { arm(); if (hand) Held.draw(hand, p, cellX, cellY, z, sheetImg, sxx, syy, inPaw); }
+  if (tool === "eat" && action.item && p.fy >= 0) {   // the food, half size and crisp, held up to the mouth
+    const pose = eatPose(k), food = biteIcon(action.item, pose.bites);
+    if (food) {
+      // the mouth is at frame row 22 (screen y + 4z); side-on it is at the edge of the face
+      const mx = Math.round(x + S / 2 + (p.fx || 0) * 4 * z), my = Math.round(y + 5 * z);
+      const fx = mx - 4 * z + (p.fx || 0) * z * Math.round(2 * (1 - pose.lift)), fy = my - 3 * z + z * Math.round(5 * (1 - pose.lift));
+      ctx.drawImage(food, fx, fy - bob, 8 * z, 8 * z);
+    }
+  }
+  if (hitK < .12) { ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = .7; ctx.drawImage(sheetImg, sxx, syy, 48, 48, cellX, cellY, 48 * z, 48 * z); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }   // (over the body where it is drawn: at its feet's place, a hurt landing drew a second, white body under the jump's, 15 px off)
+}
+// what a person is doing this frame: you, as your own screen has it; the others, as the server says (a swing, even on the move)
+function agentAction(p, e, mine, now) {
+  if (e.eats && !p.eatSince) p.eatSince = now;
+  if (!e.eats) p.eatSince = 0;
+  // what they are doing: you, as your own screen has it; the others, as the server says. Eating is done with the
+  // hands, beside walking (the walk's legs go on under it)
+  let action = mine && (myAside || myAction) ? myAside || myAction
+    : !mine && e.eats ? {tool: "eat", item: e.eats, t0: p.eatSince}
+    : e.doing ? {tool: e.doing, dir: e.dir, at: e.at, tid: e.tid, with: e.with, item: e.item, t0: p.doingSince || now} : null;
+  if ((!action || action.tool === "walk" || action.tool === "move_to") && p.swing && now - p.swing.t0 < 320)
+    action = {tool: "attack", t0: p.swing.t0, with: p.swing.with};   // a swing, even on the move
+  if (e.doing && !p.doingSince) p.doingSince = now;
+  if (!e.doing) p.doingSince = 0;
+  if (!mine) p.running = !!e.run;
+  return action;
+}
+// the pose of a tool being used, and what it does as it lands: a swing's strike, water poured, a bite (-> {anim, frame, lunge, blow, bob})
+function toolPose(p, e, action, tool, k, z, now, bob) {
+  let anim = "idle", frame, lunge = 0, blow = null;
+  if (tool === "dig" || tool === "attack" || tool === "craft") {
+    // full 8-frame tool swings: wind-up, strike (frame 4, with the arc), follow-through
+    const [tx, ty] = action.at || [Math.round(p.tx) + p.fx, Math.round(p.ty) + p.fy], target = combAt(tx, ty);   // the tile worked on
+    // the sheet's swings show a tool: only use them when one is in hand; bare hands reach out and back
+    const held = action.with && SWING_ROW[toolArt(action.with)];
+    anim = held || "idle";
+    const fps = tool === "attack" ? 20 : 13, n = Math.floor(k * fps);
+    frame = n % 8;
+    if (!held) lunge = Math.round(Math.sin(Math.min(1, frame / 6) * Math.PI) * 3) * z;
+    // a sword cuts and a spear is thrust (swing_art.js), where the sheet's swing is a chop: the body stands and steps in
+    if (tool === "attack" && SwingArt.KINDS.includes(toolArt(action.with))) { blow = [toolArt(action.with), frame]; anim = "idle"; lunge = SwingArt.STEP[toolArt(action.with)][frame] * z; }
+    // the strike lands (frame 4 of each swing): debris, a shake and its sound on the target. Counted from the action's
+    // start, not from the frames drawn: on a slow device a frame can skip a swing's fourth, and the axe was silent (#47)
+    const strikes = n >= 4 ? Math.floor((n - 4) / 8) + 1 : 0;
+    if (p.struck == null || p.struckAt !== action.t0) { p.struckAt = action.t0; p.struck = 0; }
+    if (strikes > p.struck) {
+      p.struck = strikes;
+      if (tool === "dig" && target) {
+        const spr = GROUND.has(target) ? null : objectSprite(target, tx, ty, now / 1000);
+        debris(tx, ty, spr, GROUND.has(target) ? 5 : 4, {kind: "o", dy: "TFU".includes(target) ? -.5 : 0, dust: "M*%Y".includes(target) || GROUND.has(target)});
+        shakes.set(tx + "," + ty, now);
+        const mat = GROUND.has(target) ? "soil" : material(target);
+        sfx(!held && (mat === "wood" || mat === "stone") ? "punch" : STRIKE[mat], tx, ty);
+      } else if (tool === "craft") burst(Math.round(p.tx), Math.round(p.ty), "spark", 5, {dy: -.6, g: 4});
+    }
+    if (blow) frame = 0;
+  } else if (tool === "water") {
+    anim = "water"; const n = Math.floor(k * 10); frame = n % 8;
+    if (frame >= 3 && frame <= 6 && p.lastDrop !== n) { p.lastDrop = n; const [tx, ty] = action.at || [Math.round(p.tx) + p.fx, Math.round(p.ty) + p.fy];
+      parts.push({x: tx + .3 + Math.random() * .4, y: ty - .1, vx: (Math.random() - .5) * .6, vy: 1.5, g: 9, life: .35, age: 0, c: "#8fd3f4", s: 1});
+      if (n % 3 === 0) sfx("pour", tx, ty); }
+  } else if (tool === "milk" || tool === "feed" || tool === "sleep") {
+    bob = tool === "sleep" ? 0 : Math.round(Math.abs(Math.sin(k * 8)) * 2) * z;
+    if (tool === "sleep" && !emotes.has(e.name)) emote(e.name, "sleep");
+  } else if (tool === "eat") {                      // three bites (see eatPose): a small nod on each, crumbs fall
+    const pose = eatPose(k);
+    if (k < .05) p.lastBite = -1;                  // a new meal
+    bob += pose.biting ? z : 0;                    // (on top of a hop: you may be walking)
+    if (pose.biting && p.lastBite !== pose.n) {
+      p.lastBite = pose.n; sfx("eat", p.x, p.y);
+      const mx = p.x + .5 + (p.fx || 0) * .28, cols = spriteColors([fullIcon(action.item), 0, 0, 16, 16]);
+      for (let i = 0; i < 4; i++) parts.push({x: mx + (Math.random() - .5) * .25, y: p.y + .35 - UP, vx: (Math.random() - .5) * .8,
+        vy: -.3 - Math.random() * .6, g: 9, floor: p.y + .85 - UP + Math.random() * .1, life: .5 + Math.random() * .3, age: 0, c: cols[i % cols.length], s: 1});
+    }
+  } else if (tool === "place" || tool === "pick_up" || tool === "give" || tool === "store" || tool === "take" || tool === "drop") {
+    bob = Math.round(Math.sin(Math.min(1, k * 5) * Math.PI) * 3) * z;
+  }
+  return {anim, frame, lunge, blow, bob};
+}
+// no tool: on a ladder's rungs, walking or running (and its steps), or standing (breathing, aiming at what you point at) (-> {anim, frame})
+function stepPose(p, e, mine, action, anim, frame, now, j, cl, pl) {
+  if (frame === undefined && cl && cl.on) {         // on the rungs: facing the ladder, hand over hand
+    anim = "walk"; frame = Math.floor(cl.u * 24) % 8;
+    if (mine && frame % 4 === 0 && p.lastStep !== Math.floor(cl.u * 6)) { p.lastStep = Math.floor(cl.u * 6); sfx("tock"); }
+  }
+  if (frame === undefined) {
+    const moving = p.walking || (e.doing === "walk" && !mine) || now - p.moved < 220 || Math.abs(p.x - p.tx) + Math.abs(p.y - p.ty) > .05;
+    const running = moving && (p.running || (mine && sprinting()));
+    if (moving) {
+      anim = running ? "run" : "walk";
+      const ms = running ? 60 : 85;                 // 8-frame cycles
+      frame = Math.floor(now / ms) % 8;
+      if (frame % 4 === 0 && p.lastStep !== Math.floor(now / ms) && pl.mode !== "swim" && !j) {     // (a swimmer has no footsteps: swim.js; nor has a hop)
+        p.lastStep = Math.floor(now / ms);
+        if (running) kickDust(p); else burst(p.x, p.y + .35 - UP, "dust", 2, {up: .6, spread: 1.2, g: 2, life: .35});   // (effects.js)
+        { const P = HdLevel.place, C = HdLevel.cover; if (mine && P) sfx(P.L > C.top ? "tock" : STEP[gndAt(P.tx, P.ty)] || "step"); }      // (over the land: planks under your feet, or a ladder's rungs. Where your body is: hd_level.js place)
+      }
+    } else {
+      frame = Math.floor(now / 140 + e.id * 3) % 8;   // idle: the sheet's 8-frame breathing
+      // standing with a target: your face and paw at it, up, ahead or down (aim_art.js; the cell: target.js). Kept a moment when it goes: no flicker
+      const a = mine && !action && !j && !cl && typeof Target !== "undefined" ? Target.aim : null; if (a) { p.aimK = a; p.aimT = now; }
+      const k = a || (mine && !action && !j && !cl && now - (p.aimT || 0) < 150 ? p.aimK : null); if (k) { anim = "aim"; frame = AimArt.COL[k]; p.look = lookAt(p, a ? Target.sel : null, now); }
+    }
+  }
+  return {anim, frame};
+}
+function drawSleeper(p, action, sheetImg, sx, sy, z, t, now) {
+  // tucked into the bed: head on the pillow, the bed's blanket drawn over the body
+  const bx = Math.round(p.tx) + DIRV[action.dir][0], by = Math.round(p.ty) + DIRV[action.dir][1];
+  if (combAt(bx, by) !== "B") return false;
+  const bed = objectSprite("B", bx, by, t), px0 = sx(bx), py0 = sy(by, bx);
+  ctx.drawImage(sheetImg, (Math.floor(now / 400) % 2) * 48, 0, 48, 48, px0 - 16 * z, py0 - 26 * z, 48 * z, 48 * z);
+  ctx.drawImage(bed[0], bed[1], bed[2] + 14, 16, 18, px0, py0 + (bed[6] + 14) * z, 16 * z, 18 * z);
+  return true;
+}
+function drawSailor(p, sheetImg, x, y, S, z, now) {
+  y += STAND * z;                                 // (the boat is where a moored one is drawn: in the middle of its water)
+  const movingB = now - p.moved < 300 || Math.abs(p.x - p.tx) + Math.abs(p.y - p.ty) > .05;
+  const bf = movingB ? Math.floor(now / 140) % 3 : Math.floor(now / 600) % 2, brow = movingB ? 64 : 32;
+  ctx.save();
+  if (p.fx < 0) { ctx.translate(x + S / 2, 0); ctx.scale(-1, 1); ctx.translate(-(x + S / 2), 0); }
+  ctx.drawImage(IMG.boats, bf * 48, brow, 48, 32, x - 16 * z, y - 10 * z, 48 * z, 32 * z);
+  ctx.restore();
+  ctx.drawImage(sheetImg, (Math.floor(now / 500) % 2) * 48, DIR_ROW(p) * 48, 48, 28, x - 16 * z, y - 22 * z, 48 * z, 28 * z);
+}
+// a farm animal: its sheet's walk, love, sleep or idle row, flipped when it faces west; white the moment it is hit
+function drawAnimal(p, x, y, S, z, now) {
+  const e = p.e;
+  const A = ANIMALS[e.kind], img = animalSheet(e.kind, e.id), fw = A.fw, big = fw === 32;
+  const moving = now - p.moved < 350 || Math.abs(p.x - p.tx) + Math.abs(p.y - p.ty) > .05;
+  let st;
+  if (moving) st = A.walk;
+  else if (e.love) st = A.love;
+  else if (clock.night) st = A.sleep;
+  else st = hash(e.id, Math.floor((now / 1000 + e.id) / 4), 7) < .45 ? A.idle : A.alt;   // a new whim every 4 s
+  const [row, n, ms] = st, f = Math.floor(now / (e.scared ? ms / 2 : ms) + e.id) % n;   // running scared: quick steps
+  const fl = flashes.get(e.kind + e.id), white = fl && now - fl < 120;
+  const w = fw * z, dx = big ? x - S / 2 : x, dy = big ? y - S : y;
+  ctx.save();
+  const blit = (ox) => { ctx.drawImage(img, f * fw, row * fw, fw, fw, ox, dy, w, w); if (white) { ctx.globalCompositeOperation = "lighter"; ctx.drawImage(img, f * fw, row * fw, fw, fw, ox, dy, w, w); } };
+  if (p.fx < 0) { ctx.translate(dx + w, 0); ctx.scale(-1, 1); blit(0); } else blit(dx);
+  ctx.restore();
+  if (e.love && A.hearts) ctx.drawImage(img, (Math.floor(now / 140) % A.hearts[1]) * 16, A.hearts[0] * 16, 16, 16, x, y - S + 2 * z, S, S);
 }
 function drawNameplate(p, sx, sy, S) {
   const e = p.e, o = BodyPlace.over(p, S), x = onArt(bodyX(p, sx) + S / 2 + o[0]); let y = onArt(bodyY(p, sy) + o[1] - 9 * artPx());   // (on the land's pixel, as the body: state.js onArt)
