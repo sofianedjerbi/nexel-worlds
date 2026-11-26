@@ -94,7 +94,8 @@ def test_you_log_in_with_a_code_mailed_to_you(browser, door):
 
     page.reload()
     page.wait_for_function("typeof ready !== 'undefined' && ACCOUNT.named === 'Milo'")
-    page.click("#logout")                                                                         # log out: nobody again, and the session is dead
+    with page.expect_response(lambda r: r.url.endswith("/logout") and r.request.method == "POST"):   # (the page lets go at once; the door ends the session when it hears)
+        page.click("#logout")                                                                     # log out: nobody again, and the session is dead
     page.wait_for_function("TITLE.step === 'mail'")
     assert js("localStorage.getItem('nexel-session')") is None and js("$('email').value") == "Milo@Example.com"
     assert not service.accounts.db.execute("SELECT 1 FROM sessions").fetchall()
