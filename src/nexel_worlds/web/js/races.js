@@ -7,7 +7,7 @@ const Races = (() => {
   const RGB = new Map(), rgb = (h) => { let v = RGB.get(h); if (!v) RGB.set(h, v = rgb0(h)); return v; };   // (a colour's numbers, read once: they were parsed again for every px painted)
   const BASE = {a: "#5c4e92", b: "#f3f2c0", c: "#e8b5ac", d: "#ddd5de", e: "#f3d8c5", f: "#766daa", g: "#eae178"};
   const CLASS = Object.fromEntries(Object.entries(BASE).map(([k, h]) => [rgb(h).join(), k]));
-  const CELL = 48, DIRS = ["down", "up", "right", "left"];
+  const DIRS = ["down", "up", "right", "left"];
   const classes = (d) => { const o = new Array(CELL * CELL); for (let i = 0; i < CELL * CELL; i++) o[i] = d[i * 4 + 3] ? CLASS[d[i * 4] + "," + d[i * 4 + 1] + "," + d[i * 4 + 2]] || "?" : null; return o; };   // (a frame's px as colour classes: null empty, "?" none of the cat's)
   const RACES = [
     {key: "cat", name: "Cat", col: {},
