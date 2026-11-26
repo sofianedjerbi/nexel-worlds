@@ -16,10 +16,10 @@ def later(game, ms, name):
 
 
 BEAT = 60 / 156
-# the screen at the rift's middle (86 art px over its tile): of 81 px, how many are its night (blue over green, dark), not the meadow
+# the screen at the rift's middle (86 art px over its tile): of 81 px, how many are its night (dark, no green to it), not the meadow or the sky
 NIGHT = """([x, y]) => { const a = HdLook.screenOf(x + .5, y + .5, levelAt(x, y)), u = HdLook.art().u, k = devicePixelRatio;
   const d = HdLook.read(Math.round((a[0] - 4) * k), Math.round((a[1] - 86 * u - 4) * k), Math.round(9 * k), Math.round(9 * k)).data; let n = 0;
-  for (let i = 0; i < d.length; i += 4) if (d[i + 2] > d[i + 1] + 20 && d[i] + d[i + 1] + d[i + 2] < 360) n++; return n / (d.length / 4); }"""
+  for (let i = 0; i < d.length; i += 4) if (d[i + 2] >= d[i + 1] && d[i] + d[i + 1] + d[i + 2] < 360) n++; return n / (d.length / 4); }"""
 
 
 def test_nyxwing_comes_through_a_rift_fights_and_breaks_into_stars(game):
