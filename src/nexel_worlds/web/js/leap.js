@@ -134,6 +134,7 @@ const Leap = (() => {
   // the most, the step the jump is planned in (hits, stairArc: 1/120 s a step): the body rises over the step it clears at the
   // place planned, a frame every 100 ms as at 60 a second
   function frame(p, dt, now) {
+    if (C !== null) cam(null, now, dt);   // (C moves here only: the arc's dt)
     const n = Math.max(1, Math.ceil(dt * 60 - .01));
     let i = 0;
     for (; i < n && L; i++) step(p, dt / n, now);
@@ -231,9 +232,9 @@ const Leap = (() => {
   // how far that is from it, levels (jump.js jumping adds it to your body)
   let C = null, Ct = 0, off = 0, air = false;
   const CAM = 60 / RELIEF_STEP;
-  function cam(natural, now) {
+  function cam(natural, now, fd) {
     if (C === null) { off = 0; return natural; }
-    const dt = Math.min(.1, Math.max(0, (now - Ct) / 1000)), rate = (d) => Math.min(2 * CAM, Math.max(CAM, (Math.abs(d) - 1) * 10)) * dt;   // (on the ground after a jump: a px a frame for a level or less; past that it closes a tenth of the way left every 1/100 s, twice that at the most (CAM: a px a frame at the pitch's flattest; 5 px a frame zoomed in, 9 at 4 x was seen as a jolt): down off a ledge it kept a px a frame, the land scrolling a second after you were down)
+    const dt = Math.min(.1, fd ?? (L ? 0 : Math.max(0, (now - Ct) / 1000))), rate = (d) => Math.min(2 * CAM, Math.max(CAM, (Math.abs(d) - 1) * 10)) * dt;   // (on the ground after a jump: a px a frame for a level or less; past that it closes a tenth of the way left every 1/100 s, twice that at the most (CAM: a px a frame at the pitch's flattest; 5 px a frame zoomed in, 9 at 4 x was seen as a jolt): off a ledge a px a frame had the land scroll a second after you)
     Ct = now;
     if (L) { const g = settleAt(L.tx, L.ty, L.z + 1e-6), goal = g >= L.z0 ? g : Math.max(g, Math.min(L.z0, L.z)), step = g >= L.z0 ? CAM * dt : Math.max(CAM * dt, Math.abs(goal - C) * Math.min(1, 14 * dt));   // (in the air: up onto higher ground, a px a frame to its level; down, with your body once it is under the level you left, never under the ground (not a px a frame to the ground under you: the land would rush under a jump's top, or lag a second behind a fall))
       C += Math.max(-step, Math.min(step, goal - C)); off = 0; air = true; return C; }
