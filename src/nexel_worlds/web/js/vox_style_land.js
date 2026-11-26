@@ -235,7 +235,7 @@ const VoxStyleLand = (() => {
       } finally { making = false; }
     }
     return {steps, touch, touchBox, wet, model, clear() { store.clear(); far.clear(); }, farKeep: () => far.keep(), evicted(kept) { for (const k of [...store.keys()]) if (!wantK || !wantK.has(k)) store.delete(k); if (kept) far.free(kept); else far.clear(); },   // (paints given again: what was made with them and is not of this land goes)
-      get stamp() { return stamp; }, get fars() { return far.fars; }, get forgot() { return far.forgot; }, get part() { return partOf ? partN / partOf : 0; }};   // (fars: far patches made, all told: tests)
+      get stamp() { return stamp; }, get fars() { return far.fars; }, get forgot() { return far.forgot; }, get fresh() { return far.fresh; }, get part() { return partOf ? partN / partOf : 0; }};   // (fars: far patches made, all told: tests)
   }
   return {create, N, CH};
 })();

@@ -67,8 +67,10 @@ def test_walking_back_the_far_land_is_not_made_again(browser, server):
 @pytest.mark.realtime
 def test_made_at_other_tiles_on_the_way_back_the_far_land_is_kept(browser, server):
     """(#240) The land is made at some of the tiles you walk, not all (which, the frames say): here at every second tile
-    going east, at the others coming back. The far patches beside the box were cut at its edges, keyed by where it was:
-    each place it had not been made at made them again in every row (13 of 35 a row). On the world's grid, kept."""
+    going east, at the others coming back. The far patches beside the box and at the far edge were cut from where the box
+    was, keyed by it: each place it had not been made at made them anew in every row. On the world's grid, the way back
+    makes next to none at a place no patch was made at before (`fresh`, vox_land_far.js). Counted so, not net of what a
+    changed tile let go: that hangs on the run, the blocks drawn at each new place let go of hundreds, made again later."""
     g = hd(browser, server)
     g.clear_area()
     x, y = g.pos()
@@ -77,16 +79,11 @@ def test_made_at_other_tiles_on_the_way_back_the_far_land_is_kept(browser, serve
         g.rpc("dev_teleport", x=x + k, y=y, z=0); g.arrive()
         g.wait(FAR, 15000); g.rest()
         g.wait(f"!HdLook.busy && (HdLook.box[0] + HdLook.box[2]) / 2 === {x + k}", 15000)
-        return g.js("HdLook.work.fars"), g.js("HdLook.work.forgot")
-    f0, k0 = made_at(0)
-    for k in (2, 4, 6):
-        made_at(k)
-    f1, k1 = made_at(8)
-    for k in (7, 5, 3):
-        made_at(k)
-    f2, k2 = made_at(1)
-    there, back = f1 - f0 - min(k1 - k0, f1 - f0), f2 - f1 - min(k2 - k1, f2 - f1)   # (what a changed tile let go, rightly made again: not counted)
-    assert there > 200 and back < there / 6, {"made": (f0, f1, f2), "forgot": (k0, k1, k2), "there": there, "back": back, "work": g.js("HdLook.work")}
+        return g.js("HdLook.work.fresh")
+    way = [made_at(k) for k in (0, 2, 4, 6, 8, 7, 5, 3, 1)]
+    there, back = [b - a for a, b in zip(way[:4], way[1:5])], [b - a for a, b in zip(way[4:8], way[5:])]
+    assert all(n > 0 for n in there) and sum(back) < sum(there) / 6, {"fresh": way, "there": there, "back": back, "work": g.js("HdLook.work")}   # (each step east: far land new; back: next to none)
+
 
 def test_a_persons_sheet_is_made_between_frames(browser, server):
     g = hd(browser, server)
