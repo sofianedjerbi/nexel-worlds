@@ -9,7 +9,7 @@ from test_e2e_hd_sun import hd
 pytestmark = pytest.mark.e2e
 
 # every frame drawn while you go down: the top of your body's own px on the screen, in art px (HdLook.art().body / u), how it is drawn (BodyPlace mode, up),
-# the landing's lift (levels) and the body's height (art px)
+# the landing's lift (levels), the body's height (art px), the leap (L: in the air, G: the eye gliding after it), the row (tiles), the frame's time (ms)
 LOG = """(() => { window.__fr = []; const f = () => { if (!window.__fr) return; const a = HdLook.art(), b = a && a.body, q = ents.get('agent' + myId); if (b && q) { const pl = BodyPlace.of(q); window.__fr.push([Math.round(b.y / a.u * 10) / 10, pl.mode, pl.up, Math.round(Leap.lift(q) * 100) / 100, Math.round(b.h / a.u), Leap.on() ? 'L' : Leap.gliding() ? 'G' : '', Math.round(q.y * 100) / 100, Math.round(performance.now())]); } requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; })()"""
 LOGGED = "(() => { const l = window.__fr; window.__fr = null; return l; })()"
 
@@ -18,8 +18,8 @@ LOGGED = "(() => { const l = window.__fr; window.__fr = null; return l; })()"
 def test_off_a_high_ledge_into_water_your_body_does_not_jump_up_the_screen(browser, server):
     """(#24) Off a ledge six high into a pond: the frame you came down in the water your body went 13 px up the screen
     (art y 112 to 99), the eye still a level and a half over the water, coming down. A landing on the ground is drawn
-    from the level the eye is coming to (leap.js lift); the swimmer had no jump, so no lift. Now it has: from the last
-    frame in the air to the first in the water, the body moves no more than the eye's glide."""
+    from the level the eye is coming to (leap.js lift); the swimmer had no jump, so no lift. Now it has: it goes into the
+    water, under it, and comes up as the eye comes down to it, never up the screen at once."""
     g = hd(browser, server)
     calm(g)
     x, y = g.pos()
@@ -41,8 +41,11 @@ def test_off_a_high_ledge_into_water_your_body_does_not_jump_up_the_screen(brows
     fr = g.js(LOGGED)
     k = next(i for i, r in enumerate(fr) if r[1] == "swim")
     assert k > 0, fr
-    up = fr[k - 1][0] - fr[k][0]                                             # art px up the screen, into the water
-    sink = g.js("SWIM.sink")                                                 # (in the water its top goes down by the swimmer's sink, swim.js)
-    assert -sink - 2 < up < 3, str(fr[max(0, k - 4):])                  # (it was 13 up)
+    assert fr[k][0] - fr[k - 1][0] > -3, str(fr[max(0, k - 4):k + 4])      # into the water it never goes up the screen (it was 13 px up)
+    # (and then, going under and coming up as the eye comes down to the water, no frame moves it more than the land may
+    # move after a landing on the ground: 6 art px in a 60th of a second, by the frame's own time: test_e2e_leap_terrain)
+    cap = lambda a, b: 6 * max(1, (b[7] - a[7]) / 16.67)
+    jolts = [(a, b) for a, b in zip(fr[k - 1:], fr[k:]) if abs(b[0] - a[0]) > cap(a, b)]
+    assert not jolts, str(jolts[:4])
     g.rest()
     assert g.server()["swimming"] and not g.errors, g.errors
