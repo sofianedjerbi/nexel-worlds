@@ -32,7 +32,7 @@ const Voxels = (() => {
   function work(coming, until) {
     if (dirtyTiles.length || !engine.ready()) return;
     WaterBed.flush(engine.touch);
-    for (const b of coming) if (b.px && b.seaAt !== b.ver) {   // (a block's sea a step at a time, kept from one frame to the next: it was made whole in one go, a fifth of a phone's 0.1 s frame for a block)
+    for (const b of coming) if (b.px && b.seaAt !== b.ver) {   // (a block's sea a step at a time, kept from one frame to the next: made whole in one go it takes a fifth of a phone's 0.1 s frame for a block)
       if (!b.sea || b.sea.ver !== b.ver) b.sea = {ver: b.ver, steps: waterSteps(b)};
       for (;;) { if (b.sea.steps.next().done) { b.seaAt = b.sea.ver; b.sea = null; break; } if (performance.now() >= until) return; }
       if (performance.now() >= until) return;

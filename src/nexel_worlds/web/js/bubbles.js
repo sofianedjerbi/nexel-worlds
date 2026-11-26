@@ -9,7 +9,7 @@
 const BUBBLE = {q: 2, life: 7, after: 3.5, most: 3, wide: 400, lines: 7, pitch: 10, padX: 4, padY: 3, gap: 1, fall: 12, fade: .25,
   ink: "#5b3f36", paper: "#fff6e2", shout: "#ffe3a3", foot: "#ecd7b0", footShout: "#f2c877", shade: "rgba(60,40,30,.25)", edge: 16};
 // THE BUBBLE'S PIXEL (q, its letters' own: the 18 px font's is 2 CSS px) is a whole number of the screen's px: 2 x density, rounded (a density of 1.25: 3 px, the letters 21.6 CSS px).
-// Everything of a bubble is a number of them (pitch, padX, padY, gap: in q). At 1.25 its 2 CSS px were 2.5 px of the screen: its edges and letters soft, and another raster each place it was drawn at
+// Everything of a bubble is a number of them (pitch, padX, padY, gap: in q). At 1.25, 2 CSS px would be 2.5 px of the screen: its edges and letters soft, and another raster at each place
 const bubbleQ = () => { const d = window.devicePixelRatio || 1; return Math.max(1, Math.round(BUBBLE.q * d)) / d; };
 
 // The line as the rows it is written in (at most BUBBLE.lines, the last ending in … if there was more), and its size.
@@ -31,7 +31,7 @@ function bubbleShape(b, q = bubbleQ()) {
     rows[BUBBLE.lines - 1] = s.trimEnd() + "…";
   }
   const even = (v) => Math.ceil(v / q) * q;
-  b.q = q; b.rows = rows; b.w = Math.max(even(Math.max(...rows.map((r) => ctx.measureText(r).width))) + 2 * BUBBLE.padX * q, 16 * q);   // (as wide as its words; no narrower than its tail needs. It was as wide as the name's tab: a short line in a mostly empty box)
+  b.q = q; b.rows = rows; b.w = Math.max(even(Math.max(...rows.map((r) => ctx.measureText(r).width))) + 2 * BUBBLE.padX * q, 16 * q);   // (as wide as its words; no narrower than its tail needs. not as wide as the name's tab: a short line in a mostly empty box)
   b.h = (rows.length * BUBBLE.pitch + 2 * BUBBLE.padY - 2) * q;
   b.life = Math.max(BUBBLE.life, b.text.length * BABBLE.letter + BUBBLE.after);     // (long enough to be written, then read)
   return b;
@@ -62,8 +62,8 @@ function bubbleTab(name, x, y, mine, q, bw) {
 }
 const speaking = (name) => bubbles.some((b) => b.name === name && b.at);     // (their name is on their bubbles)
 let bubbleT = 0, bubbleBoxes = [];
-// Is a box of the screen under a bubble drawn last frame (with its name's tab)? Another's name there is not written: it was
-// written under the bubble, a few letters of it showing past its edge ("Tobi" over "Nell": "Tobi ell"). (characters.js)
+// Is a box of the screen under a bubble drawn last frame (with its name's tab)? Another's name there is not written: under the
+// bubble, a few letters of it would show past its edge ("Tobi" over "Nell": "Tobi ell"). (characters.js)
 const underBubble = (x, y, w, h) => bubbleBoxes.some((o) => x < o.r && x + w > o.l && y < o.b && y + h > o.t);
 function drawBubbles(sx, sy, S, t) {
   bubbleBoxes = [];
@@ -83,7 +83,7 @@ function drawBubbles(sx, sy, S, t) {
       up += b.h + BUBBLE.gap * q;
     }
     const o = BodyPlace.over(p, S), tx = onArt(bodyX(p, sx) + S / 2 + o[0]), foot = onArt(bodyY(p, sy) + o[1] - (p.e.hp < HP_MAX ? 9 * artPx() + 4 : 4 * artPx())) - 3 * q,     // (the tail's point: over the head, or over the health bar)
-      // (ON THE LAND'S PIXEL, as the body it is over (state.js onArt): it went by the bubble's own 2 px, the body by the land's (3 at zoom 3): walking, the bubble went 1 px off the head and back each step, "blurry")
+      // (ON THE LAND'S PIXEL, as the body it is over (state.js onArt), not the bubble's own 2 px: the body goes by the land's (3 at zoom 3), and walking, the bubble would go 1 px off the head and back each step, "blurry")
       w = Math.max(...mine.map((b) => b.w));
     const top = foot - Math.max(...mine.map((b) => b.up + b.h)) - 11 * q, mid = bodyY(p, sy) + o[1] + S / 2;     // (with the name's tab; mid: the middle of the body)
     // Said only by someone on the screen, a margin in from its edges ("dialogue shows even off-screen": a bubble was
@@ -102,7 +102,7 @@ function drawBubbles(sx, sy, S, t) {
       if (!hit) break;
       const lift = pile.foot + 3 * q - (hit.t - 4); pile.foot -= lift; pile.top -= lift;
     }
-    // (the first screen: not under its name, its line, its window, title_scene.js, nor said by someone the window hides. Asked HERE, where the pile will be drawn: asked before it was raised over another's, a pile clear of the line was then lifted under it)
+    // (the first screen: not under its name, its line, its window, title_scene.js, nor said by someone the window hides. Asked HERE, where the pile will be drawn: asked before it is raised over another's, a pile clear of the line could be lifted under it)
     // (and whole on the screen: a pile raised over the top edge is not drawn cut)
     const l0 = Math.min(...pile.mine.map(x0)), l = Math.min(l0, pile.tx - S / 2), r = Math.max(l0 + pile.w, pile.tx + S / 2);
     if (pile.top < 4 || (typeof TitleScene !== "undefined" && TitleScene.hides(l, pile.top, r - l, pile.mid - pile.top))) { for (const b of pile.mine) b.at = b.up = undefined; continue; }
@@ -116,9 +116,9 @@ function drawBubbles(sx, sy, S, t) {
       ctx.fillStyle = BUBBLE.ink;
       let left = written(b.text, since).length;              // written out as it is said (babble.js), row after row
       // (the letters in the middle of the paper: 4 px over a capital, 4 under it to the foot's shade, where a g or a y
-      // comes down to. They were a font pixel higher: 2 px over, 6 under, and a line of capitals looked hung from the top)
+      // comes down to. A font pixel higher, 2 px over and 6 under, a line of capitals looks hung from the top)
       b.rows.forEach((row, i) => { if (left > 0) ctx.fillText(row.slice(0, left), x + BUBBLE.padX * q, y + (BUBBLE.padY + 7 + i * BUBBLE.pitch) * q); left -= row.length + 1; });
-      b.at = [x, y];                                          // (where it was drawn: for the tests)
+      b.at = [x, y];                                          // (where it is drawn: for the tests)
       if (n === pile.mine.length - 1) { ctx.globalAlpha = pile.mine.length > 1 ? 1 : ctx.globalAlpha; bubbleTab(pile.name, x, y, me && pile.name === me, q, b.w); }
     });
   }

@@ -1,7 +1,7 @@
 // What moves on by itself, drawn in the HD look: chips and sparks (effects.js parts), smoke (puffs), a felled tree falling (falls),
 // fruit and plucked plants flying to the picker (flyers, plucks), drops hopping out (loot.js), orbs and loot flying to you (xp.js),
 // flames over what burns (fireAt); and what is said over heads (floats: a blow's hearts, "+1 wood"). Their state moves in render.js, as
-// it did for the old flat picture (where they alone were drawn: none of it showed here). Each is a sprite of the land's list (hd.js):
+// it did for the old flat picture (which alone drew them: none of it showed here). Each is a sprite of the land's list (hd.js):
 // a picture px for px at its place, its foot on the ground where it is, hidden by land in front of it as a body is; a height over
 // the ground is px over its foot. The flat picture's y had the height in it (north was up): ground y + height there = its y.
 const HdFx = (() => {

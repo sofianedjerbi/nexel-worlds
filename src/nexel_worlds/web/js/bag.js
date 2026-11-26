@@ -9,7 +9,7 @@
 //   (There was a strip under the cells with the thing's picture, three lines about it and a row of buttons: too
 //   much to read and too much room. Of five mockups the user took "only the cells".)
 // A thing stays in its cell until you move it (ui.js: slots, kept from one day to the next); an empty cell stays
-// empty. (It was a strip of pictures without names that wrapped and changed size and order as you picked things up.)
+// empty. (Not a strip of pictures without names that wraps and changes size and order as you pick things up.)
 // All of it without a mouse: the arrows (or W A S D) move the cursor a cell at a time, on a grid; Enter takes the
 // thing in hand and closes (from the pack it comes onto the bar, in place of what you held); E eats it, puts it on,
 // or takes it off; X picks it up to move it, and X again puts it down where the cursor is (the two change places);

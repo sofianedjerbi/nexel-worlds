@@ -1,6 +1,6 @@
 // VOX: the 2.5D look's land as faces (vox_style.js draws them). No game global: the host is the engine's own.
 // The land is kept in CHUNKS of 8 x 8 tiles, each its own lists of faces. A land asked for again (you walked a tile,
-// a tile changed) makes only the chunks that are new or no longer good: the ones coming into view, the ones a tile
+// a tile changed) makes only the chunks that are new or out of date: the ones coming into view, the ones a tile
 // changed in (touch). The rest are kept as they are: nothing of where you are is in a chunk's faces. What is good:
 //   a chunk hangs on the world (its columns, its paints, host.chunkKey: what stands in it);
 //   the far land and sea (o.sea), patches measured from you: made again each time, a list of their own (far).
@@ -46,8 +46,8 @@ const VoxStyleLand = (() => {
   // paint of the tops round it (m, a top's mouth bits: 1 << d the ground in front of a mouth on its side d, 16 << d the land's top over a mouth that opens on side d; d 0 N, 1 E, 2 S, 3 W):
   // a cool shade toward the mouth, 12 art px deep, in whole art px, four steps of a 2x2 dither, its corners lighter (a south mouth's ground too, as its face shows). Made with the paint, never by the frame.
   // (Of three tried, mockups "Cave mouths you can see from every side": the ground alone was hidden by the hill itself; a 6-px band on the top was too faint from the meadow)
-  // (it was four steps of 4 px, darkest .38, near black: "those black spots ... the execution is ugly"; of eight tried (~/nexel/local/mockups/mouth), the same
-  //  dither fainter: three steps of 3 px from .72; then "a little bit more beautiful and more obvious": a step more, from .58, a cool blue-grey shade, not a stain.
+  // (four steps of 3 px from .58, a cool blue-grey shade, not a stain: near black reads as "those black spots ... the execution is ugly"; of eight tried (~/nexel/local/mockups/mouth),
+  //  the one "a little bit more beautiful and more obvious" than a fainter dither of three steps from .72.
   //  A mouth that opens north, its face hidden by its own hill, has instead a little arch on that edge: the shape of an opening, mockup G)
   const MD = [[0, -1], [1, 0], [0, 1], [-1, 0]], MK = [.58, .7, .82, .93];
   function mouthShade(px, at, st, m) {
@@ -78,21 +78,21 @@ const VoxStyleLand = (() => {
     const sheet = () => { if (!msh) { const q = host.modelSheet(); msh = q.px ? q : {px: new Uint32Array(q.getContext("2d").getImageData(0, 0, q.width, q.height).data.buffer), w: q.width}; } return msh; };
     const model = (x, y, b, dst) => { const X = x + b.x / C, Y = y + b.y / C, X1 = X + b.w / C, Y1 = Y + b.d / C, Z0 = b.z / cfg.up, Z1 = (b.z + b.h) / cfg.up, Zn = Z1 + (b.tilt ? b.tilt[0] / cfg.up : 0), Zs = Z1 + (b.tilt ? b.tilt[1] / cfg.up : 0);
       const face = (uv, w, h, k) => { if (!uv) return; w = Math.min(C, w); h = Math.min(C, h); const wi = b.win ? b.win[0] : 0, wj = b.win ? b.win[1] : 0, ins = b.shade ? .02 : 0, pw = b.win ? C : w, ph = b.win ? C : h, id = b.sheet ? b.sheet.id : "";
-        const ob = typeof uv === "object"; let pk = ob ? paintOf.get(uv) : null; if (!pk || pk.id !== id || pk.pw !== pw || pk.ph !== ph) { const ms = b.sheet; pk = {id, pw, ph, k: "m" + id + uv + "," + pw + "," + ph, paint: (px, at, st) => { const m = ms || sheet(); for (let j = 0; j < ph; j++) for (let i = 0; i < pw; i++) px[at + j * st + i] = m.px[(uv[2] ? uv[1] : uv[1] + j) * m.w + (uv[2] ? uv[0] : uv[0] + i)]; }}; if (ob) paintOf.set(uv, pk); }   // (its paint's name and painter, kept by its uv: they were made again for every face of every shadow, each frame)
+        const ob = typeof uv === "object"; let pk = ob ? paintOf.get(uv) : null; if (!pk || pk.id !== id || pk.pw !== pw || pk.ph !== ph) { const ms = b.sheet; pk = {id, pw, ph, k: "m" + id + uv + "," + pw + "," + ph, paint: (px, at, st) => { const m = ms || sheet(); for (let j = 0; j < ph; j++) for (let i = 0; i < pw; i++) px[at + j * st + i] = m.px[(uv[2] ? uv[1] : uv[1] + j) * m.w + (uv[2] ? uv[0] : uv[0] + i)]; }}; if (ob) paintOf.set(uv, pk); }   // (its paint's name and painter, made once per uv and kept: a shadow's faces share them, frame to frame)
         const sl = slot(pk.k, pk.paint), u0 = (sl % SL) * C + wi, v0 = (sl / SL | 0) * C + wj, kind = b.shade ? 10 : b.ghost ? 9 : 8;
         for (let t = 0; t < 6; t++) { const n = TRI[t], o = n * 3; emit(dst, QC[o], QC[o + 2] * H, QC[o + 1], u0 + (n === 0 || n === 3 ? ins : w - ins), v0 + (n < 2 ? ins : h - ins), k, 1, kind, Z1, 0); } };   // (corners in QC: x, y, z each)
       const cq = (a, b2, c, d, e, f, g, h, i, j, k, l) => { QC[0] = a; QC[1] = b2; QC[2] = c; QC[3] = d; QC[4] = e; QC[5] = f; QC[6] = g; QC[7] = h; QC[8] = i; QC[9] = j; QC[10] = k; QC[11] = l; };
       cq(X, Y, Zn, X1, Y, Zn, X1, Y1, Zs, X, Y1, Zs); face(b.top, b.w, b.d, b.k || 1); const fh = b.fh || b.h; if (b.h) { cq(X, Y1, Zs, X1, Y1, Zs, X1, Y1, Z0, X, Y1, Z0); face(b.front, b.w, fh, FACES[2].k);
         cq(X, Y, Zn, X, Y1, Zs, X, Y1, Z0, X, Y, Z0); face(b.west, b.d, fh, FACES[5].k); cq(X1, Y1, Zs, X1, Y, Zn, X1, Y, Z0, X1, Y1, Z0); face(b.east, b.d, fh, FACES[4].k); } };   // (b.sheet: a paint sheet of its own, {px, w, id}; west, east: its sides, d x h px; fh: its front and sides are that many rows of paint over its height; win: [i, j]: its paint is 16 x 16 px and the face shows it from px (i, j) on; a shade's paint is read a hair inside its edges: at an edge it took a px of the paint beside it in the atlas, a thin dark line on the ground; tilt: [n, s]: its top a slope: px its north and its south edge are over its height (a roof's pitch); k: its top's light)
     // a top's paint: the host's; the px it leaves see-through (a cap's inset sides and tucked corners: the classic picture shows the wall there) take the block's own wall tone, stone on stone
-    // (they were one earth brown on every block: a brown strip down the west side of each stone step, brown corners, a mountain's terraces a lattice)
+    // (not one earth brown for every block: that shows a brown strip down the west side of each stone step, brown corners, a mountain's terraces a lattice)
     const tones = new Map(), tmp = new Uint32Array(C * C);
     const tone = (lv) => { let v = tones.get(lv); if (v === undefined) { host.paintFront(lv, 0, tmp, 0, C); const n = new Map(); for (let i = 0; i < C * cfg.up; i++) n.set(tmp[i], (n.get(tmp[i]) || 0) + 1); v = [...n].sort((a, b) => b[1] - a[1])[0][0]; tones.set(lv, v); } return v; };
     function topPaint(x, y, z, px, at, st) { host.paintTop(x, y, z, px, at, st); if (!host.paintFront) return; let v = 0;
       for (let j = 0; j < C; j++) for (let i = 0; i < C; i++) if ((px[at + j * st + i] >>> 24) < 128) px[at + j * st + i] = v || (v = tone(lim(VoxMesh.rock(cfg, z, z, !host.rock || host.rock(x, y, z))))); }
-    // a tile's own paints (its top at each height it was asked at): named by its tile, so a tile that changed gets new ones
+    // a tile's own paints (its top at each height asked for): named by its tile, so a tile that changed gets new ones
     const topSlot = (x, y, z, paint, m) => { const k = x + "," + y + "," + z + (m ? "m" + m : ""); return slot(k, (px, at, st) => { const t = x + "," + y; let l = tops.get(t); if (!l) tops.set(t, l = []); if (!l.includes(k)) l.push(k); paint(px, at, st); }); };
-    // a tile changed (its ground, its height, what stands as boxes on it): its paints, the paints of the tiles beside it (their rims and lips), and the chunks within six tiles of it (a block is stone by the land three tiles off; a cliff's shadow lies some tiles from it) are no longer good
+    // a tile changed (its ground, its height, what stands as boxes on it): its paints, the paints of the tiles beside it (their rims and lips), and the chunks within six tiles of it (a block is stone by the land three tiles off; a cliff's shadow lies some tiles from it) are out of date
     function touch(x, y) {
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const t = (x + dx) + "," + (y + dy), l = tops.get(t); if (l) { for (const k of l) P.unslot(k); tops.delete(t); } }
       for (let dy = -6; dy <= 6; dy += 6) for (let dx = -6; dx <= 6; dx += 6) { const k = ck(x + dx, y + dy); store.delete(k); if (making) late.add(k); }
@@ -108,11 +108,11 @@ const VoxStyleLand = (() => {
     function wet(x, y) { for (const k of new Set([[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => ck(x + dx, y + dy)))) { store.delete(k); if (making) late.add(k); } stamp++; }
     // WATER, STILL OR RUNNING, DRAWN ONE WAY. A tile's water is its wet cells (wetOf: cell z -> level 1 to 8): the still water's (the sea, a river, a pond: its bed up to its face,
     // full) and what runs (flow.js: 1 to 7, 8 full). Over a still face the cells are water as high as the water beside it is full, and up to running water over it (flow.py keeps
-    // nothing there: over the sea it is the sea. They were left empty: a river in a flood was a trench, a pond under it a second face, a light box).
+    // nothing there: over the sea it is the sea. Filled, a river in a flood is no trench, a pond under it no second face, no light box).
     // A cell's water stands to z - 1 + v / 8 (full: to its top), so running water steps down a level's eighth a level (2 art px). Its faces: ONE top where the cell over it is
     // not water, and a side (south, east, west) down to the water or the cell's floor beside it, where that stands lower: no gap at a step, no face inside other water; the
-    // painter leaves out a side turned from the eye (vox_style_glsl.js: s, its uv's u). So every px shows ONE face of water over what is under it (they were a face a cell and a
-    // south side only: tints stacked, a dark sliver through each missing east or west side).
+    // painter leaves out a side turned from the eye (vox_style_glsl.js: s, its uv's u). So every px shows ONE face of water over what is under it (no tints stacked, no dark
+    // sliver where an east or west side is missing).
     // Its tint (e) by how deep it is, its face over the floor, as the still water's: never under a level's (a film of running water is water, not a pale box; the levels
     // show by its height, the colour stays), and never over a pond's (2): the deeper bands are the still water's own, 3 a lake's, 4 the open sea's dark, OPAQUE (a pit filled 5 deep
     // under a river, a flood over the meadow: a flat navy slab). A still tile keeps its own depth; risen under a flood, a lake's at most.
@@ -145,12 +145,12 @@ const VoxStyleLand = (() => {
     const farForget = () => { for (const [x0, y0, x1, y1] of farDirty) for (let by = Math.floor((y0 - 16) / CH); by <= Math.floor((y1 + 7) / CH); by++) for (let bx = Math.floor((x0 - 16) / CH); bx <= Math.floor((x1 + 7) / CH); bx++) { const m = farOf.get(bx + "," + by); if (m) { farN -= m.size; farOf.delete(bx + "," + by); } } farDirty.length = 0; };
     const farClear = () => { farOf.clear(); farDirty.length = 0; farN = 0; };
     // THE SHEET FULL (vox_style.js evict): the far patches of the land being made name their paints' places (farBox: where its
-    // patches lie): kept, as its chunks' are, and only the patches that name a place given away go. (It was every far patch let go
-    // at once and made again: walking 8 tiles and back the sheet filled twice, and the way back made 1063 patches again of 1218)
+    // patches lie): kept, as its chunks' are, and only the patches that name a place given away go. (Letting every far patch go
+    // at once, walking 8 tiles and back fills the sheet twice, and the way back makes 1063 patches again of 1218)
     let farBox = null;
     const farKeep = () => { if (!farBox) return; const [a, b, c, d] = farBox; for (const [bk, m] of farOf) { const [bx, by] = bk.split(",").map(Number); if (bx >= a && bx <= c && by >= b && by <= d) for (const f of m.values()) P.use(f[2]); } };
     const farFree = (kept) => { for (const [bk, m] of farOf) { for (const [fk, f] of m) if (f[2].some((v) => !kept(v))) { m.delete(fk); farN--; } if (!m.size) farOf.delete(bk); } };
-    // (each face's corners: the three cells beside a corner that darken it, worked out once: they were made again as small arrays for every corner of every face)
+    // (each face's corners: the three cells beside a corner that darken it, worked out once and kept, not made as small arrays for every corner of every face)
     const AOV = FACES.map((F) => F.q.map((q) => { const ax = F.n.map((a) => (a ? 0 : 1)), d = [q[0] * 2 - 1, q[1] * 2 - 1, q[2] * 2 - 1].map((v, j) => v * ax[j]);
       const t = [0, 1, 2].filter((j) => ax[j]), a = [0, 0, 0], b = [0, 0, 0]; a[t[0]] = d[t[0]]; b[t[1]] = d[t[1]]; return [a, b, [a[0] + b[0], a[1] + b[1], a[2] + b[2]]]; })), AOK = [1, .84, .72, .62], TRI = [0, 1, 2, 0, 2, 3], vq = new Float64Array(40);
     function quad(out, x, y, z, F, k, sky, kind, lv, e, s, solid, isTop) {
@@ -176,13 +176,13 @@ const VoxStyleLand = (() => {
       const reachA = new Int16Array(D * D).fill(NO), farA = new Uint8Array(D * D), nearA = new Uint8Array(D * D), clsA = new Uint8Array(D * D), lowA = new Int16Array(D * D).fill(BIG), reached = [], win = [];
       const topOf = (x, y) => { const c = real(x, y); return c && c.length ? c[c.length - 1] : NO; };
       // HOLLOW: a top under the open sky at f with land over it (f + 1) within 12 tiles NORTH of it (land south hides it: host.sunk), or both east and west: a trench, a pit, a gorge's floor, a strip under a cliff.
-      // (North and south both, it was first: a strip's ends past the plateau south of it, its corners leaning over them, stayed shut under them)
-      // Only such a tile, land hiding it, carries your space on and is a box of the window (the near ones aside). (It was any tile land hid: at a mountain's north foot every meadow tile behind the
-      // mountain was "your space", 24 tiles each way: the mountain cut away over half the screen, "the whole world disappears, the camera behind the mountain x-raying everything")
+      // (north alone, not north and south both: a strip's ends past the plateau south of it, its corners leaning over them, open too)
+      // Only such a tile, land hiding it, carries your space on and is a box of the window (the near ones aside). (Not any tile land hides: at a mountain's north foot every meadow tile behind the
+      // mountain would be "your space", 24 tiles each way: the mountain cut away over half the screen, "the whole world disappears, the camera behind the mountain x-raying everything")
       const hollow = (x, y, f) => { const s = [[0, -1], [0, 1], [-1, 0], [1, 0]].map(([dx, dy]) => { for (let j = 1; j <= 12; j++) if (topOf(x + dx * j, y + dy * j) > f) return 1; return 0; }); return s[0] || (s[2] && s[3]); };
       const hop = (x0, y0, x1, y1, h) => { const a = real(x0, y0), b = real(x1, y1); return !!a && !!b && solidC(a, h) && !solidC(a, h + 1) && !solidC(a, h + 2) && solidC(b, h + 1) && !solidC(b, h + 2); };   // (the game's own rule: from a floor at h a jump up one level, room over it and over your head)
       // where a step from (x0, y0) at f0 onto (x, y) lands, by the game's own walk: level, up one (hop), or down any drop with nothing in the way -> the floor's level (as a drop of two or more: + .5: no way back up), or null: a wall
-      // (it was any floor within two levels: a stair's treads two levels over a dead end were "your space", lit and lipped as the next step)
+      // (not any floor within two levels: a stair's treads two levels over a dead end would be "your space", lit and lipped as the next step)
       const floorOf = (x0, y0, x, y, f0) => { const c = real(x, y); if (!c || !c.length) return null; if (host.water && host.water(x, y) && host.waterTop) { const w = host.waterTop(x, y); if (w >= c[c.length - 1]) return Math.abs(w - f0) <= 1 ? w : null; }
         if (solidC(c, f0 + 1)) return hop(x0, y0, x, y, f0) || (host.water && host.water(x0, y0) && !solidC(c, f0 + 2)) ? f0 + 1 : null; for (let dz = 0; dz <= 8; dz++) if (solidC(c, f0 - dz)) return f0 - dz + (dz > 1 ? .5 : 0); return null; };
       // A MOUTH: from the open floor f on (ox, oy) a step by the game's own walk into (mx, my) lands under land (a roof over your head), and on from there, straight in, under land again:
@@ -198,7 +198,7 @@ const VoxStyleLand = (() => {
       // from a floor at f0 on (x0, y0): the floors of (x, y) over it (up to 8 levels) from which a step lands on f0: the way you came down by
       const upsOf = (x0, y0, x, y, f0) => { const c = real(x, y), l = []; if (c) for (let j = 0; j < c.length; j += 2) { const f = c[j]; if (f > f0 && f <= f0 + 8) { const g = floorOf(x, y, x0, y0, f); if (g !== null && Math.floor(g) === f0) l.push(f); } } return l; };
       // YOUR SPACE, three passes: 1 where you can WALK, there and back; 2 from there where you can only drop to and on from there; 3 the floors you could have dropped FROM, and on from those (the stair over the room you
-      // dropped into). The window is on all three, so a walk along one cave, down its drops, does not change it (it was 1 and 2 alone: the step off a stair into a room was another space, another hole, in one frame:
+      // dropped into). The window is on all three, so a walk along one cave, down its drops, does not change it (with 1 and 2 alone the step off a stair into a room is another space, another hole, in one frame:
       // a quarter of the px). Only the LIGHT tells them apart (cls -> the painter's light of the space, vox_style.js: 1 warm, 2 dimmer, 3 cold), and that eases. A tile has ONE level: a floor under the land
       // before one under the sky (the meadow over a room is of your space too, by the stair's mouth: found first it kept the room shut till you were near), else the first found; the flood goes on through its other floors (treads over a passage)
       let sky0 = false; if (pt) { let L0 = L; const c0 = real(cx, cy); if (c0 && !(host.water && host.water(cx, cy))) for (let n = 0; n < 8 && !solidC(c0, L0); n++) L0--;   // (in the air, a jump, a fall: your space is the floor's under you. From a level in mid air the flood found another space for the frames of a fall: the picture flashed)
@@ -213,7 +213,7 @@ const VoxStyleLand = (() => {
       if (pt) yield "flood";
       // THE WINDOW'S BOXES: a floor of your space under the land: from it (the lower of two near each other) up to its ceiling, six levels at most; under the open sky (a shaft, a trench, a gorge's floor) only
       // the sunk tiles within four steps of you, each up to the rim of the land beside it: what stands between the eye and you is looked through, the rest of the gorge is as it is;
-      // the ones land hides (host.sunk) as far as your space goes (it was a square five tiles round you: the gorge's river was shut past it; four steps was a diamond: its stairs left notches of the cliff's top standing in the river)
+      // the ones land hides (host.sunk) as far as your space goes (not a square five tiles round you: the gorge's river is shut past it; nor four steps, a diamond: its stairs leave notches of the cliff's top standing in the river)
       for (const i of reached) { const x = cx - r + i % D, y = cy - r + (i / D | 0), f = reachA[i], tp = topOf(x, y), c = real(x, y);
         if (pt.walk && (Math.abs(x - cx) + Math.abs(y - cy) > 2 || f < L - 3)) continue;   // (from the surface only what you are about to step into: two tiles off, three levels down at most: a tunnel was opened through its hill's front from four tiles away, a room from the hill over it)
         if (tp > f) { let z = f; while (z < f + 6 && !solidC(c, z + 1)) z++; win.push([x, y, Math.min(f, lowA[i]), Math.max(z, f + 1)]); }
@@ -269,7 +269,7 @@ const VoxStyleLand = (() => {
                 if (!sky) [[0, -1, 64], [1, 0, 128], [-1, 0, 256]].forEach(([dx, dy, b]) => { if (!solidIn(x + dx, y + dy, z) && !solidIn(x + dx, y + dy, z - 1)) e |= b; });   // (a floor under a roof: its edge over a drop of two levels or more, north, east, west (its south one shows the wall's face): a thick dark rim: from above a wall that faces east or west is not seen at all)
                 if (!sky) [[0, -1, 512], [1, 0, 1024], [0, 1, 2048], [-1, 0, 4096]].forEach(([dx, dy, b]) => { if (solidIn(x + dx, y + dy, z + 1) && !hop(x, y, x + dx, y + dy, z)) e |= b; });   // (a floor under a roof: a WALL at that edge (too high to jump, or no room to): its foot in shade; a step you can take has none)
                 if (!sky) [[0, -1, 8192], [1, 0, 16384], [-1, 0, 65536]].forEach(([dx, dy, b]) => { if (hop(x, y, x + dx, y + dy, z)) e |= b; });   // (the foot of a step UP you can take under a roof, north, east, west: a dark line there (the riser's foot): with the lit lip of the tread over it a step is a step)
-              }   // (ONE floor rule under the land: every floor of your space the same warm light, a room's or a stair's (they were two, by how many tiles lay on one level: a floor changed its light as you walked); 64: a floor under the land that is NOT of your space, you cannot walk to it: bare rock, no light, no lip; 128: one you can only drop to: dimmer)
+              }   // (ONE floor rule under the land: every floor of your space the same warm light, a room's or a stair's (not two, by how many tiles lie on one level: a floor would change its light as you walk); 64: a floor under the land that is NOT of your space, you cannot walk to it: bare rock, no light, no lip; 128: one you can only drop to: dimmer)
             } else { s = front(x, y, z, top, false, ore); if (!sky && !solidC(c, z + 1) && hop(nx, ny, x, y, z - 1)) e |= 16; else if (sky && nc && top - nc[nc.length - 1] >= 3) e |= 64 * Math.min(3, (top - z) >> 1); }   // (64, 128: the face of a drop of three or more: darker every two levels down, three steps)   // (the riser of a step you can take: light, the tread's own tone; any other face is a wall)
             if (cfg.rock && VoxMesh.rock(cfg, top, top, !host.rock || host.rock(x, y, top)) >= cfg.rock.from) e += 8388608;   // (its ground is stone, as its walls are painted: the x-ray's cut shows it so, vox_style_glsl.js cut)
             quad(dst, x, y, z - 1, F, F.k, sky, kind, z, e, s, solidIn, f === 0);
@@ -290,11 +290,11 @@ const VoxStyleLand = (() => {
         const ch = {mk: host.chunkKey ? host.chunkKey(bx * CH, by * CH, CH) : "", lo, low, L, wet}; for (const k of KINDS) ch[k] = new Float32Array(out[k]); return ch;
       }
       // past the box, to the horizon, in patches: the sea's flat face where the sea is (or nothing is known); where land is, the land at its height, a skirt south, west and east of it: no sea inland.
-      // Their px are the land's own at the land's own size (the shader, kind 7): a top an 8 x 8 quarter of a tile's paint, which quarter and which way round by the tile it lies on; a skirt its rock's front (e: 9 a top, 10 a south skirt, 11 a west or east one). They were the paint's mean colour: flat slabs.
+      // Their px are the land's own at the land's own size (the shader, kind 7): a top an 8 x 8 quarter of a tile's paint, which quarter and which way round by the tile it lies on; a skirt its rock's front (e: 9 a top, 10 a south skirt, 11 a west or east one). Not the paint's mean colour: that reads as flat slabs.
       // Patches are 4 tiles across for the first 16 tiles past the box, 8 beyond (8 everywhere: a mountain's flank one smooth slab a patch wide); a top's paint is a tile of the patch at its height with its four neighbours as high (its middle tile was often a rim: a stripe of the rim's brown and green over the whole patch)
       // THE PATCHES LIE ON THE WORLD'S OWN GRID (4 and 8 tiles: x, y multiples of them), cut only at the box's edges and the far edge: walking, the patches are the ones made a step before, kept (farOf).
-      // (They were counted from you: a step east and every patch was 1 tile off the last one's, all made again, 3 steps in 4, with their tops' paints: half of a land's making at a sprint, and
-      //  the far land changed at each step, each patch's height read from other tiles: the far hills shimmered as you walked)
+      // (Not counted from you: then a step east puts every patch 1 tile off the last one's, all made again, 3 steps in 4, with their tops' paints: half of a land's making at a sprint, and
+      //  the far land changes at each step, each patch's height read from other tiles: the far hills shimmer as you walk)
       function* patches() { const fl = [], fs = []; if (o.sea === undefined) return [new Float32Array(0), new Float32Array(0)];
         const cut = (a, b, s, l = []) => { for (let v = a; v < b;) { const e = Math.min(b, (Math.floor(v / s) + 1) * s); l.push([v, e - v]); v = e; } return l; };
         const ax = (c, box, one) => { const lo = c - r - 40, hi = c + r + 41, a4 = Math.floor((c - r - 16) / 8) * 8, b4 = Math.ceil((c + r + 17) / 8) * 8;   // (along one axis round c: 8s past the 4s, the 4s from 16 past the box; box: the box's own span left out, or one: a tile a patch over it)
@@ -309,7 +309,7 @@ const VoxStyleLand = (() => {
         return [cat(fl), cat(fs)];
         function patch(x, y, w, h, fl, fs) { let mx = x + (w >> 1), my = y + (h >> 1); const c = host.column(mx, my), land = c && c.length && !(host.water && host.water(mx, my));
           const Q = [[1, 1], [3, 1], [1, 3], [3, 3]].map(([a, b]) => [x + (w * a >> 2), y + (h * b >> 2)]).filter(([qx, qy]) => tz(qx, qy) !== null && !(host.water && host.water(qx, qy)));
-          let z = land ? c[c.length - 1] : c && c.length && host.waterTop ? host.waterTop(mx, my) : o.sea; if (land) for (const [qx, qy] of Q) z = Math.min(z, tz(qx, qy));   // (the lowest of five tiles: a patch as high as its highest stood over the land in front of it, a slab over a stair) (the far sea at its own face: it was o.sea, a level over it: a step up past the land made tile by tile)
+          let z = land ? c[c.length - 1] : c && c.length && host.waterTop ? host.waterTop(mx, my) : o.sea; if (land) for (const [qx, qy] of Q) z = Math.min(z, tz(qx, qy));   // (the lowest of five tiles: a patch as high as its highest stood over the land in front of it, a slab over a stair) (the far sea at its own face, not o.sea, a level over it: that shows a step up past the land made tile by tile)
           if (land && !(tz(mx, my) === z && flat(mx, my, z))) { const q = Q.find(([qx, qy]) => tz(qx, qy) === z && flat(qx, qy, z)) || Q.find(([qx, qy]) => tz(qx, qy) === z); if (q) [mx, my] = q; }   // (a tile whose top is at z: one as high round it if there is one)
           const sl = land ? topSlot(mx, my, z, (px, at, st) => topPaint(mx, my, z, px, at, st)) : 0, fr = land && host.paintFront ? front(mx, my, z, z) : sl;
           const put = (q, k, s, e) => { const u0 = land ? (s % SL) * C : 0, v0 = land ? (s / SL | 0) * C : 0, dst = land ? fl : fs, kind = land ? 7 : 3; for (let t = 0; t < 6; t++) { const p = q[TRI[t]]; emit(dst, p[0], p[2] * H, p[1], u0, v0, k, 1, kind, z, e); } };   // (no vertex made as an array of its own)
@@ -324,12 +324,12 @@ const VoxStyleLand = (() => {
         for (const [bx, by] of want) { const ch = store.get(bx + "," + by); if (ch && !need.some((q) => q[0] === bx && q[1] === by)) P.use(ch.slots); }   // (the paints of the chunks kept: this land's too)
         for (const [bx, by] of need) { into = []; const ch = yield* chunk(bx, by); ch.slots = into; into = null; fresh.set(bx + "," + by, ch); made++; partN++; }
         const [fl, fs] = yield* patches(); partN = partOf;
-        if (P.spill() && (!o.again || o.r > 6)) { making = false; return yield* steps(cx, cy, L, Object.assign({}, o, {again: true, r: o.again ? Math.max(6, o.r - 4) : o.r})); }   // (and from none it ran out again: a land 4 tiles narrower each time, till it fits. It was shown as it was: faces made before the sheet was emptied named places of other paints)   // (the paints ran out while it was made: faces made before that had another face's paint (a meadow all earth, a black hole): once more, from none)
+        if (P.spill() && (!o.again || o.r > 6)) { making = false; return yield* steps(cx, cy, L, Object.assign({}, o, {again: true, r: o.again ? Math.max(6, o.r - 4) : o.r})); }   // (and from none it ran out again: a land 4 tiles narrower each time, till it fits. Never shown half made: faces made before the sheet was emptied name places of other paints)   // (the paints ran out while making it: faces made before that had another face's paint (a meadow all earth, a black hole): once more, from none)
         const list = want.map(([bx, by]) => fresh.get(bx + "," + by) || store.get(bx + "," + by)).filter(Boolean), parts = {far: fl, sea: fs}; let wet = 0;
-        const near = list.slice().reverse();   // (the land's own faces: the chunks nearest the eye first (the south ones), so the GPU drops the px of what is behind them before painting them; it was far to near: every hidden px painted, then painted over)
+        const near = list.slice().reverse();   // (the land's own faces: the chunks nearest the eye first (the south ones), so the GPU drops the px of what is behind them before painting them; far to near would paint every hidden px, then paint over it)
         for (const k of KINDS) { const l = k === "main" ? near : list; let n = 0; for (const ch of l) n += ch[k].length; const d = new Float32Array(n); n = 0; for (const ch of l) { d.set(ch[k], n); n += ch[k].length; } parts[k] = d; }
         for (const ch of list) wet += ch.wet;
-        for (const [k, ch] of fresh) if (!late.has(k)) store.set(k, ch);   // (a tile changed in it while it was made: not kept, made again next time)
+        for (const [k, ch] of fresh) if (!late.has(k)) store.set(k, ch);   // (a tile changed in it while being made: not kept, made again next time)
         if (store.size > 400) { const keep = new Set(want.map(([bx, by]) => bx + "," + by)); for (const k of store.keys()) if (!keep.has(k)) store.delete(k); }
         return {parts, clip: [X0, X1 + 1, Y0, Y1 + 1], wet, made, space: pt ? {x: cx - r, y: cy - r, D, lvl: reachA, cls: clsA} : null, win, cut: cutH};
       } finally { making = false; }

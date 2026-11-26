@@ -5,8 +5,8 @@
 //     from the tile you were rounded to: half way up a ladder that was the cliff's, "under a roof": the window opened)
 //   of(p, now, cl) -> [L, Lf]: the level you stand at (your tile's), and the same between two tiles: on the straight line between their heights (the game's own line, relief.js liftOf: a hop is an arc over it).
 //   over(x, y, L, k) -> LEVELS OF LAND OVER THE EYE'S LINE to the feet of somebody on (x, y) at L (k: levels the line climbs a tile south, relief.js eyeRise): 0: seen through the open air (or a cave's mouth);
-//     .5: half a body hidden; 1 or more: all of it (a level is a body's height) (99: the line runs into a ceiling, or into anything when a roof is over the feet: nothing of a body shows). A block somebody put (a wall you built) is not land. EVERY question of "does land hide this" is asked here (they were three: hd.js `hidden`, the land search's own, the tilt's walls).
-//   hides(tx, ty, L, k, px) -> land under the open sky between the eye and you hides you whole: the x-ray window opens on your space as under a roof (hd.js). (It was `lift`: you drawn up at the rim south of you)
+//     .5: half a body hidden; 1 or more: all of it (a level is a body's height) (99: the line runs into a ceiling, or into anything when a roof is over the feet: nothing of a body shows). A block somebody put (a wall you built) is not land. EVERY question of "does land hide this" is asked here (hd.js `hidden`, the land search's own, the tilt's walls all ask it).
+//   hides(tx, ty, L, k, px) -> land under the open sky between the eye and you hides you whole: the x-ray window opens on your space as under a roof (hd.js). (you are not drawn up at the rim south of you)
 //   own(place, roof, cov) -> the boxes of the x-ray window that are yours whatever the search for your space has found yet: your tile, floor to ceiling, and the covered tiles you just came from (vox_style.js adds the ones its window lacks)
 const HdLevel = (() => {
   // WHERE IN ITS TILE A DRAWN THING'S FOOT IS, tiles from the tile's corner [east, south]: its place in the picture, and so what it stands in front of (the frame's one order: hd.js byY, north to south,
@@ -48,13 +48,13 @@ const HdLevel = (() => {
   // ONE answer for any wall between the eye and you under the open sky: a shaft's south wall, a gorge's bank, a cliff over a river. (You were LIFTED to the rim south of you instead: in a river at a cliff 12 high, drawn on its top edge)
   const hides = (tx, ty, L, k, px = 0, part = 1) => over(tx, ty, L, k) >= part - px / 16;   // (part: how much of you hidden is enough: all of you, or a quarter where the eye looks down no steeper, hd.js PART)
   // veils(x, y, L, at) -> land south of (x, y) hides ANY of its floor at L, AS DRAWN (at(x, y, z): the picture's px of a place, hd.js eng.at: the eye's own perspective and the bend): the north edge of a top over
-  // L + 1 is higher on the screen than the floor's south edge. Such a tile of your space is in the window (hd.js host.sunk). (It was hides, whole, by the eye's mean climb: a tile the cliff's top covered
-  // in part stayed out, and that part of the cliff's top stood in the window, its dark rim over the river: "an outline floating in the water", the river shown again past it)
+  // L + 1 is higher on the screen than the floor's south edge. Such a tile of your space is in the window (hd.js host.sunk). (Not hides, whole, by the eye's mean climb: a tile the cliff's top covers
+  // in part would be left out, and that part of the cliff's top stand in the window, its dark rim over the river: "an outline floating in the water", the river shown again past it)
   // ANY land south of the floor, the columns beside its own too (the back corners south-west and south-east: a plateau's corner leans over the floor beside it as the eye sees it): its top's box on the
-  // screen over the floor's box. (It was straight south alone: the plateau's top-left corner block stood over the west end of doben1's strip, "x-ray should also apply to left/right back corners")
+  // screen over the floor's box. (Not straight south alone: the plateau's top-left corner block would stand over the west end of doben1's strip, "x-ray should also apply to left/right back corners")
   const box = (at, x, y, z) => { let b = null; for (const [i, j] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { const p = at(x + i, y + j, z); if (!p) return null; b = b ? [Math.min(b[0], p[0]), Math.min(b[1], p[1]), Math.max(b[2], p[0]), Math.max(b[3], p[1])] : [p[0], p[1], p[0], p[1]]; } return b; };
   // The columns asked: two each way, and on the side away from the eye's middle as far as a top that tall LEANS as the eye sees it (lw: tiles a level, sideways; the eye's perspective: a cliff
-  // 13 high ten tiles west of you leans three tiles further west. It was two tiles each way: the gorge's south bank, its corner three tiles east of the river it hid, stood in the window: a half-faded grey block in the river)
+  // 13 high ten tiles west of you leans three tiles further west. Two tiles each way is too few: the gorge's south bank, its corner three tiles east of the river it hides, would stand in the window: a half-faded grey block in the river)
   function veils(x, y, L, at) { const f = box(at, x, y, L), a = at(x, y, L), b = at(x, y, L + 1), c = at(x + 1, y, L); if (!f || !b || !c) return false;
     const lw = (b[0] - a[0]) / Math.max(1e-6, c[0] - a[0]);   // (< 0: tops lean west here, the columns east of the floor lean onto it)
     for (let d = 1; d <= 20; d++) for (let i = -12; i <= 12; i++) { if (Math.abs(i) > 2 && (i * lw > 0 || Math.abs(i) > 2 + Math.abs(lw) * (topAt(x + i, y + d) - L))) continue;
@@ -64,7 +64,7 @@ const HdLevel = (() => {
   // the grass south of the rim (a shaft 3 deep: R's "Dig a step" box lay outside the hole; a room 4 deep: the way's block and its key on the meadow: seen from above).
   // {y: the row of that wall (the first land south of you as high as the cell), T: its top}. wallAt: a place of such a cell, drawn on that face as you see it, stood in the opening on its top
   // edge: its foot (your floor's level) on that edge, each level up a step north into the opening (at most the eye's own cot 68°, all of the wall's height inside one tile); its depth into the wall: none.
-  // (It was folded down from that edge, its foot farthest north: in a room the block at your floor's level lay on your body, cut away whole)
+  // (Not folded down from that edge, its foot farthest north: in a room the block at your floor's level would lie on your body, cut away whole)
   // A cell at or under your feet south of you whose top that wall hides from the eye (the floor at its foot: X's box on it lay on the grass) is on the same face, under the wall's foot: B, the face's foot
   function wall(x, y, z, s) {
     if (!s || !s.top || y <= s.ty) return null;
@@ -100,8 +100,8 @@ const HdLevel = (() => {
     return false;
   }
   // covered(list, at) -> something that STANDS south of you (a tree, a bush, a rock: the frame's list, hd.js; at: the camera's art px of a place) covers your body on the screen: its own px' box over
-  // a quarter of your body's or more. Then you show through what is in front of you, one px in two (hd.js hid). (It was "anything standing within two rows south and a column each side": a flower
-  // at your feet made you show through the land in front, a wide crown three tiles off that covered you did not)
+  // a quarter of your body's or more. Then you show through what is in front of you, one px in two (hd.js hid). (Not "anything standing within two rows south and a column each side": a flower
+  // at your feet would make you show through the land in front, a wide crown three tiles off that covers you would not)
   function covered(list, at) {
     const me = list.find((s) => s.top), a = me && at(me.x, me.y, me.z), B = a && body(me, [Math.round(a[0]), Math.round(a[1])], 1); if (!B) return false;
     for (const s of list) { if (s.tx === undefined || s.lie || !(s.y > me.y)) continue; const p = at(s.x, s.y, s.z), r = p && runsOf(s.canvas); if (!r || !r.b) continue;

@@ -32,7 +32,7 @@ const OPT_DEFAULT = {
 // the view distance's range, tiles (the bend's facets are 4 tiles: the horizon is at 1 + 4k): from the old Near to past the old Very far (37); the top
 // as far as a desk and a phone keep a sprint within a frame, and the server gives far land (views.py FAR_VIEW); a short picture keeps a sixteenth of sky first (hd.js viewOf)
 const VIEW_MIN = 9, VIEW_MAX = 65, VIEW_STEP = 4;
-// what a setting was kept as before, and what it is now (the view distance was Near, Normal, Far, Very far; the curved world Off, Near, Far)
+// what a setting was once kept as, and what it is now (the view distance was Near, Normal, Far, Very far; the curved world Off, Near, Far)
 const OPT_WAS = {view: {near: 9, normal: 13, far: 25, veryfar: 37}, curve: {off: false, near: true, far: true}};
 const OPT = {v: {...OPT_DEFAULT}};
 try { Object.assign(OPT.v, JSON.parse(localStorage.getItem("nexel-options") || "{}")); } catch (e) { /* unreadable: the defaults */ }
