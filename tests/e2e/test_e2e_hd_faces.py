@@ -31,7 +31,7 @@ def test_faces_are_painted_as_their_cells(browser, server, lv):
         x, y = g.pos()
         hill(g, lv)
         g.frames(6)
-        top = g.js(AT, [x + .5, y - 8.5, lv])                       # (the hill's top, two rows north of its edge)
+        top = g.js(AT, [x + .5, y - 5.5, lv])                       # (the top of the hill's edge row)
         front = g.js(AT, [x + .5, y - 4, lv - .5])                   # (the edge's south face, half a level under its top)
         riser = g.js(AT, [x + .5, y - 3, lv - 1.5])                  # (the next step down's south face)
         room = [[x + i, y - 9 + j] for j in range(-1, 2) for i in range(-1, 2)]
@@ -41,7 +41,15 @@ def test_faces_are_painted_as_their_cells(browser, server, lv):
         g.arrive()
         g.wait("HdLook.win.a === 1 && !HdLook.busy", timeout=10000)
         g.rest()
-        floor = g.js(AT, [x + .5, y - 8.5, lv - 4])
-        raise AssertionError({"lv": lv, "top": top, "front": front, "riser": riser, "floor": floor})
+        floor = g.js(AT, [x + 1.5, y - 7.5, lv - 4])                # (a tile of the room's floor beside you, not under your body)
+        seen = {"lv": lv, "top": top, "front": front, "riser": riser, "floor": floor}
+        if lv < 5:
+            assert green(top), seen                                  # an earth hill's top: its grass
+            assert brown(front) and brown(riser), seen               # its edge and its step: earth, not the grass over them
+        else:
+            assert grey(top) and not green(top), seen                # a stone hill's top: stone
+            assert grey(front) and grey(riser), seen                 # its edge and its step: stone
+        assert not green(floor), seen                                # a floor dug under the land: its rock, never grass (lit by your lantern: its tone is the light's)
+        assert not g.errors
     finally:
         g.page.close()
