@@ -63,6 +63,31 @@ def test_walking_back_the_far_land_is_not_made_again(browser, server):
         {"made": (f0, f1, f2), "forgot on the way back": k2 - k1, "blocks come on the way back": came, "work": g.js("HdLook.work"), "far": g.js("HdLook.far")}   # (the way back: its patches were made on the way there)
 
 
+
+@pytest.mark.realtime
+def test_made_at_other_tiles_on_the_way_back_the_far_land_is_kept(browser, server):
+    """(#240) The land is made at some of the tiles you walk, not all (which, the frames say): here at every second tile
+    going east, at the others coming back. The far patches beside the box were cut at its edges, keyed by where it was:
+    each place it had not been made at made them again in every row (13 of 35 a row). On the world's grid, kept."""
+    g = hd(browser, server)
+    g.clear_area()
+    x, y = g.pos()
+
+    def made_at(k):                                          # (you there, its far land come, the land made round you there)
+        g.rpc("dev_teleport", x=x + k, y=y, z=0); g.arrive()
+        g.wait(FAR, 15000); g.rest()
+        g.wait(f"!HdLook.busy && (HdLook.box[0] + HdLook.box[2]) / 2 === {x + k}", 15000)
+        return g.js("HdLook.work.fars"), g.js("HdLook.work.forgot")
+    f0, k0 = made_at(0)
+    for k in (2, 4, 6):
+        made_at(k)
+    f1, k1 = made_at(8)
+    for k in (7, 5, 3):
+        made_at(k)
+    f2, k2 = made_at(1)
+    there, back = f1 - f0 - min(k1 - k0, f1 - f0), f2 - f1 - min(k2 - k1, f2 - f1)   # (what a changed tile let go, rightly made again: not counted)
+    assert there > 200 and back < there / 6, {"made": (f0, f1, f2), "forgot": (k0, k1, k2), "there": there, "back": back, "work": g.js("HdLook.work")}
+
 def test_a_persons_sheet_is_made_between_frames(browser, server):
     g = hd(browser, server)
     r = g.js("""(async () => { let idle = 0; const ric = window.requestIdleCallback; window.requestIdleCallback = (f, o) => ric((d) => { idle++; f(d); }, o);
