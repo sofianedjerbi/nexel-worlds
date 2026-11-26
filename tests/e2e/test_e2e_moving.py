@@ -78,15 +78,22 @@ def test_walk_and_sprint_speeds(game):
 
 @pytest.mark.realtime
 def test_taps_move_one_tile_and_never_snap_back(game):
-    x0, _ = game.pos()
+    # (each tap one tile, when the page had the key down less than a stride of the game's time. The key's up comes from the
+    # test: on a runner drawing every 50 ms it reached the page after a stride, and that tap rightly went a second tile, the
+    # page's key held that long: "(-5 - -9) == 3". How long the page had it down is by its own clocks, in the game's time)
+    stride = game.js("1000 / RULES.pace.walk")
+    game.js("""(() => { window.__down = []; addEventListener('keydown', (e) => { if (e.key === 'd' && !e.repeat) __down.push([performance.now()]); }, true);
+      addEventListener('keyup', (e) => { if (e.key === 'd' && __down.length) __down[__down.length - 1].push(performance.now()); }, true); return 1; })()""")
     for hold in (20, 60, 120):
+        x0, _ = game.pos()
         game.start_recording()
         game.hold(["d"], hold)
         game.sleep(500)
         rec = game.recording()
         assert backward_jumps(rec, "x", 1) < .1
-    x1, _ = game.pos()
-    assert x1 - x0 == 3                                   # three taps, three tiles
+        down = game.js("(() => { const d = __down[__down.length - 1]; return d[1] - d[0]; })()")
+        moved = game.pos()[0] - x0
+        assert moved == 1 or (moved > 1 and down >= stride), (hold, moved, round(down), stride)     # a tap, a tile
     game.start_recording()
     for _ in range(6):                                    # rapid taps: never thrown back to the start
         game.hold(["a"], 40)
