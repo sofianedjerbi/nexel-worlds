@@ -71,12 +71,12 @@ class Needs:
         if item not in T.FOOD:
             raise ActionError("not_food", f"food: {', '.join(T.FOOD)}")
         if not a.count(item):
-            raise ActionError("missing_item", f"you have no {item}")
+            raise ActionError("missing_item", f"you have no {item}", item=item, have=0)
         if a.hunger >= FOOD_MAX:
-            raise ActionError("full", "you're full")
+            raise ActionError("full", "you're full", what="you")
         yield from self.wait(a, EAT_SECONDS)       # a proper bite, with the hands (constants.ASIDE): walking goes on, doing something else stops it
         if not a.count(item):
-            raise ActionError("missing_item", "it's gone")
+            raise ActionError("missing_item", "it's gone", item=item, have=0)
         a.add(item, -1)
         here = self.resolve(a.x, a.y)
         picnic = self.world.block(*here) == "picnic_blanket"
@@ -103,7 +103,7 @@ class Needs:
         x, y = self.resolve(*self.target(a, args))
         if self.held(a, args) != "watering_can":
             raise ActionError("need_tool", "watering needs the watering can in hand (with: watering_can)"
-                              + ("" if a.count("watering_can") else "; craft one at a workbench"))
+                              + ("" if a.count("watering_can") else "; craft one at a workbench"), tool="watering_can", have=a.count("watering_can") > 0)
         if self.world.block(x, y) == "well" or (self.world.block(x, y) == "none" and self.world.ground(x, y) in T.DEPTH):
             yield from self.wait(a, 0.6)
             a.can = CAN_SIZE
@@ -122,7 +122,7 @@ class Needs:
         if a.can <= 0:
             raise ActionError("empty", "your watering can is empty: fill it at a well or any water")
         if self.world.block(x, y) not in ("sprout", "crop") or self.world.ground(x, y) not in ("tilled", "wet_tilled"):
-            raise ActionError("bad_target", "water a growing crop in tilled soil")
+            raise ActionError("bad_target", "water a growing crop in tilled soil", why="not_a_crop")
         if self.world.ground(x, y) == "wet_tilled":
             raise ActionError("already", "it's already watered")
         yield from self.wait(a, 0.8)
@@ -138,7 +138,7 @@ class Needs:
         if a.can < CAN_SIZE:
             raise ActionError("empty", "pouring takes a full can: fill it at a well or any water")
         if self.pour_spot(x, y) is None:
-            raise ActionError("bad_target", "pour it on open ground (not into water, a wall or a block)")
+            raise ActionError("bad_target", "pour it on open ground (not into water, a wall or a block)", why="not_open_ground")
         yield from self.wait(a, 0.6)
         z = self.pour_spot(x, y)
         if z is None:

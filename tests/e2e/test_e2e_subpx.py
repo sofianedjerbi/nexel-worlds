@@ -27,7 +27,8 @@ REC = """(name) => { window.__pr = []; let ref = null, mine = null; const f0 = f
     const d = ctx.getImageData(Math.round(b.at[0] * DPR), Math.round(b.at[1] * DPR), Math.round(b.w * DPR), Math.round(b.h * DPR)).data; if (!ref || ref.length !== d.length) ref = d; let off = 0;
     for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - ref[i]) > 24 || Math.abs(d[i + 1] - ref[i + 1]) > 24 || Math.abs(d[i + 2] - ref[i + 2]) > 24 || Math.abs(d[i + 3] - ref[i + 3]) > 24) off++;
     const m = ents.get('agent' + myId), ms = m && HdLook.screenOf(m.x + .5, m.y + .5, HdLook.drawnAt(m) ?? 0);
-    ref = d; __pr.push({at: b.at.slice(), w: b.w, n: d.length / 4, q: b.q, u: artPx(), body: [onArt(s[0]), onArt(s[1])], off, x: p.x, mine: mine && ms && mine[0] - onArt(ms[0])}); };
+    const v = View.of(p);   // (where its picture stands this frame: what the bubble goes with, and what a player sees. Not p.x: sprinting on a slow runner it was drawn 1.6 to 1.9 tiles from it)
+    ref = d; __pr.push({at: b.at.slice(), w: b.w, n: d.length / 4, q: b.q, u: artPx(), body: v ? v : [onArt(s[0]), onArt(s[1])], drawn: !!v, lx: onArt(s[0]), off, x: p.x, mine: mine && ms && mine[0] - onArt(ms[0])}); };
   return 1; }"""
 
 
@@ -72,8 +73,11 @@ def test_a_bubble_goes_with_its_speaker_px_for_px_and_its_letters_stay_as_they_a
             x0, y0 = f["at"]
             assert whole(x0 * dpr) and whole(y0 * dpr), f                                  # on whole px of the screen
             assert whole(x0 / u), f                                                        # ...and on the land's pixel
-        tail = {round(f["at"][0] + round(f["w"] / 2 / u) * u - f["body"][0], 4) for f in walk}
-        assert len(tail) == 1, tail                                                        # over the speaker's head: the same place every frame
+        W = g.js("innerWidth")
+        free = [f for f in walk if f["drawn"] and 4 < f["at"][0] and f["at"][0] + f["w"] < W - 4]   # (a bubble held inside the screen's edge is not over its speaker: drawBubbles x0. On a slow
+        assert len(free) > 12, (len(free), len(walk))                                     # runner one page's sprint ran on further than the other's: 5 tiles ahead, its bubble held, 243 px off)
+        tail = {round(f["at"][0] + round(f["w"] / 2 / u) * u - f["body"][0], 4) for f in free}
+        assert len(tail) == 1, (tail, [(f["at"][0], f["body"][0], f["lx"]) for f in free][:12])   # over the speaker's head as it is drawn: the same place every frame
         # its px as the frame before's: not drawn another way (its letters put a fraction of a px aside were most of their
         # px; a few px of the outline, 5 or so, come out another way now and then). At a whole density only: read each frame,
         # the canvas is drawn by the CPU after a while, and at 1.25 or 1.75 that is another raster of its letters (4 to 12 %

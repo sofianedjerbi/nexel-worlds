@@ -27,7 +27,7 @@ class Hob:
                 for f in burnt:
                     self.flee_from(f, c, HOB_SCARES)
                     f.rest = max(f.rest, self.tick + sec(HOB_SCARES))
-                    self.damage(f, HOB_BURN, "burnt by a hob", by=owner)
+                    self.damage(f, HOB_BURN, "burnt", by=owner, who=c)
             return
         foe = min((f for f in self.creatures.values() if f.kind in FOES and cheb(f, c) <= HOB_GUARD and self.level(c, f)),
                   key=lambda f: (cheb(f, c), f.id), default=None)
@@ -43,7 +43,7 @@ class Hob:
     def _place_hob(self, a, x, y):
         """Set a hob down on open ground beside you: it is lit, and it is yours."""
         if self.world.block(x, y) not in ("none", "flower") or not self.stand(x, y) or self.entity_at(x, y) is not None:
-            raise ActionError("occupied", "a hob needs a clear spot of open ground")
+            raise ActionError("occupied", "a hob needs a clear spot of open ground", on="thing")
         yield from self.wait(a, 0.5)
         if self.entity_at(x, y) is not None or not a.count("hob"):
             raise ActionError("changed", "the spot is taken")

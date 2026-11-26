@@ -16,7 +16,7 @@ def wake(sim, a, boss):
     """Hit it once, then let it get up."""
     sim.step()
     assert boss.mode == "sleep"
-    sim.damage(boss, 5, "test", by=a)
+    sim.damage(boss, 5, "dev", by=a)
     sim.step()
     assert boss.mode == "" and any(e["type"] == "boss" and e["what"] == "wake" for e in a.events)
 
@@ -72,7 +72,7 @@ def test_the_snap_reaches_along_its_line_and_leaves_the_neck_out(world):
     run(sim, ATTACKS["snap"] + 0.1)
     assert a.hp <= hp - CREATURES["mossback"]["snap"] + 2
     before = boss.hp
-    sim.damage(boss, sim.shell(boss, 20), "test", by=a)
+    sim.damage(boss, sim.shell(boss, 20), "dev", by=a)
     assert boss.hp == before - 20                                 # the neck is out: the blow lands in full
     run(sim, EXPOSED + 0.2)
     if boss.mode != "snap":

@@ -66,3 +66,31 @@ def test_the_sound_pipeline_asks_for_every_test_that_plays_sound(tmp_path):
     for f in ("tools/build_audio.py", "music/adventure.py", "music/sfx_map.json", ".github/workflows/ci.yml"):
         assert A.affected([f], r)[0] == ["tests/e2e/test_e2e_sound.py"], f
     assert A.affected(["README.md"], r)[0] == []
+
+
+def test_a_helper_of_the_browser_tests_asks_for_the_tests_that_import_it(tmp_path):
+    """#146: #78 changed waits.py, and no browser test ran. A helper asks for the test files that import it, directly or
+    through another helper; conftest.py (and what it imports) for every one: pytest gives its fixtures to all."""
+    r = repo(tmp_path, {"tests/e2e/waits.py": "def arrive(): pass\n",
+                        "tests/e2e/game.py": "from waits import arrive\nclass Game: pass\n",
+                        "tests/e2e/home.py": "PLACE = (0, -40)\n",
+                        "tests/e2e/pages.py": "class Pages: pass\n",
+                        "tests/e2e/conftest.py": "import pytest\nfrom pages import Pages\n",
+                        "tests/e2e/test_e2e_a.py": "from game import Game\n\ndef test_a(): pass\n",
+                        "tests/e2e/test_e2e_b.py": "import home, os\n\ndef test_b(game): pass\n",
+                        "tests/e2e/test_e2e_c.py": "from test_e2e_b import helper\n\ndef test_c(): pass\n",
+                        "tests/e2e/test_e2e_d.py": "def test_d(game): pass\n",
+                        "tests/e2e/durations.json": "{}\n"})
+    every = [f"tests/e2e/test_e2e_{x}.py" for x in "abcd"]
+    assert A.affected(["tests/e2e/waits.py"], r) == (["tests/e2e/test_e2e_a.py"], [], False)          # (through game.py)
+    assert A.affected(["tests/e2e/home.py"], r)[0] == ["tests/e2e/test_e2e_b.py", "tests/e2e/test_e2e_c.py"]   # (and what imports b)
+    assert A.affected(["tests/e2e/conftest.py"], r) == (every, [], False)
+    assert A.affected(["tests/e2e/pages.py"], r)[0] == every                                           # (conftest imports it)
+    assert A.affected(["tests/e2e/test_e2e_b.py"], r)[0] == ["tests/e2e/test_e2e_b.py", "tests/e2e/test_e2e_c.py"]
+    assert A.affected(["tests/e2e/test_e2e_d.py"], r) == (["tests/e2e/test_e2e_d.py"], [], False)
+    assert A.affected(["tests/e2e/durations.json"], r) == ([], [], True)                               # (nothing imports it: the quick set)
+
+
+def test_on_the_real_repo_a_change_to_waits_py_runs_browser_tests():
+    e2e, _, _ = A.affected(["tests/e2e/waits.py"], ROOT)
+    assert len(e2e) > 20 and "tests/e2e/test_e2e_moving.py" in e2e

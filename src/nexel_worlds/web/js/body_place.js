@@ -34,7 +34,10 @@ const BodyPlace = (() => {
     const mode = boat ? "boat" : swim ? "swim" : climb ? "climb" : fall && fall.air ? "fall" : jump && (jump.leap || jump.tuck || jump.pose) ? "jump" : "walk";
     const dx = climb ? climb.dx : 0, dy = climb ? climb.dy : 0, [ax, ay, bx, by, la, lb] = Floors.between(p), f = ax === bx ? p.y - ay : p.x - ax;
     if (climb) climb.lift = (climb.h - (la + (lb - la) * f)) * RELIEF_STEP;   // (on a ladder: art px over the straight line, for its picture)
-    const up = (climb ? climb.lift : 0) + (jump ? jump.body : 0);
+    // (a body with no jump of its own, a swimmer just down from a leap: drawn from the level the eye is coming to, by the landing's
+    //  lift, as a jump's landing is in it (jump.js jumpNow), #24)
+    const lift = Math.round(Leap.lift(p) * k);
+    const up = (climb ? climb.lift : 0) + (jump ? jump.body : lift);
     return {at: now, tx: Math.round(p.x + dx), ty: Math.round(p.y + dy), mode, air, pose: jump && jump.pose || null, fx: p.fx || 0, fy: p.fy || 0, dx, dy,
       line: Math.abs(la - lb) >= FALL.from || Climb.onLadder(ax, ay, la, bx, by, lb) ? (f < .5 ? la : lb) : la + (lb - la) * f, up, eye: (climb ? climb.lift : 0) + (fall ? fall.z * RELIEF_STEP - line : 0), z: climb ? climb.h : lv + (jump ? j0.body : 0), ground: lv + (jump ? j0.ground : 0), jump, fall, climb};   // (z, ground: the solver's levels, not the picture's px)
   }

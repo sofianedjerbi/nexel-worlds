@@ -26,7 +26,7 @@ class Underground:
         """Dig the bottom of the water at (x, y) a layer deeper (no water moves: there is only more of it here)."""
         deeper = DEEPER.get(self.world.ground(x, y))
         if deeper is None:
-            raise ActionError("cannot_dig", "the water is as deep as it goes here")
+            raise ActionError("cannot_dig", "the water is as deep as it goes here", why="deepest")
         yield from self.wait(a, 1.2)
         if DEEPER.get(self.world.ground(x, y)) != deeper or self.world.block(x, y) != "none":
             raise ActionError("changed", "something changed there")
@@ -47,7 +47,7 @@ class Underground:
             if self.open_cell(x, y, z):
                 return self._lower(a, x, y, z, self.pickaxe(a, args), inside=True)
             if self.world.solid(x, y, z):
-                raise ActionError("cannot_dig", "that is inside the land, with no air beside it: dig to it from next to it")
+                raise ActionError("cannot_dig", "that is inside the land, with no air beside it: dig to it from next to it", why="enclosed")
             return None
         if z == self.world.level(x, y):
             g, b = self.world.get(x, y)
@@ -63,7 +63,7 @@ class Underground:
             return self.take_block(a, x, y, z, self.held(a, args))
         if not self.world.solid(x, y, z):
             raise ActionError("bad_target", f"nothing over your head to dig. For a step up: dig the block in front of you at "
-                                            f"your head's height (dig with dir and z={z}), then jump onto the block under it")
+                                            f"your head's height (dig with dir and z={z}), then jump onto the block under it", why="nothing_overhead")
         return self._lower(a, x, y, z, self.pickaxe(a, args), inside=True)
 
     def take_land(self, a: Agent, x: int, y: int, z: int, cause: str = "dig", keep: bool = True) -> str:
@@ -122,14 +122,14 @@ class Underground:
         over = (x, y, z) == (a.x, a.y, h + 2)                # (the cell over your own head: dig_over)
         if inside and not over and not (abs(x - a.x) + abs(y - a.y) == 1 and h <= z <= h + 2):   # (in front of you: not through the land)
             raise ActionError("out_of_range", "a cell inside the land is dug from beside it, from your feet to your head, "
-                                              "or over your own head (dir: up)")
+                                              "or over your own head (dir: up)", why="inside")
         for again in (False, True):
             if z <= DEEPEST:
-                raise ActionError("cannot_dig", "this is as deep as it goes")
+                raise ActionError("cannot_dig", "this is as deep as it goes", why="deepest")
             if not self.world.solid(x, y, z) or (self.world.solid(x, y, z + 1) and not (inside and self.open_cell(x, y, z))):
                 raise ActionError("changed", "something changed there")
             if any(self.height(b) == z for b in self.bodies_on(x, y)):
-                raise ActionError("occupied", "someone is standing there")
+                raise ActionError("occupied", "someone is standing there", on="body")
             if not again:
                 yield from self.wait(a, 0.8 * tool_time(pick) if pick else 2.4)      # (by hand it is slow work; a better pickaxe is quicker: tiles.py TIER_TIME)
         if z == self.world.level(x, y) and self.world.block(x, y) == "flower":
@@ -153,11 +153,11 @@ class Underground:
         if self.swimming(a) and GROUNDS[self.world.get(x, y)[0]].liquid:     # the bottom under you, from the surface
             if not pick:
                 raise ActionError("need_tool", "digging the bottom needs a pickaxe in hand (with: pickaxe)"
-                                  + ("" if best_tool(a.inventory, "pickaxe") else "; craft one"))
+                                  + ("" if best_tool(a.inventory, "pickaxe") else "; craft one"), tool="pickaxe", have=bool(best_tool(a.inventory, "pickaxe")))
             return (yield from self.deepen(a, x, y))
         if a.sailing or not self._diggable_down(a):
             raise ActionError("cannot_dig", "you need to stand on clear ground to dig down"
-                              + (" (this is as deep as it goes)" if self.height(a) <= DEEPEST else ""))
+                              + (" (this is as deep as it goes)" if self.height(a) <= DEEPEST else ""), why="deepest" if self.height(a) <= DEEPEST else "not_clear")
         yield from self.wait(a, 1.5 * tool_time(pick) if pick else 3.0)
         if not self._diggable_down(a) or (a.x, a.y) != (x, y):
             raise ActionError("changed", "something changed here")

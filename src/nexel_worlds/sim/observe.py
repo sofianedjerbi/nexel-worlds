@@ -3,11 +3,14 @@
 from .. import tiles as T
 from .constants import VIEW_R
 
+YOU, ITEMS, WATER = "@", "$", "~"   # the grid's own chars, over the land's: you, items lying there, running water
+LOW, HIGH = -26, 35                 # the heights height_char tells apart (deeper or higher reads as the end one)
+
 
 def height_char(lv: int) -> str:
     """A height for the agents: 0-9 and A, B, C (10-12) up; a, b, c... (-1, -2, -3...) down in pits. Z is 35 or
     higher, z is 26 down or deeper (the land goes to 512 each way: your own height is said in full, `z`)."""
-    return str(lv) if 0 <= lv <= 9 else chr(55 + min(lv, 35)) if lv > 9 else chr(96 - max(lv, -26))
+    return str(lv) if 0 <= lv <= 9 else chr(55 + min(lv, HIGH)) if lv > 9 else chr(96 - max(lv, LOW))
 
 
 from .entities import CREATURES, Agent
@@ -40,7 +43,7 @@ class Observation:
             row = []
             for x in range(a.x - R, a.x + R + 1):
                 if (x, y) == (a.x, a.y):
-                    ch = "@"
+                    ch = YOU
                 elif (x, y) in ents:
                     ch = ents[(x, y)]
                 else:
@@ -48,9 +51,9 @@ class Observation:
                     if ch in "Zz":     # the rest of a structure shows as the structure
                         ch = self.world.char(*self.resolve(x, y))
                     if (x, y) in self.items and self.world.block(x, y) == "none":
-                        ch = "$"
+                        ch = ITEMS
                     elif (x, y) in self.water.at and self.world.block(x, y) == "none":
-                        ch = "~"                # (water that runs, in a hole or on the ground: flow.py)
+                        ch = WATER              # (water that runs, in a hole or on the ground: flow.py)
                 used.add(ch)
                 row.append(ch)
             grid.append("".join(row))

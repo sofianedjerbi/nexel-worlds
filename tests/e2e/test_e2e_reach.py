@@ -30,8 +30,9 @@ def test_a_box_is_dotted_only_while_its_block_cannot_be_reached_and_whole_once_t
     DOTS, WHOLE = [True, False, True], [False, True, False]
 
     assert box(2, 1) == [DOTS, None]                          # two blocks into the rock at your legs: dotted, nothing said
+    said = game.toast()                                       # (the welcome may still be up: a runner's page has just joined)
     game.press("x", 120)
-    assert game.js("Build.S.plans.size") == 0 and game.toast() == ""     # (X on it: nothing)
+    assert game.js("Build.S.plans.size") == 0 and game.toast() in ("", said)     # (X on it: nothing)
     # the one in front of your legs, then a staircase three down and two up, block by block: each next block is
     # dotted till the one before it is planned (but the first up: the step down beside it already opened it), whole right after
     chain = [(1, 1), (1, 0), (2, 0), (2, -1), (3, -1), (3, -2), (4, -1), (4, 0), (5, 0), (5, 1)]
