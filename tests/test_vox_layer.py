@@ -13,7 +13,7 @@ import pytest
 WEB = Path(__file__).parent.parent / "src" / "nexel_worlds" / "web"
 NODE = shutil.which("node")
 pytestmark = pytest.mark.skipif(NODE is None, reason="node is not installed")
-FILES = [str(WEB / "js" / f"vox_{n}.js") for n in ("gl", "curve", "sky", "mesh", "style_glsl", "style_land", "style")]
+FILES = [str(WEB / "js" / f"vox_{n}.js") for n in ("gl", "curve", "sky", "mesh", "style_glsl", "style_land", "style_sprites", "style_glow", "style")]
 
 RUN = r"""
 const vm = require("vm"), fs = require("fs"), seen = {corners: 0, painted: 0, fronts: [], sides: []};
