@@ -1,7 +1,7 @@
 // VOX: A CELL'S FACES, for one land asked of vox_style_land.js (steps), by THE FACE RULE (the top of vox_style_land.js): which faces a cell
 // has, painted with which paint, lit with which flags; and THE MOUTHS on them, a way into the land seen from any side. Split out of
 // VoxStyleLand's create (#154): the same code, given what it reads of that land and of create's paints.
-//   VoxLandMouth.shade(px, at, st, m): a top's mouth shade; VoxLandMouth.of({topOf, mouth, inTo, walled}) -> {mark(x, y, z): a top's mouth
+//   VoxLandMouth.shade(px, at, st, m, C): a top's mouth shade (C: a tile's px); VoxLandMouth.of({topOf, mouth, inTo, walled}) -> {mark(x, y, z): a top's mouth
 //     bits, shadow(x, y, z, sky, mo): its shadow's flags inside or before a mouth}
 //   VoxLandFaces({...}) -> faces(x, y, z, dst): a cell's faces onto dst
 const VoxLandMouth = (() => {
@@ -13,7 +13,7 @@ const VoxLandMouth = (() => {
   //  the one "a little bit more beautiful and more obvious" than a fainter dither of three steps from .72.
   //  A mouth that opens north, its face hidden by its own hill, has instead a little arch on that edge: the shape of an opening, mockup G)
   const MD = [[0, -1], [1, 0], [0, 1], [-1, 0]], MK = [.58, .7, .82, .93];
-  function mouthShade(px, at, st, m) {
+  function mouthShade(px, at, st, m, C) {
     const north = (m & 16) || (m & 4);          // (a mouth that opens north: the top over it, the ground before it)
     for (let j = 0; j < C; j++) for (let i = 0; i < C; i++) { let k = 1, ka = 1;
       for (let d = 0; d < 4; d++) { if (!(m >> d & 17)) continue;
@@ -57,7 +57,7 @@ const VoxLandFaces = ({host, cfg, C, FACES, solidC, real, col, topOf, solidIn, w
       const nc = real(nx, ny); let sky = (f === 0 ? z >= open : !nc || z > nc[nc.length - 1]) ? 1 : 0, s, kind = f === 0 ? 1 : 0, e = 0;
       const ore = host.ore && !solidC(nc, nz) && host.ore(x, y, z);   // (a cell of ore that shows: nuggets on its faces that open onto the land's real air, ore_paint.js; a face only the x-ray cut opens (rock beside it in the real column, nc) is the rock's own, face rule 4)
       if (f === 0) {
-        const mo = sky && !walled(x, y, z) ? mark(x, y, z) : 0; s = topSlot(x, y, z, (px, at, st) => { topPaint(x, y, z, px, at, st); if (mo) VoxLandMouth.shade(px, at, st, mo); if (ore) OrePaint.nuggets(px, at, st, C, C, ore, x * 31 + y * 17 + z); }, ore ? (mo || "") + "o" + ore : mo);   // (a mouth's shade is for the open ground before it: a shaft's floor at a passage's end took it, a dark blue band across a level way in the window)
+        const mo = sky && !walled(x, y, z) ? mark(x, y, z) : 0; s = topSlot(x, y, z, (px, at, st) => { topPaint(x, y, z, px, at, st); if (mo) VoxLandMouth.shade(px, at, st, mo, C); if (ore) OrePaint.nuggets(px, at, st, C, C, ore, x * 31 + y * 17 + z); }, ore ? (mo || "") + "o" + ore : mo);   // (a mouth's shade is for the open ground before it: a shaft's floor at a passage's end took it, a dark blue band across a level way in the window)
         if (sky && walled(x, y, z)) e |= 32768;   // (a floor under the sky in a shaft, a trench, a pit: lit as the floors of your space are when you are under the land (the shader's sk); open ground, even at a cliff's foot, keeps the sun: "still weird color mismatch when entering a cave")
         e |= shadow(x, y, z, sky, mo);   // (the shadow before and inside a mouth: VoxLandMouth)
         { [[0, -1, 1], [1, 0, 2], [0, 1, 4], [-1, 0, 8]].forEach(([dx, dy, b]) => { if (!solidIn(x + dx, y + dy, z) && (sky || solidIn(x + dx, y + dy, z - 1))) e |= b; });   // (a lip: under a roof only at a step of one level, one you can take; a drop of two or more has none)
