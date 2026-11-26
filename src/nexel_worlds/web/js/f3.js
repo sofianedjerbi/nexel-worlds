@@ -10,24 +10,42 @@
 // Drawn in the game's pixel font: each line on a strip of dark see-through, its text with a shadow one art px down
 // and right (the font's px is 2 CSS px at 18 px), no rounded box. On a phone at 9 px, the font's own size: the two
 // columns one under the other, on the left.
+// A phone's budget (#10): what a player waits and what a frame takes while you move, against PERF_BUDGET, in the
+// section "budget": the owner reads it on the phone. F3.report() gives the same numbers (tests/e2e/test_e2e_demo.py).
+//   paint  ms from the visit's start to the first thing painted (the browser's first-contentful-paint)
+//   world  ms from the visit's start to the land drawn round you, less the time you spent on a usable first screen
+//          before Wake up: what a player who taps it at once waits
+//   frame  ms between two frames while you move (walk, sprint, swim): their p95, over the last MOVED frames
+//          (counted while the debug screen is open, as its other frame numbers are)
+
+const PERF_BUDGET = {paint: 1500, world: 6000, frame: 33};
 
 const F3 = (() => {
   const q = new URLSearchParams(location.search), was = (k) => localStorage.getItem("nexel-" + k) === "1";
-  const RANK = {you: 0, server: 1, frames: 0, look: 1, machine: 2};      // (the order the sections are read in, whatever order their files came in)
-  const parts = [], S = {gaps: [], js: [], land: 0, n: 0, last: 0, at: 0, cost: 0, now: -1};
+  const RANK = {you: 0, server: 1, frames: 0, budget: .5, look: 1, machine: 2};      // (the order the sections are read in, whatever order their files came in)
+  const parts = [], S = {gaps: [], js: [], land: 0, n: 0, last: 0, at: 0, cost: 0, now: -1, moved: [], px: null, py: null};
+  const MOVED = 300, L = {title: null, wake: null, world: null};       // (L: ms from the visit's start to each step of it)
+  // the first screen usable: shown (`scene`) and done waiting on the world (`booting` gone)
+  const usable = () => { if (L.title === null && document.body.classList.contains("scene") && !document.body.classList.contains("booting")) { L.title = performance.now(); seen.disconnect(); } };
+  const seen = new MutationObserver(usable); seen.observe(document.body, {attributes: true, attributeFilter: ["class"]}); usable();
   let on = q.get("perf") === "1" || q.get("debug") === "1" || was("f3") || was("perf") || was("coords"), el = null, painted = 0;
   function add(name, fn, side = "game") { const i = parts.findIndex((p) => p.name === name); if (i >= 0) parts.splice(i, 1); parts.push({name, fn, side}); }
   function set(v) {
     on = !!v; localStorage.setItem("nexel-f3", on ? "1" : "0");
     for (const k of ["perf", "coords"]) localStorage.removeItem("nexel-" + k);   // (the two old switches: one now)
     if (!on) GpuTime.stop();
-    const playing = typeof me !== "undefined" && !!me; document.body.classList.toggle("f3", on && playing); if (el) el.style.display = on && playing ? "" : "none"; S.gaps = []; S.js = []; S.last = S.at = 0; painted = 0;
+    const playing = typeof me !== "undefined" && !!me; document.body.classList.toggle("f3", on && playing); if (el) el.style.display = on && playing ? "" : "none"; S.gaps = []; S.js = []; S.moved = []; S.last = S.at = 0; painted = 0;
   }
   function sample(now, ms, land = 0) {
     if (!on) return;
     if (typeof me === "undefined" || !me) { if (el && el.style.display !== "none") { el.style.display = "none"; document.body.classList.remove("f3"); } return; }   // (the home screen: no debug screen over it, only in the game: "why does the F3 menu appear in the homescreen?")
     if (now === S.now) { S.js[S.js.length - 1] = Math.max(S.js[S.js.length - 1], ms); }      // (the classic frame inside the HD look's: one frame)
-    else { if (S.last) S.gaps.push(now - S.last); S.last = S.now = now; S.js.push(ms); S.land += land; S.n++; }
+    else {
+      const p = typeof myId !== "undefined" && myId !== null ? ents.get("agent" + myId) : null, moved = !!p && S.px !== null && (p.x !== S.px || p.y !== S.py);
+      if (S.last) { S.gaps.push(now - S.last); if (moved) { S.moved.push(now - S.last); if (S.moved.length > MOVED) S.moved.shift(); } }
+      if (p) { S.px = p.x; S.py = p.y; }
+      S.last = S.now = now; S.js.push(ms); S.land += land; S.n++;
+    }
     GpuTime.frame(now);                                                    // (the GPU's clock: one query a frame, gpu_time.js)
     if (now - painted >= 250) { painted = now; paint(now); }                // (the text 4 times a second)
   }
@@ -70,5 +88,18 @@ const F3 = (() => {
     S.gaps = []; S.js = []; S.land = 0; S.n = 0;
     return r;
   }, "perf");
-  return {add, set, sample, toggle: () => set(!on), get on() { return on; }, get el() { return el; }, lines, get cost() { return S.cost; }};
+  // the steps of the visit: Wake up pressed (agent.js joinGame), and each frame (debug.js perfFrame, F3 on or off) the land drawn round you
+  function woke() { if (L.wake === null) L.wake = performance.now(); }
+  function arrived(now) { if (L.wake !== null && L.world === null && meObs && myPos() && (!HdLook.on || HdLook.faces > 500)) L.world = now; }
+  function report() {
+    const fcp = performance.getEntriesByType("paint").find((e) => e.name === "first-contentful-paint"), m = S.moved;
+    const world = L.world === null ? null : L.world - (L.title !== null && L.wake > L.title ? L.wake - L.title : 0);
+    return {paint: fcp ? fcp.startTime : null, title: L.title, wake: L.wake, world, moved: m.length, frame: m.length ? at(m, .95) : null, over: m.filter((g) => g > PERF_BUDGET.frame).length};
+  }
+  add("budget", () => {
+    const r = report(), s = (v) => (v === null ? "-" : (v / 1000).toFixed(1)), over = (v, k) => (v !== null && v > PERF_BUDGET[k] ? " OVER" : "");
+    return [`load: paint ${s(r.paint)} s${over(r.paint, "paint")}, in the world ${s(r.world)} s${over(r.world, "world")} (budget ${PERF_BUDGET.paint / 1000} / ${PERF_BUDGET.world / 1000} s)`,
+      `moving: frame p95 ${r.frame === null ? "-" : r.frame.toFixed(1) + " ms"}${over(r.frame, "frame")}, ${r.over}/${r.moved} over ${PERF_BUDGET.frame} ms (budget p95 ${PERF_BUDGET.frame})`];
+  }, "perf");
+  return {add, set, sample, woke, arrived, report, toggle: () => set(!on), get on() { return on; }, get el() { return el; }, lines, get cost() { return S.cost; }};
 })();

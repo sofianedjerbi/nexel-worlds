@@ -47,6 +47,7 @@ F3.add("machine", () => {
 // Called at the end of each frame (render.js) with when it began, what the script did in it and how much of that was
 // building land
 function perfFrame(now, js, land) {
+  F3.arrived(now);                                   // (the load's last step: the land drawn round you, f3.js)
   if (!F3.on) return;
   if (clock !== TICKS.clock) { TICKS.clock = clock; TICKS.n++; if (TICKS.at) TICKS.gap = Math.max(TICKS.gap, now - TICKS.at); TICKS.at = now; }
   F3.sample(now, js, land);

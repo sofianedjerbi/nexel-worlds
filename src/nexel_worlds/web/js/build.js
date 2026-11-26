@@ -27,7 +27,8 @@
 // button takes. The whole of it by keys alone. A piece bigger than a tile (a well, a coop) is still put by hand.
 const Build = (() => {
   const REACH = 10, FIRST_MS = 230, STEP_MS = 75, BAD_MS = 2600;   // how far from you the cursor goes; a held arrow: its wait, then its pace; how long a failed plan shows
-  const SWAP = {door: "W%", gate: "#"};                      // a piece that goes in the place of another: a door in a wall, a gate in a fence
+  const SWAP = {door: ["wood_wall", "stone_wall"], gate: ["fence"]};   // a piece that goes in the place of another: a door in a wall, a gate in a fence
+  const swaps = (it, c) => !!SWAP[it] && SWAP[it].some((n) => CHAR[n] === c);
   const S = {on: false, at: null, plane: null, deep: null, plans: new Map(), hold: null, working: false, dir: null, timer: 0, pan: {x: 0, y: 0}};
   const now = () => performance.now(), UPMOST = 9, DEEPEST = 12, LOWEST = LOW;   // (how far over your own height the cursor goes: three floors; under it, layers; the deepest ground there is: the top of the bottom cell, sim/underground.py)
   // The cursor's height: the plane it was lifted to, or the ground at its tile nearest your own height
@@ -41,8 +42,8 @@ const Build = (() => {
   const BLOCK = (it) => it === "roof" || it === "plank";
   const planned = (x, y, z) => { const j = S.plans.get(x + "," + y + "," + z); return !!j && !j.take && j.up && (BLOCK(j.item) || LAND_BLOCKS.has(j.item)) && j.state !== "bad"; };     // a block that is only planned yet
   // A block of the land (earth, stone) for the cell (x, y, z): why it cannot go there, or nothing (as the server's put_land: empty, something solid beside it; or a block planned there)
-  const landFits = (x, y, z, soon = planned) => { const s = myPos(); return solidAt(x, y, z) ? "Something is there" : s && s.x === x && s.y === y && z > myZ(x, y) && z <= myZ(x, y) + 2 ? "You stand there"
-    : ((N) => N.some(([i, j, k]) => solidAt(x + i, y + j, z + k) || soon(x + i, y + j, z + k)) && N.some(([i, j, k]) => !solidAt(x + i, y + j, z + k)))([[0, 0, -1], [0, 0, 1], ...Object.values(DIRV).map(([dx, dy]) => [dx, dy, 0])]) ? "" : "Nothing holds it"; };   // (held: something beside it, or planned there; reached: air beside it)     // (a few words: the ghost says it, red where it cannot go: buildghost.js. It was a red line across the screen: "Nothing holds it: put it against a block")
+  const landFits = (x, y, z, soon = planned) => { const s = myPos(); return solidAt(x, y, z) ? "taken" : s && s.x === x && s.y === y && z > myZ(x, y) && z <= myZ(x, y) + 2 ? "you_there"
+    : ((N) => N.some(([i, j, k]) => solidAt(x + i, y + j, z + k) || soon(x + i, y + j, z + k)) && N.some(([i, j, k]) => !solidAt(x + i, y + j, z + k)))([[0, 0, -1], [0, 0, 1], ...Object.values(DIRV).map(([dx, dy]) => [dx, dy, 0])]) ? "" : "unheld"; };   // (held: something beside it, or planned there; reached: air beside it)     // (a few words: the ghost says it, red where it cannot go: buildghost.js. It was a red line across the screen: "Nothing holds it: put it against a block")
   const piece = () => (selected && meObs && meObs.self.inventory[selected] && placeable(selected) ? selected : null);
   const todo = () => [...S.plans.values()].filter((j) => j.state !== "bad");
 
@@ -50,8 +51,7 @@ const Build = (() => {
   // said in a few words (they are written beside the bar: a long line ran under it). Where nothing holds it (nothing beside
   // it, built or planned; stairs with nothing higher beside them): far, its box dotted (target.js), nothing said, Space does
   // nothing: the dotted box means one thing, out of reach yet, as for X (the owner: "show, don't tell"; it said in red "Nothing holds it")
-  const UNHELD = new Set(["Nothing holds it", "Needs a wall under it", "Stairs go up to something higher beside them", "Needs something taller behind"]);
-  function hint(p) { const h = says(p); return h.ok === false && UNHELD.has(h.text) ? {...h, text: "", far: true} : h; }
+  function hint(p) { const h = says(p); return h.ok === false && Floors.UNHELD.has(h.why) ? {...h, text: "", far: true} : h; }
   function says(p) {
     const it = piece();
     if (!it) return {text: selected ? "Pick a block to place" : "Pick a piece", key: "1-9", ok: selected ? undefined : false};      // (a pickaxe in hand: you came to break. It said "Not a building piece" in red, the cursor red)
@@ -62,20 +62,20 @@ const Build = (() => {
     if (it === "stairs" || it === "ladder") {          // (a flight, a ladder: as they will be, climbing.js)
       if (S.plans.has(key(p, L))) return {text: "Planned", ok: false, ghost: it};
       const say = Climb.intent(p, false) || {text: "Nothing can go there", ok: false};
-      return {...say, z: say.ok === false && UNHELD.has(say.text) ? L + 1 : L};      // (nothing to lean on: the cell its first step would fill, dotted)
+      return {...say, z: say.ok === false && Floors.UNHELD.has(say.why) ? L + 1 : L};      // (nothing to lean on: the cell its first step would fill, dotted)
     }
     if (LAND_BLOCKS.has(it) && FLOORS) {              // earth, stone: the cell on top of what the cursor is on; the cursor in the air: the cell it is in ("why cant i place block in that mode also ??")
       const F = p.side && p.side !== "T" ? DIRV[p.side] : null, q = F ? {x: p.x + F[0], y: p.y + F[1]} : p, at = F ? {at: q} : {};    // (the mouse on a block's side: the cell beside that face, Minecraft's way, mouse.js rayHit; keys: the cell on the cursor)
       const z = S.hold === " " && S.row !== undefined ? S.row : BuildGhost.cell(q, F ? p.cz ?? L : p.side ? (p.cz ?? L) + 1 : on ? L + 1 : L, planned), why = landFits(q.x, q.y, z);     // (on the one you planned there: the next one on top, no height key. A row, Space held: at the height of its first, so a roof is a row begun on a wall's top)
-      return why ? {text: why, ok: false, ghost: it, z, ...at} : {text: `Place ${label(it)}`, ok: true, ghost: it, z, ...at};
+      return why ? Floors.no(why, {ghost: it, z, ...at}) : {text: `Place ${label(it)}`, ok: true, ghost: it, z, ...at};
     }
     if (BLOCK(it) && (FLOORS || it === "roof") && !(it === "plank" && on && !c && t && FILLS.plank[t[1]] && GROUND.has(t[0]))) {     // a block, for a cell
-      const z = !on ? L : it === "roof" ? L + Floors.STOREY : L + 1, why = S.plans.has(key(p, z)) ? "Planned" : Floors.fits(p.x, p.y, z, planned);
-      return why ? {text: why, ok: false, ghost: it, z} : {text: `Place ${label(it)}${on && it === "plank" ? " on top" : ""}`, ok: true, ghost: it, z};
+      const z = !on ? L : it === "roof" ? L + Floors.STOREY : L + 1, why = S.plans.has(key(p, z)) ? "planned" : Floors.fits(p.x, p.y, z, planned);
+      return why ? Floors.no(why, {ghost: it, z}) : {text: `Place ${label(it)}${on && it === "plank" ? " on top" : ""}`, ok: true, ghost: it, z};
     }
     if (S.plans.has(key(p, L))) return {text: "Planned", ok: false, ghost: it};
     if (!on) return {text: solidAt(p.x, p.y, L) ? "Nothing can go there" : "No floor there: lay one", ok: false, ghost: it, z: L};
-    if (SWAP[it] && SWAP[it].includes(what)) return {text: `Place ${label(it)} in its place`, ok: true, ghost: it, swap: true, ...(c ? {z: L} : {})};
+    if (swaps(it, what)) return {text: `Place ${label(it)} in its place`, ok: true, ghost: it, swap: true, ...(c ? {z: L} : {})};
     if (c) return what ? {text: "Something is there", ok: false, ghost: it, z: L} : tileOf(PLACEABLE_BLOCK[it]).upstairs ? {text: `Place ${label(it)}`, ok: true, ghost: it, z: L} : {text: "It needs the ground", ok: false, ghost: it, z: L};
     const say = intent(p, false) || {text: "Nothing can go there", ok: false};
     return {...say, text: say.ok === false ? say.text.replace(/^Can't place .* here$/, "Can't go there") : say.text};
@@ -184,7 +184,7 @@ const Build = (() => {
     const tool = j.dig ? bestTool("pickaxe") : (j.take || j.swap) && TOOL_FOR[was] ? bestTool(TOOL_FOR[was]) || (inv[TOOL_FOR[was]] ? TOOL_FOR[was] : null) : null;   // (a hole: your best pickaxe if you have one; a thing: your best tool of its kind, vocab.js)
     const went = (r) => (r && r.ok ? null : (r && (r.detail || r.error)) || "It could not be done");
     const z = FLOORS || j.dig ? {z: j.z} : {}, dig = () => { actTarget = {x: j.x, y: j.y}; return act(FLOORS || !j.up ? "dig" : "unroof", {dir: "N", ...z, ...(tool ? {with: tool} : {})}, true); };
-    if (j.swap && SWAP[j.item].includes(was)) {        // what is in its place comes down first (and back into your pack)
+    if (j.swap && swaps(j.item, was)) {        // what is in its place comes down first (and back into your pack)
       const why = went(await dig());
       if (why) return why;
     }

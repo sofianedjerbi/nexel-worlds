@@ -120,8 +120,8 @@ const Leap = (() => {
     }
     return false;
   }
-  // -> tiles to walk before the auto-jump is due (Infinity: none ahead). walk.js walks no further than a 60th of a second's walk past it in a frame: a long one (0.1 s, a tile
-  // at a sprint) went past where it was due, and stairArc, too near the edge, slowed the jump to clear it (5.9 tiles a second of 10)
+  // -> tiles to walk before the auto-jump is due (Infinity: none ahead). walk.js walks no further than a 60th of a second's walk past it in a frame,
+  // however long the frame (0.1 s is a tile at a sprint): the jump leaves where stairArc planned it, far enough from the edge to keep its speed
   function room(p, w) {
     if (!can(p)) return Infinity;
     const [dx, dy] = DIRV[w.dir], v = RULES.pace[w.run && sprinting() ? "sprint" : "walk"], a = ahead(p, dx, dy), need = v * T1() + .08;
@@ -129,13 +129,13 @@ const Leap = (() => {
   }
   const due = (p, w) => room(p, w) <= 1e-6;
   // A frame in the air (render.js, in place of the walk). A long one (render.js: up to 0.1 s) in pieces of a 60th of a second at
-  // the most, as the jump was planned (hits, stairArc: 1/120 s a step): in one, the body went a tile on before it rose, against the
-  // step it was planned to clear (a runner drawing on the CPU, a frame every 100 ms: pinned up a flight of steps, walking)
+  // the most, the step the jump is planned in (hits, stairArc: 1/120 s a step): the body rises over the step it clears at the
+  // place planned, a frame every 100 ms as at 60 a second
   function frame(p, dt, now) {
     const n = Math.max(1, Math.ceil(dt * 60 - .01));
     let i = 0;
     for (; i < n && L; i++) step(p, dt / n, now);
-    if (!L && i < n && walking && p.walking) walkOn(p, (n - i) * dt / n, now);   // (down in the frame, the walk on: its time left walked. It was lost: sprinting over steps, 7.1 tiles a second of 10)
+    if (!L && i < n && walking && p.walking) walkOn(p, (n - i) * dt / n, now);   // (down in the frame, the walk on: its time left is walked, so a sprint over steps keeps its speed)
   }
   function step(p, dt, now) {
     if (!L) return;
