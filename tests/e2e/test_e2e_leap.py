@@ -107,7 +107,11 @@ def test_a_jump_onto_a_block_is_smooth_and_agreed(game):
     game.rpc("dev_teleport", x=x + 1, y=game.pos()[1], z=0); game.arrive(); game.face(1, 0); game.rest()
     rec = frames(game, lambda: (game.press("Space", 0), game.sleep(700)))
     smooth(rec, 5)
-    assert game.server()["z"] == 1 and game.pos()[0] == x + 2 and max(r[3] for r in rec) >= 8, (game.server(), max(r[3] for r in rec))
+    # (the arc's top between two drawn frames is drawn at neither: up to half the longest gap from it, g/2 (gap/2)^2 art px
+    # lower, about a px at a runner's 94 ms frames. The record's own gaps say how much its highest frame may miss by)
+    gap = max(min(b[0] - a[0], 100) for a, b in zip(rec, rec[1:])) / 1000
+    top, miss = max(r[3] for r in rec), game.js("JUMP.g * P") / 2 * (gap / 2) ** 2
+    assert game.server()["z"] == 1 and game.pos()[0] == x + 2 and top + .5 >= 8 - miss, (game.server(), top, round(miss, 2))
     agree(game)
     assert not game.errors, game.errors
 
@@ -192,9 +196,15 @@ def test_sprinting_over_steps_up_and_down_keeps_its_speed(game):
     for a, b in zip([None] + rec, rec):
         t += min(b[0] - a[0], 100) if a else 0
         game_ms[id(b)] = t
-    for a, b in ((a, b) for i, (a, b) in enumerate(zip(run, run[3:])) if not any(ahead(r) for r in run[i:i + 4])):
-        v = (b[1] - a[1]) / max(game_ms[id(b)] - game_ms[id(a)], 1) * 1000
-        assert v >= 8, ("slowed", round(v, 1), a[:5], b[:5])
+    # (over 300 ms of game time at least, a jump up and its landing: a lost velocity is a stop, most of that; three frames
+    # of a runner's, 216 ms with a landing in them, read 7.8 for a few hundredths of a tile)
+    for i, a in enumerate(run):
+        j = next((j for j in range(i + 3, len(run)) if game_ms[id(run[j])] - game_ms[id(a)] >= 300), None)
+        if j is None or any(ahead(r) for r in run[i:j + 1]):
+            continue
+        b = run[j]
+        v = (b[1] - a[1]) / (game_ms[id(b)] - game_ms[id(a)]) * 1000
+        assert v >= 8, ("slowed", round(v, 1), [(round(game_ms[id(r)]), round(r[1], 2), r[4], round(r[15], 2), r[16]) for r in run[max(0, i - 2):j + 3]])
     assert "crouch" not in {r[4] for r in rec} and "rise" in {r[4] for r in rec}
     smooth(rec)
     agree(game)

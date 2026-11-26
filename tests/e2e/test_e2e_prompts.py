@@ -47,7 +47,8 @@ def test_no_row_is_written_on_you_or_on_another_row(game):
     game.wait("$('prompts').innerText.includes('Chop tree')", 3000)
     for d in (0, 1, 1, -1, -1, -1, -1):                          # as it is, then to both ends of the zoom
         game.js(f"(() => {{ if ({d}) zoomBy({d}); return 1; }})()")
-        game.sleep(500)
+        game.wait("!ZOOM.busy")                                    # (the zoom glides there, a level at a time: the rows laid out at it once it is there,
+        game.rest()                                                # not 500 ms on, a busy runner still mid-glide: the side row on you)
         assert game.js(hit) == [True, True, False, False, False, False, False], (d, game.js("zoom"), game.js(hit))
     game.give(wood_wall=4)
     game.hold_item("wood_wall")

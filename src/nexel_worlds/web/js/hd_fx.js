@@ -6,7 +6,7 @@
 // the ground is px over its foot. The flat picture's y had the height in it (north was up): ground y + height there = its y.
 const HdFx = (() => {
   const cvs = new Map(), last = {parts: 0, puffs: 0, loot: 0, orbs: 0, fire: 0, falls: 0, floats: []};
-  const made = (k, w, h, paint) => { let c = cvs.get(k); if (!c) { c = document.createElement("canvas"); c.width = w; c.height = h; const g = c.getContext("2d"); g.imageSmoothingEnabled = false; paint(g); cvs.set(k, c); } return c; };
+  const made = (k, w, h, paint) => { let c = cvs.get(k); if (!c) { c = document.createElement("canvas"); c.width = w; c.height = h; const g = c.getContext("2d"); g.imageSmoothingEnabled = false; paint(g); c._v = 0; cvs.set(k, c); } return c; };   // (painted once and kept: _v 0, sent to the sprites' sheet once, vox_style.js. With none, every chip, puff and flame of a fire was sent again every frame: frames of seconds on a CPU renderer, #67)
   const opaque = (c) => { const m = /^rgba\((\d+),(\d+),(\d+),([\d.]+)\)$/.exec(String(c).replace(/\s/g, "")); return m ? [`rgb(${m[1]},${m[2]},${m[3]})`, +m[4]] : [c, 1]; };   // (a sprite's px is there or not: its see-through is its fade, a 2x2 dither)
   const top = (x, y) => { const c = Voxels.host.column(Math.floor(x), Math.floor(y)); return c && c.length ? c[c.length - 1] : 0; };
   const ground = (x, y) => floorAt(Math.floor(x), Math.floor(y));

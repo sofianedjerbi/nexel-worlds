@@ -14,41 +14,52 @@ test's page loading while this one plays.
 
 import os
 import re
-import sys
 from pathlib import Path
 
 import clock
 
-# A failing test's last picture, for runs where nobody watches (CI uploads the folder): E2E_SHOTS names a folder; unset, none.
-# A page shut while its test's error is on its way out (`finally: page.close()`), or left open by a test that failed,
-# is photographed first, named after the test.
+# A failing test's last picture of each of its pages, for runs where nobody watches (CI uploads the folder): E2E_SHOTS
+# names a folder; unset, none. Every page a test opens (its own, a context's, the `game` fixture's) is photographed as
+# it is shut, into memory: most tests shut their page and then assert (`page.close(); assert not off`), so nothing was
+# on its way out yet when it shut. A page left open is photographed when its test is over. They are written, named
+# after the test, only if it failed (Pages.shut).
 SHOTS = Path(os.environ["E2E_SHOTS"]) if os.environ.get("E2E_SHOTS") else None
+taken = []          # (test, png) of this test's pages, as they were shut
+quiet = False       # (shutting a passed test's pages: no picture)
+
+
+def test_name():
+    return os.environ.get("PYTEST_CURRENT_TEST", "test").rsplit(" ", 1)[0]
 
 
 def shoot(page):
+    """The page's picture now, kept for its test's end (nothing if E2E_SHOTS is unset or the page fell)."""
     if SHOTS is None or page.is_closed():
         return
-    test = os.environ.get("PYTEST_CURRENT_TEST", "test").rsplit(" ", 1)[0]
+    try:
+        taken.append((test_name(), page.screenshot(timeout=10000)))
+    except Exception:  # noqa: BLE001, S110 - a page that fell: no picture of it
+        pass
+
+
+def write(test, png):
     SHOTS.mkdir(parents=True, exist_ok=True)
     name = re.sub(r"[^\w.-]+", "_", test.removeprefix("tests/e2e/"))[:150]
     path, n = SHOTS / f"{name}.png", 1
     while path.exists():
         n += 1
         path = SHOTS / f"{name}-{n}.png"
-    try:
-        page.screenshot(path=str(path), timeout=10000)
-    except Exception:  # noqa: BLE001, S110 - a page that fell: no picture of it
-        pass
+    path.write_bytes(png)
 
 
 def kept(page):
-    """The page, its close photographing it first when an error is on its way out."""
+    """The page, photographed as it is shut (SHOTS)."""
     if SHOTS is None:
         return page
     close = page.close
 
     def closing(*a, **kw):
-        if sys.exc_info()[1] is not None:
+        if not quiet:
             shoot(page)
         return close(*a, **kw)
 
@@ -77,17 +88,20 @@ class Pages:
 
     def shut(self, failed=False):
         """Every page and context the test made and left open (photographed first if the test failed: SHOTS)."""
-        left = 0
-        for p in self.made:
-            if failed:
-                for q in p.pages if isinstance(p, Context) else [p]:
-                    shoot(q)
+        global quiet
+        left, quiet = 0, not failed
+        for p in self.made:                               # (each photographed as it shuts, if the test failed: kept, Context.close)
             try:
                 left += 0 if getattr(p, "is_closed", lambda: False)() else 1
                 p.close()
             except Exception:  # noqa: BLE001, S110 - gone already (a context shut with its pages, a browser that fell)
                 pass
         self.made.clear()
+        quiet = False
+        if failed:
+            for test, png in taken:
+                write(test, png)
+        taken.clear()
         return left
 
     # ---- the next test's page
@@ -120,10 +134,9 @@ class Context:
         return getattr(self._inner, name)
 
     def new_page(self, **kw):
-        return clock.paced(self._inner.new_page(**kw))
+        return kept(clock.paced(self._inner.new_page(**kw)))
 
     def close(self, *a, **kw):
-        if sys.exc_info()[1] is not None:
-            for q in self._inner.pages:
-                shoot(q)
+        for q in self._inner.pages if not quiet else []:
+            shoot(q)
         return self._inner.close(*a, **kw)

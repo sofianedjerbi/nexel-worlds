@@ -66,6 +66,7 @@ function wakePicture(p, now) {
   return {canvas: c, fx: L, fy: T};
 }
 function drawSwimmer(p, e, sheet, x, y, z, now, sx, sy) {
+  y -= BodyPlace.of(p).up * z;                              // (just down from a leap: its lift, body_place.js)
   const moving = now - p.moved < 300 || Math.abs(p.x - p.tx) + Math.abs(p.y - p.ty) > .05;
   const dash = SWIM_SPRINT && moving && (e.id === myId && e.kind === "agent" ? sprinting() : !!e.run);     // a sprint in the water
   const stroke = Math.floor((now + e.id * 97) / (dash ? SWIM.dashStroke : moving ? SWIM.stroke : SWIM.tread));
