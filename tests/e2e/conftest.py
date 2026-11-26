@@ -157,10 +157,13 @@ RUNNER_LIKE = float(os.environ.get("E2E_RUNNER_LIKE") or 0)
 
 
 def throttled(b):
-    """The browser `b`, each page it makes slowed RUNNER_LIKE times (its contexts' pages too)."""
+    """The browser `b`, each page it makes slowed RUNNER_LIKE times once in the game (Game.join: its frames as a runner's;
+    slowed from its making, its boot at 30x took over 30 s and the name box was not clicked), its contexts' pages too."""
     def slow(page):
-        page._throttle = page.context.new_cdp_session(page)    # (kept: the rate holds while the session lives)
-        page._throttle.send("Emulation.setCPUThrottlingRate", {"rate": RUNNER_LIKE})
+        def now():
+            page._throttle = page.context.new_cdp_session(page)    # (kept: the rate holds while the session lives)
+            page._throttle.send("Emulation.setCPUThrottlingRate", {"rate": RUNNER_LIKE})
+        page.runner_like = now
         return page
     new_page, new_context = b.new_page, b.new_context
     b.new_page = lambda *a, **kw: slow(new_page(*a, **kw))

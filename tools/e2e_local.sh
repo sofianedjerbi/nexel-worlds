@@ -21,7 +21,9 @@ while [ -z "$lock" ]; do
   [ -n "$lock" ] || { echo "waiting: load $(load), loops: $(cat /tmp/nexel-e2e-local.*.lock/what 2>/dev/null | tr '\n' ' ')"; sleep 30; }
 done
 echo $$ > "$lock/pid"; echo "$id" > "$lock/what"
-trap 'rm -rf "$lock"' EXIT INT TERM
+tree() { for c in $(pgrep -P "$1"); do tree "$c"; kill "$c" 2>/dev/null; done; }   # (the test's server and Chrome too: shut, not left running)
+trap 'tree $$; rm -rf "$lock"' EXIT
+trap 'exit 130' INT TERM
 out=$(mktemp -d)
 red=0
 for k in $(seq 1 "$n"); do
