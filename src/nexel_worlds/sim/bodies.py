@@ -153,7 +153,7 @@ class Bodies:
     def reach(self, a, x: int, y: int, z: int | None = None, kind: str = "use"):
         if not self.within(a, kind, x, y, z):
             raise ActionError("out_of_range", f"({x},{y}) is out of reach: {REACH[kind] + LEAD} tiles round you, height counted "
-                                              "(a layer is half a tile)")
+                                              "(a layer is half a tile)", why="far")
 
     def target(self, a, args, flat=False) -> tuple[int, int]:
         """The tile an action is aimed at: `dir` (the adjacent tile that way), or an absolute `x`, `y`. Within reach

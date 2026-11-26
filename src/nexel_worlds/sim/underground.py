@@ -122,7 +122,7 @@ class Underground:
         over = (x, y, z) == (a.x, a.y, h + 2)                # (the cell over your own head: dig_over)
         if inside and not over and not (abs(x - a.x) + abs(y - a.y) == 1 and h <= z <= h + 2):   # (in front of you: not through the land)
             raise ActionError("out_of_range", "a cell inside the land is dug from beside it, from your feet to your head, "
-                                              "or over your own head (dir: up)")
+                                              "or over your own head (dir: up)", why="inside")
         for again in (False, True):
             if z <= DEEPEST:
                 raise ActionError("cannot_dig", "this is as deep as it goes", why="deepest")

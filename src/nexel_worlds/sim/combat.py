@@ -50,7 +50,7 @@ class Combat:
         weapon = self.held(a, args)
         reaches = lambda: self.within(a, "melee", t.x, t.y, self.height(t), weapon, getattr(t, "kind", None))
         if not reaches():
-            raise ActionError("out_of_range", "target is out of reach, height counted (a layer is half a tile)")
+            raise ActionError("out_of_range", "target is out of reach, height counted (a layer is half a tile)", why="far")
         # the hit lands at once, then the arm needs ATTACK_COOLDOWN before the next swing: a ready swing takes no
         # time, so you can fight while walking; one sent too soon waits for the cooldown, or on the move is dropped
         if self.tick < a.swing_ready and getattr(self, "passing", None) is a:

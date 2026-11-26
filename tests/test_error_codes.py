@@ -66,3 +66,23 @@ def test_every_reason_a_block_cannot_go_has_words_on_the_page():
     missing = [c for c in BLOCK_WHY if not re.search(rf"\b{c}: (\(\) => )?\"", js)]
     assert not missing, missing
     assert re.search(r"changed: \(\) => \"", (JS / "agent.js").read_text())
+
+
+def test_every_refusal_the_game_makes_has_words_on_the_page():
+    """Every code an ActionError is raised with has its words in agent.js ERROR_TEXT: a new one cannot reach people as the
+    agents' sentence. (bad_args: a request the page itself made wrong, its detail says how; too_soon: never shown.)"""
+    src = Path(__file__).parent.parent / "src" / "nexel_worlds"
+    codes = {c for p in src.rglob("*.py") for c in re.findall(r'ActionError\("([a-z_]+)"', p.read_text())}
+    js = (JS / "agent.js").read_text()
+    table = js[js.index("const ERROR_TEXT = {"):js.index("\n};", js.index("const ERROR_TEXT = {"))]
+    words = set(re.findall(r"(?:^\s+|, )([a-z_]+): \(", table, re.M))
+    assert not codes - words - {"bad_args", "too_soon"}, sorted(codes - words - {"bad_args", "too_soon"})
+
+
+def test_full_says_who_is_full(world):
+    from nexel_worlds.sim.constants import FOOD_MAX
+    sim, a = world
+    a.add("berries", 1)
+    a.hunger = FOOD_MAX
+    r = run(sim, a, "eat", {"item": "berries"})
+    assert (r["error"], r["data"]) == ("full", {"what": "you"}), r

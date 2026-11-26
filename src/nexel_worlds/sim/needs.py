@@ -73,7 +73,7 @@ class Needs:
         if not a.count(item):
             raise ActionError("missing_item", f"you have no {item}", item=item, have=0)
         if a.hunger >= FOOD_MAX:
-            raise ActionError("full", "you're full")
+            raise ActionError("full", "you're full", what="you")
         yield from self.wait(a, EAT_SECONDS)       # a proper bite, with the hands (constants.ASIDE): walking goes on, doing something else stops it
         if not a.count(item):
             raise ActionError("missing_item", "it's gone", item=item, have=0)

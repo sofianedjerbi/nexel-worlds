@@ -89,11 +89,23 @@ const ERROR_TEXT = {
   occupied: (d) => (Object.hasOwn(IN_THE_WAY, d.on) ? IN_THE_WAY[d.on] : `${label(d.on)} is there`),
   bad_target: (d) => (Object.hasOwn(TARGET_WHY, d.why) ? TARGET_WHY[d.why](d) : Object.hasOwn(Floors.WHY, d.why) ? Floors.WHY[d.why] : "Not there"),   // (a block's cell: build mode's own words, floors.js)
   changed: () => "Something changed there first",
+  full: (d) => (d.what === "mailbox" ? "The mailbox is full" : "You're full"), empty: () => "Your watering can is empty: fill it at water",
+  out_of_range: (d) => (Object.hasOwn(FAR_WHY, d.why) ? FAR_WHY[d.why] : "Out of reach"), no_path: (d) => (d.why === "far" ? "Too far to walk to" : "No way there"),
+  need_station: (d) => `Needs a ${lcLabel(d.station)} nearby`, missing_items: (d) => `Short of ${Object.entries(d.missing).map(([k, n]) => `${n} ${lcLabel(k)}`).join(", ")}`,
+  blocked: () => "Something is in the way", cliff_edge: () => "Not on the edge of a hill: build further in", not_food: () => "You can't eat that",
+  no_bed: () => "That's not a bed", no_mailbox: () => "That's not a mailbox", no_chest: () => "That's not a chest", no_sign: () => "No sign to read there",
+  not_placeable: () => "That can't be placed", unknown_recipe: () => "No such thing to make", no_target: () => "Nothing there", nothing_here: () => "Nothing to pick up here",
+  already: () => "Already watered", missed: () => "It moved away", failed: () => "Something changed there first", bad_item: () => "A trough takes hay or food",
+  need_fire: () => "Needs a torch in hand, or a campfire near", name_needed: () => "Pick a name", bad_name: () => "A name is 1 to 24 letters, digits, - or _",
+  bad_token: () => "That name is someone else's", login_needed: () => "Log in with your email first", bad_ticket: () => "Log in again",
+  accounts_down: () => "The accounts don't answer: try again soon",
+  not_wearable: () => "That isn't worn", nothing_worn: () => "Nothing worn there", wont_burn: () => "That won't burn", not_ready: () => "Not ready yet: try again in a while",
   cannot_dig: (d) => (d.what ? `${label(d.what)} can't be dug` : (Object.hasOwn(NO_DIG, d.why) ? NO_DIG[d.why] : "That can't be dug")),
 };
 const NO_DIG = {deepest: "This is as deep as it goes", enclosed: "Inside the land: dig to it from beside it", not_clear: "Stand on clear ground to dig down"};
 const IN_THE_WAY = {body: "Someone is standing there", you: "You stand where it goes: step aside", thing: "Something is there"};
 const lcLabel = (n) => label(n).toLowerCase();
+const FAR_WHY = {far: "Out of reach", behind: "Behind the land: out of reach", jump_far: "Too far to jump", inside: "Dig into the land from beside it"};
 const TARGET_WHY = {
   not_a_crop: () => "Water a growing crop in tilled soil", not_open_ground: () => "On open ground only", seed_soil: () => "Seeds grow in tilled soil: dig the ground first",
   wrong_ground: (d) => `${label(d.item)} goes on ${d.goes_on.map(lcLabel).join(" or ")}`, cannot_place_on: (d) => `Not on ${lcLabel(d.ground)}`, boat_water: () => "A boat goes on the water beside you",

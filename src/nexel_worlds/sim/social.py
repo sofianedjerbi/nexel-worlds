@@ -92,7 +92,7 @@ class Social:
         x, y, m = self._mailbox(a, args)
         text = self._text(args)
         if len(m.get("letters", [])) >= 20:
-            raise ActionError("full", "this mailbox is full")
+            raise ActionError("full", "this mailbox is full", what="mailbox")
         yield from self.wait(a, 0.5)
         m["letters"] = m.get("letters", []) + [{"from": a.name, "text": text, "tick": self.tick}]
         self.world.set_meta(x, y, m)
