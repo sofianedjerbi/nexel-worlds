@@ -1,5 +1,7 @@
 """Moving: walking and sprinting speeds, taps, turning with two keys held, and the screen agreeing with the server."""
 
+import math
+
 import pytest
 
 
@@ -93,7 +95,10 @@ def test_taps_move_one_tile_and_never_snap_back(game):
         assert backward_jumps(rec, "x", 1) < .1
         down = game.js("(() => { const d = __down[__down.length - 1]; return d[1] - d[0]; })()")
         moved = game.pos()[0] - x0
-        assert moved == 1 or (moved > 1 and down >= stride), (hold, moved, round(down), stride)     # a tap, a tile
+        # (and a frame more: the first frame that moves you walks its whole time, part of it before the key: 185 ms down,
+        # 33 ms frames, two tiles, "(60, 2, 185, 200)". You finish the tile you are entering)
+        frame = max((b[0] - a[0] for a, b in zip(rec, rec[1:])), default=0)
+        assert 1 <= moved <= max(1, math.ceil((down + frame) / stride)), (hold, moved, round(down), round(frame), stride)     # a tap, a tile
     game.start_recording()
     for _ in range(6):                                    # rapid taps: never thrown back to the start
         game.hold(["a"], 40)
