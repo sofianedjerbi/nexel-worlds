@@ -16,7 +16,7 @@
 // the sprites are one list from one sheet of their pictures (a picture is sent when it changed, not each frame); a frame that is the last one again is not drawn at all (fresh: false).
 const VoxStyle = (() => {
   const H = VoxStyleGLSL.H, C = 16, AW = VoxStyleGLSL.AW, SL = AW / C, N = VoxStyleLand.N, {SW, SV6} = VoxStyleSprites, SECT = [[.17, .12, .13], [.5, .35, .26], [.43, .41, .42], [.21, .17, .18]];
-  const {VS, FS, SV, SF} = VoxStyleGLSL;      // (the shaders: vox_style_glsl.js)
+  const {VS, SV, SF} = VoxStyleGLSL, {FS} = VoxStyleFS;      // (the shaders: vox_style_glsl.js, the land's fragment one: vox_style_fs.js)
   function mul(a, b) { const r = new Float32Array(16); for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { let s = 0; for (let k = 0; k < 4; k++) s += a[k * 4 + j] * b[i * 4 + k]; r[i * 4 + j] = s; } return r; }
   const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
   const norm = (a) => { const l = Math.hypot(...a) || 1; return [a[0] / l, a[1] / l, a[2] / l]; }, dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];

@@ -112,7 +112,7 @@ KEPT = {
     "swing_art.js STEP": "art: the swings that lunge",
     "tiles.js MARKS": "art: what is drawn on a ground (tilled soil, ash, a floor, a path)",
     "title_cast.js HARD": "the title scene's cast: grounds its actors walk round",
-    "title_cast.js DO": "the title scene's cast: what its actors do",
+    "title_errands.js WORK": "the title scene's cast: what its actors do in the field and woods",
     "ui.js ICONS": "art: an item's icon",
     "ui.js BARE": "art: the icons drawn without a ring",
     "wear.js LOOK": "art: how each worn thing is drawn",
@@ -123,14 +123,14 @@ KEPT = {
     "world_decor.js VARIANTS": "art: the farm animals' looks",
     # (keyed by something else that happens to be spelt like a tile's char: keys, faces, palettes)
     "keyboard.js BOOK_KEYS": "the keyboard's keys", "keyboard.js HELD": "the keyboard's keys", "mouse.js FACE": "a block's faces",
-    "target_box.js FACES": "a block's faces", "races.js BASE": "a palette's letters", "races.js EXTRA": "a palette's letters",
+    "target_box.js FACES": "a block's faces", "race_list.js BASE": "a palette's letters", "race_list.js EXTRA": "a palette's letters",
     "wear.js BASE": "a palette's letters", "wear.js BODY": "a palette's letters", "render.js WATCH": "a place: x, y, z",
     "voxpaint.js SLIM": "a shape's letters",
 }
 # the kept tables with keys of their own besides the world's (a group's title, a goal's words, a material, a pose): in
 # every other one, each key is a tile, an item or a creature the world has (a name dropped or changed there fails here)
 MIXED = {"assets.js LATE", "craft.js RECIPE_GROUPS", "effects.js PCOL", "goals.js GOALS", "sound_of.js STRIKE", "sound_of.js BREAK", "sprites.js ANIM",
-         "keyboard.js BOOK_KEYS", "keyboard.js HELD", "mouse.js FACE", "target_box.js FACES", "races.js BASE", "wear.js BASE", "render.js WATCH", "voxpaint.js SLIM"}
+         "keyboard.js BOOK_KEYS", "keyboard.js HELD", "mouse.js FACE", "target_box.js FACES", "race_list.js BASE", "wear.js BASE", "render.js WATCH", "voxpaint.js SLIM"}
 
 
 def _client_tables():
