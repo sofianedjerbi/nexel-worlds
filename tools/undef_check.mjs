@@ -1,5 +1,5 @@
 // Every name the web client reads is defined somewhere (nexel-worlds#174): ESLint's no-undef, over the page's
-// scripts as the page loads them. The classic scripts of web/index.html share one global scope, so a name one of
+// scripts as the page loads them (web/scripts.txt's list, in its order). The classic scripts of web/index.html share one global scope, so a name one of
 // them declares at its top is a global for all; each file's top-level names are found by ESLint's own scope analysis
 // (not a regex), then every file is linted with them and the browser's globals. A name a split leaves behind
 // (hd_stands.js used winMap, which it was not given: #158) fails here, in the lint job, not in the browser run.
@@ -15,7 +15,8 @@ import globals from "globals";
 const WEB = new URL("../src/nexel_worlds/web/", import.meta.url);
 const page = readFileSync(new URL("index.html", WEB), "utf8");
 const inline = Object.fromEntries([...page.matchAll(/<script>\n([\s\S]*?)<\/script>/g)].map((m, i) => [`index.html#${i + 1}`, m[1]]));   // (the page's own scripts: bookPx, TITLE_DY...)
-const classic = [...Object.keys(inline), ...page.matchAll(/<script src="js\/([\w.]+)"><\/script>/g)].map((m) => (typeof m === "string" ? m : m[1]));
+const listed = readFileSync(new URL("scripts.txt", WEB), "utf8").split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#"));   // (the page's scripts, in their order: web/scripts.txt, as web_bundle.py scripts reads it)
+const classic = [...Object.keys(inline), ...listed];
 classic.push("local.js");                // (the published page's: tools/build_pages.py puts it in, the server in the tab: LocalSocket)
 const modules = ["local_worker.js"];     // (a module worker: its own scope, imports)
 const read = (name) => inline[name] ?? readFileSync(new URL("js/" + name, WEB), "utf8");
