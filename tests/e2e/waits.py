@@ -69,6 +69,16 @@ class Waits:
         a jump, before what reads where you are."""
         self._until(f"({STILL})()", timeout)
 
+    def until_world(self, check, frames=600):
+        """Until check(the world's word on you: game.server()) holds, asked once a frame, `frames` frames at the most:
+        for what only the world knows (what is in your pack, your hearts). -> its last word."""
+        for _ in range(frames):
+            s = self.server()
+            if check(s):
+                return s
+            self.frames(1)
+        return self.server()
+
     def hold_until(self, keys, expr, timeout=8000):
         """The keys held until `expr` holds on the page (you past a tile, in the air, at an edge), then let go: how far
         a hold goes is the game's, not the frames' (a sleep with keys held went further the longer a frame was, and
