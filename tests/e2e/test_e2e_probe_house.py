@@ -5,7 +5,10 @@ middle (catSeen's box: the px seen outside the box over it), the x-ray window. F
 
 import pytest
 from test_e2e_hd import AT, PUT, ROOF
+import test_e2e_hd_sun
 from test_e2e_hd_sun import hd
+
+test_e2e_hd_sun_new_name = test_e2e_hd_sun.new_name
 
 pytestmark = pytest.mark.e2e
 
@@ -39,9 +42,28 @@ DUMP = """() => { const P = CanvasRenderingContext2D.prototype, gi = P.getImageD
   return {name: me.e && me.e.name, tint, share, best_share: n ? best[0] / n : 0, at: [A, B], guess: [gx, gy], Z, dpr: DPR, sprite: [sp.w, sp.h], fail_rows: rows.join(' '), bad}; }"""
 
 
-@pytest.mark.parametrize("hour", [None])
-@pytest.mark.parametrize("n", range(10))
-def test_probe_the_house(browser, server, hour, n):
+TINTS = ["#f4b6b6", "#a9cdf2", "#b8e0a0", "#f2d58f", "#d3b6ef", "#9fdcd0", "#f3b7d6", "#e8c9a4", "#c9d0f5", "#f6c79a"]   # (sprites.js AGENT_TINTS)
+
+
+def tint_of(name):                                                           # (sprites.js agentTint)
+    h = 7
+    for c in name:
+        h = (h * 31 + ord(c)) & 0xFFFFFFFF
+    return h % len(TINTS)
+
+
+def named(want):
+    """The next of new_name's names whose tint is TINTS[want]."""
+    while True:
+        n = test_e2e_hd_sun_new_name()
+        if tint_of(n) == want:
+            return n
+
+
+@pytest.mark.parametrize("tint", [4, 4, 4, 2, 2, 2])                          # (lilac: the trial that read 0.60; green: one that read 1)
+def test_probe_the_house(browser, server, tint, monkeypatch):
+    hour, n = None, tint
+    monkeypatch.setattr(test_e2e_hd_sun, "new_name", lambda: named(tint))
     g = hd(browser, server)
     try:
         if hour is not None:
