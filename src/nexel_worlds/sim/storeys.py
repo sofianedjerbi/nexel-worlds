@@ -17,7 +17,7 @@ from ..floors import KINDS, Floors
 from ..landblocks import LAND_BLOCKS, Placed
 from ..gen import HIGH, LOW, col_floor, col_runs, col_solid, col_top
 from ..tiles import BLOCKS, DIRS, GROUNDS, PLACEABLE, B
-from .entities import ActionError
+from .entities import BLOCK_WHY, ActionError
 
 STOREY = 3                                        # a floor is this many layers over the one under it
 RESTS_ON = ("wood_wall", "stone_wall", "door")    # what holds a block up from under, a storey below it
@@ -92,26 +92,27 @@ class Storeys:
         return [b for b in (*self.agents.values(), *self.creatures.values())
                 if (b.x, b.y) == (x, y) and b.hp > 0 and getattr(b, "online", True)]
 
-    def block_fits(self, x, y, z) -> str | None:
-        """Why no block can go in the cell (x, y, z); None when one can."""
+    def block_fits(self, x, y, z) -> tuple[str, str | None] | None:
+        """Why no block can go in the cell (x, y, z), a code of BLOCK_WHY and what is in the way; None when one can
+        (as web/js/floors.js fits, by the same codes: #6)."""
         w = self.world
         if not LOW < z <= HIGH:
-            return "nothing is built that high"
+            return "too_high", None
         if w.solid(x, y, z):
-            return "there is a block there already"
+            return "block_there", None
         under = self.ground_under(x, y, z - 1)
         if under == z - 1:                               # on a block: it stacks
             if under == w.level(x, y) and GROUNDS[w.get(x, y)[0]].liquid and self.floors.get(x, y, under) is None:
-                return "nothing stands on water: lay a bridge first"
+                return "on_water", None
             what = self.thing(x, y, under)
-            return None if what == "none" else f"the {what.replace('_', ' ')} is in the way"
+            return None if what == "none" else ("in_way", what)
         if z - under < STOREY:
-            return "too low over the floor: leave room to stand under it"
+            return "too_low", None
         if z - under == STOREY and self.thing(x, y, under) in RESTS_ON:
             return None                                  # on the wall under it
         if any(w.solid(x + dx, y + dy, z) for dx, dy in DIRS.values()):
             return None                                  # beside a block at its own height
-        return "a block rests on the block or the wall under it, or holds to a block beside it"
+        return "unheld", None
 
     # ============================================================== the changes
 
@@ -134,9 +135,9 @@ class Storeys:
             raise ActionError("missing_item", f"you have no {item}", item=item, have=0)
         self.reach(a, x, y, z=z)
         for again in (False, True):
-            why = self.block_fits(x, y, z)
-            if why:
-                raise ActionError("changed" if again else "bad_target", why)
+            fit = self.block_fits(x, y, z)
+            if fit:                                      # (why: a code of BLOCK_WHY; what: what stands in the way, if that)
+                raise ActionError("changed" if again else "bad_target", BLOCK_WHY[fit[0]].format(what=(fit[1] or "").replace("_", " ")), why=fit[0], **({"what": fit[1]} if fit[1] else {}))
             if any(1 <= z - self.height(b) <= 2 for b in self.bodies_on(x, y)):
                 raise ActionError("occupied", "someone is standing there", on="body")
             if not again:
