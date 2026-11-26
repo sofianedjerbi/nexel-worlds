@@ -6,11 +6,14 @@ flat squares of corner shade; down a passage a level floor has no band across it
 from test_e2e_hd_sun import LIGHT, hd
 from test_e2e_hd_window import PX
 
-# the picture with the window and without it (HdLook.nowin): which px it changes, in the box of CSS px [x0, y0, x1, y1] -> rows of 0/1
+# the picture with the window and without it (HdLook.nowin): which px it changes, in the box of CSS px [x0, y0, x1, y1] -> rows of 0/1.
+# Without it twice, before and after: a px that changes between those two changes by itself (the land still made, water), not by the
+# window, and is not counted (#138: once a whole earth face, 1287 px, came between the two pictures). Each when the look is not busy.
 CHANGED = """async ([x0, y0, x1, y1]) => { const k = devicePixelRatio, X0 = Math.round(x0 * k), Y0 = Math.round(y0 * k), W = Math.round((x1 - x0) * k), H = Math.round((y1 - y0) * k), frame = () => new Promise(requestAnimationFrame);
-  const shot = async (off) => { HdLook.nowin = off; for (let i = 0; i < 90 && HdLook.win.a !== (off ? 0 : 1); i++) await frame(); for (let i = 0; i < 4; i++) await frame(); return HdLook.read(X0, Y0, W, H).data; };
-  const a = await shot(true), b = await shot(false), rows = [];
-  for (let y = 0; y < H; y++) { let r = ""; for (let x = 0; x < W; x++) { const i = 4 * (y * W + x); r += Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 30 ? "1" : "0"; } rows.push(r); }
+  const shot = async (off) => { HdLook.nowin = off; for (let i = 0; i < 90 && (HdLook.win.a !== (off ? 0 : 1) || HdLook.busy); i++) await frame(); for (let i = 0; i < 4; i++) await frame(); return HdLook.read(X0, Y0, W, H).data; };
+  const a = await shot(true), b = await shot(false), c = await shot(true), rows = [], diff = (p, q, i) => Math.abs(p[i] - q[i]) + Math.abs(p[i + 1] - q[i + 1]) + Math.abs(p[i + 2] - q[i + 2]) > 30;
+  HdLook.nowin = false; for (let i = 0; i < 90 && HdLook.win.a !== 1; i++) await frame();
+  for (let y = 0; y < H; y++) { let r = ""; for (let x = 0; x < W; x++) { const i = 4 * (y * W + x); r += diff(a, b, i) && !diff(a, c, i) ? "1" : "0"; } rows.push(r); }
   return rows; }"""
 SCR = "(([x, y, z]) => HdLook.screenOf(x, y, z))"
 # the picture in the look `e` (HdLook.edge), a colour an art px, rows of the box of CSS px [x0, y0, x1, y1] an art px apart
