@@ -120,3 +120,8 @@ def test_a_comment_naming_a_part_is_no_use_of_it(tmp_path):
                         "tests/e2e/test_e2e_title.py": 'def test_t(g):\n    g.wait("TitleScene.cast")\n'})
     assert A.affected(["src/nexel_worlds/web/js/errands.js"], r)[0] == ["tests/e2e/test_e2e_title.py"]
     assert A.affected(["src/nexel_worlds/web/js/cast.js"], r)[0] == ["tests/e2e/test_e2e_title.py"]
+
+
+def test_a_change_to_how_you_move_runs_the_movement_suite_whole():
+    e2e, _, _ = A.affected(["src/nexel_worlds/web/js/leap.js"])
+    assert set(A.MOVE_SET) <= {Path(t).name for t in e2e}, sorted(e2e)
