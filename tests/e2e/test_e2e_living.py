@@ -212,6 +212,7 @@ def test_ten_hearts_and_ten_pieces_in_halves_and_no_sprint_when_hungry(game):
     """Health is 20 half hearts and food 20 half pieces (they were 0 to 100): the bar shows them a half at a time, a
     blow is said in hearts, and with three pieces of food or fewer the Shift key does not sprint."""
     assert game.js("[HP_MAX, FOOD_MAX, SPRINT_FOOD]") == [20, 20, 6]
+    game.clear_area(12)                                     # (a meadow to run on: the walk ran into what lay east and ended, walking null)
     game.rpc("dev_needs", hp=13, hunger=7)
     game.sleep(900)
     lit = """(id) => { const c = $(id), g = c.getContext('2d'), n = c.width / 99;        // each icon: 2 as the first (full), 0 as the last (empty), 1 neither

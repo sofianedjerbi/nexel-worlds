@@ -224,6 +224,8 @@ def test_two_keys_never_slide_diagonally(game):
         off = lambda v: abs(v - round(v)) > .01
         where = [(round(r[0]), r[1:]) for r in rec if off(r[1]) and off(r[2])]
         assert not where, (first, second, where)
+    # (the world come to where you stopped: after a fixed 0.5 s a runner's late world was a tile behind, "(-3, -3) == (-3, -4)")
+    game.wait("!walking && !pred && (() => { const p = ents.get('agent' + myId); return !!p && p.e.x === Math.round(p.x) && p.e.y === Math.round(p.y); })()", 8000)
     assert game.pos() == (game.server()["x"], game.server()["y"])
 
 
