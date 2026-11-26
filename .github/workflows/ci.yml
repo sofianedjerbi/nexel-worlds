@@ -78,9 +78,6 @@ jobs:
   # built sounds (not in git: tools/build_audio.py) skip here.
   e2e-plan:
     name: Browser tests to run
-    # While they are optional (#47), a pull request runs them only with the label `e2e` (the fixes for #47): the twenty
-    # runners are shared, and the browser jobs of every pull request held the quick checks queued behind them.
-    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'e2e')
     runs-on: ubuntu-latest
     outputs:
       shards: ${{ steps.plan.outputs.shards }}
@@ -109,9 +106,6 @@ jobs:
   e2e:
     name: Browser tests
     needs: e2e-plan
-    # Optional for now (the owner, 2026-11-25): the suite's old failures on these runners held every merge. The agents
-    # make it pass (#47); then this line goes and the browser tests are mandatory again.
-    continue-on-error: true
     if: needs.e2e-plan.outputs.shards != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 45
