@@ -99,8 +99,8 @@ def test_the_land_moves_by_whole_art_px_never_back_and_your_feet_stay_put(game):
     whole art px, one way, a px a frame at the most (on a frame of 1/60 s); your feet keep their px."""
     _, flat = drawn_over(game, lambda: game.hold(["d"], 500))
     _, hop = drawn_over(game, lambda: (game.press("Space", 0), game.sleep(600)))
-    for r in (flat, hop):
-        assert len(r) > 5 and max(v[2] for v in r) - min(v[2] for v in r) < .01 and len({v[3] for v in r}) == 1, r[:4]   # (zero, on flat ground and through a hop)
+    for r in (flat, hop):                                         # (the hop's time, not a count of frames: on a runner drawing every 117 ms it was 5)
+        assert len(r) >= 3 and r[-1][0] - r[0][0] >= 400 and max(v[2] for v in r) - min(v[2] for v in r) < .01 and len({v[3] for v in r}) == 1, r[:4]   # (zero, on flat ground and through a hop)
     step_east(game)
     x, r = drawn_over(game, lambda: game.hold(["d"], 800))
     assert game.server()["z"] == 1 and len(r) > 10, game.server()
