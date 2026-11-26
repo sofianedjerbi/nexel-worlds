@@ -115,8 +115,10 @@ def test_what_the_audit_of_build_mode_found_is_mended(game):
     kb.up("Space")
     game.press("b")                                            # out of the mode at once: the plans wait where they are
     left = game.js("Build.S.plans.size")
-    # (the count and the line read at one moment: the plan begun was done between the two, "4 plans wait" asked of a line saying 3)
-    assert left >= 2 and game.js("(() => { const n = Build.waiting(); return availableActions().some((r) => r[0] === 'Z' && r[1] === `Build: ${n} plans wait`); })()"), game.js("availableActions()")
+    # (the count and the line read at one moment: the plan begun was done between the two, "4 plans wait" asked of a line saying 3.
+    # Some are waiting, how many is the machine's: each arrow of the drag waits for the page to be quiet, and on a runner the
+    # first plans were built meanwhile, one left of four)
+    assert left >= 1 and game.js("(() => { const n = Build.waiting(); return availableActions().some((r) => r[0] === 'Z' && r[1] === `Build: ${n} plans wait`); })()"), game.js("availableActions()")
     game.sleep(1500)
     assert game.js("Build.S.plans.size") >= left - 1           # (nothing is built while you are out of it, but the one begun)
     game.press("b")                                            # back in: the work goes on
