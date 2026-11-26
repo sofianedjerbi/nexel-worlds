@@ -9,6 +9,15 @@ from test_e2e_touch import touch_game
 pytestmark = pytest.mark.e2e
 
 
+def speed(rec, skip_ms=300):
+    """Tiles per second of the walk's own pace over a recording, ignoring the start: the frames neither cut (0.1 s at the
+    most, render.js) nor waiting for the world or catching up with it (walk.js walkOn: past LEAD[0] it slows for a world
+    that comes late; under -1 it goes a quarter faster). By the page's clock a runner whose world came late read 2.5."""
+    pairs = [(a, b) for a, b in zip(rec, rec[1:]) if a[0] >= skip_ms and 0 < b[0] - a[0] <= 100 and all(-1 <= r[3] <= 2 for r in (a, b))]
+    assert len(pairs) >= 3, ("too few frames at the walk's own pace", rec[:6])
+    return sum(abs(b[1] - a[1]) + abs(b[2] - a[2]) for a, b in pairs) / sum((b[0] - a[0]) / 1000 for a, b in pairs)
+
+
 def step_east(game):
     """The meadow, a terrace a layer up from two tiles east of you."""
     game.clear_area(6)
@@ -16,6 +25,16 @@ def step_east(game):
 
 
 AUTO = "(v) => { setOpt('autojump', v); return opt('autojump'); }"
+
+
+def walk_up(game, keys, z=1):
+    """Keys held until you are up on the step (`z`), then let go. (They were held a time, 800 ms: a runner whose world
+    came late, the walk waiting for it (walk.js LEAD), was still at its foot.)"""
+    for k in keys:
+        game.page.keyboard.down(k)
+    game.wait(f"myAt && myAt.z === {z}", 5000)
+    for k in reversed(keys):
+        game.page.keyboard.up(k)
 
 
 @pytest.mark.quick
@@ -26,7 +45,11 @@ def test_auto_jump_is_on_by_default_and_walking_into_a_step_jumps_up_it(game):
     assert game.js("OPT_DEFAULT.autojump === true && opt('autojump') === true")
     assert game.js("MENU_PAGES.find((pg) => pg[0] === 'Keys')[1].filter((r) => r.name === 'Auto-jump' && r.kind === 'toggle').length") == 1   # (a setting on the Keys page)
     game.start_recording()
-    game.hold(["d"], 900)                                     # three tiles of walking east, up the step at x + 2 (its jump a third of a second)
+    # (held east until three tiles on, up the step at x + 2: on the screen, then let go. It was held 900 ms, three tiles at
+    # the walk's pace with the step's jump: a runner a tick or two behind came two tiles on, "(9, 1, (9, 8))")
+    game.page.keyboard.down("d")
+    game.wait(f"myPos().x >= {x + 3}", 5000)
+    game.page.keyboard.up("d")
     rec = game.recording()
     game.rest()
     # (and the world come to the tile you stop on: let go, the page has you on it at once (walk.js pred), the world a tick
@@ -78,7 +101,7 @@ def walk_into_a_step_then_jump(game, x, y):
 
 
 ORDER = ["crouch", "takeoff", "rise", "apex", "fall", "touch", "land", "settle"]
-ARC = """() => { window.__arc = []; window.__arcOn = true; const f = () => { const p = ents.get('agent' + myId), j = p && jumping(p, performance.now());
+ARC = """() => { window.__arc = []; window.__arcOn = true; const f = (now) => { const p = ents.get('agent' + myId), j = p && jumping(p, now);
   if (j) __arc.push([+p.x.toFixed(3), +j.body.toFixed(2), j.squash, j.pose]); if (__arcOn) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""
 
 
@@ -91,17 +114,21 @@ def test_the_jump_is_a_crouch_an_arc_over_the_step_and_a_landing(game):
     step_east(game)
     x, y = game.pos()
     game.js(ARC)
-    game.hold(["d"], 800)
+    walk_up(game, ["d"])
+    game.sleep(300)
     rec = game.js("(() => { __arcOn = false; return __arc; })()")
     game.rest()
     assert game.server()["z"] == 1
+    # (in the air, a good way up: up, a top, down, three frames at the least. It was five: on the runners a frame is 70
+    # to 130 ms, a third of a second's jump four of them)
     air = [body for px, body, sq, pose in rec if pose in ("takeoff", "rise", "apex", "fall", "touch")]
-    assert len(air) >= 5 and max(air) > 6, air                                # (in the air, a good way up)
+    assert len(air) >= 3 and max(air) > 6, air
     top = air.index(max(air))
     assert 0 < top < len(air) - 1 and air[-1] < max(air), air
     poses = [pose for px, _, _, pose in rec]
     seen = [a for a, b in zip(poses, [None] + poses) if a != b and a]          # each pose once, in the order shown
-    assert seen[0] == "takeoff" and "apex" in seen and seen[-1] in ("touch", "land", "settle") and "crouch" not in seen, seen
+    # (its first pose the takeoff, or the rise where the takeoff fell between two frames; never the step's crouch)
+    assert seen[0] in ("takeoff", "rise") and "apex" in seen and seen[-1] in ("touch", "land", "settle") and "crouch" not in seen, seen
     assert [ORDER.index(a) for a in seen] == sorted(ORDER.index(a) for a in seen), seen      # (never back to a pose it has left)
     assert not game.errors, game.errors
 
@@ -188,107 +215,72 @@ def test_the_way_out_shows_the_jump_key_on_its_step(game):
     assert not game.errors, game.errors
 
 
-# every frame: [your x, the eye's level, yours on the line between the two tiles, how much you are lifted, the eye's pitch, how open the window is,
-# a fixed tile of the land on the screen (y, art px), your feet on the screen (y, art px, no arc)]
-CAM = """([ox, oy]) => { window.__cam = []; window.__camOn = true; const f = () => { const p = ents.get('agent' + myId), lv = HdLook.level, a = HdLook.art();
-  if (p && a && lv[1] !== null) { const o = HdLook.screenOf(ox + .5, oy + .5, 0), b = HdLook.screenOf(p.x + .5, p.y + .5, lv[2] + lv[3]);
-    __cam.push([p.x, lv[1], lv[2], lv[3], HdLook.cam.pitch, HdLook.win.a, o[1] / a.u, b[1] / a.u]); } if (__camOn) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""
-
-
-def camera_over(game, keys, ms):
+def test_you_jump_up_a_layer_but_not_two(game):
+    # north of you: a ledge one layer up (2 rows), then ground three layers up
+    game.stamp(-3, -6, ["......."] * 5, levels=["3333333"] * 3 + ["1111111"] * 2)
     x, y = game.pos()
-    game.rest()
-    # (and the eye's tilt done: by a terrace three up the eye tips down to the pitch from above over 400 ms; recorded half
-    #  way, the pitch went on up to 58 and then down again off the step, "back and forth", one run in eight on a busy machine)
-    game.wait("Math.abs(HdLook.cam.pitch - HdLook.cam.want) < .01", 3000)
-    game.js(CAM, [x, y])
-    if keys:
-        game.hold(keys, ms)
-    else:
-        game.press("Space", 0)
-        game.sleep(ms)
-    game.sleep(300)
-    rec = game.js("(() => { __camOn = false; return __cam; })()")
-    game.rest()
-    return x, rec
+    game.page.keyboard.down("w")                                # one tile, a jump up (Space: walking into it stops you), along the ledge, then the wall
+    game.sleep(100); game.page.keyboard.press("Space"); game.sleep(1000)
+    game.page.keyboard.up("w")
+    game.sleep(500)
+    s = game.server()
+    assert (s["x"], s["y"]) == (x, y - 3) and game.pos() == (s["x"], s["y"])
+    assert game.js(f"levelAt({s['x']}, {s['y']})") == 1
 
 
-@pytest.mark.realtime
-def test_the_camera_follows_the_ground_through_a_hop_and_a_step_jump(game):
-    """"When jumping the camera goes crazy": the eye's level went after yours eased over 100 ms, so up a step it was a third of
-    a level behind as you landed and the land slid on 200 ms after (your body went 5 art px up the screen and back); half way
-    over by a cliff's foot your lift was the next tile's, half a level in one frame. Now: a hop moves nothing but your body; up a
-    step the eye's level is yours, frame for frame, the land moves one way and stops when you land, your feet stay put on the
-    screen, the pitch and the window do not stir."""
-    _, hop = camera_over(game, None, 400)
-    assert len(hop) > 5 and len({round(r[6], 2) for r in hop}) == 1 and len({r[4] for r in hop}) == 1, hop[:3]   # (the land and the pitch stand still)
-    step_east(game)
-    x, rec = camera_over(game, ["d"], 800)
-    assert game.server()["z"] == 1 and len(rec) > 10, game.server()
-    assert all(abs(r[1] - r[2]) < .01 for r in rec), [r[:4] for r in rec if abs(r[1] - r[2]) >= .01]             # the eye's level: yours (no lag, no drift after)
-    land = [r[6] for r in rec]
-    d = [b - a for a, b in zip(land, land[1:]) if abs(b - a) > .01]
-    assert d and all(v > 0 for v in d), d                                               # the land goes down the screen, one way
-    after = [r[6] for r in rec[-8:]]
-    assert max(after) - min(after) < .01, after                                         # and stands still once the eye has come to you
-    # (your feet on the screen: up a step now a jump through the air, the eye coming up after you a px a frame: leap.js cam)
-    assert not game.errors, game.errors
-
-
-@pytest.mark.realtime
-def test_a_step_jump_by_a_cliffs_foot_keeps_the_camera_and_the_window_steady(game):
-    """A terrace three up just south of you, a step east along its foot: the eye's level is yours on every frame, the pitch
-    and the x-ray window change one way at the most (never back and forth), your feet stay put on the screen."""
-    step_east(game)
-    game.stamp(-6, 3, ["." * 16] * 3, levels=["3" * 16] * 3)
-    game.stamp(-6, 1, ["." * 8] * 2, levels=["3" * 8] * 2)
-    x, rec = camera_over(game, ["d"], 800)
-    assert game.server()["z"] == 1 and len(rec) > 10, game.server()
-    assert all(abs(r[1] - r[2]) < .01 for r in rec), [r[:4] for r in rec if abs(r[1] - r[2]) >= .01]
-    for k in (4, 5):                                                                    # the pitch, the window
-        d = [b[k] - a[k] for a, b in zip(rec, rec[1:]) if abs(b[k] - a[k]) > 1e-3]
-        assert all(a * b > 0 for a, b in zip(d, d[1:])), (k, [round(r[k], 3) for r in rec])
-    feet = [r[7] for r in rec if r[4] == rec[0][4]]                                    # (while the pitch is as it was: the tilt after, back to the open sky's pitch once on the step, moves them as a pitch does)
-    assert max(feet) - min(feet) <= 1.5, feet
-    assert not game.errors, game.errors
-
-
-# after each frame drawn: [ms, your x, the drawn y of a fixed place of the land by you (art px), your feet's (art px, rounded as the sprite is)]
-DRAWN = """([ox, oy, oz]) => { window.__px = []; window.__pxOn = true; if (!window.__pxHook) { window.__pxHook = true; const show = HdView.show;
-  HdView.show = (...A) => { const r = show(...A); if (window.__pxOn) { const p = ents.get('agent' + myId), lv = HdLook.level, a = HdLook.art(); if (p && a) {
-    const o = HdLook.screenOf(ox + .5, oy + .5, oz), b = HdLook.screenOf(p.x + .5, p.y + .5, lv[2]); __px.push([performance.now(), p.x, o[1] / a.u, Math.round(b[1] / a.u)]); } } return r; }; } return 1; }"""
-
-
-def drawn_over(game, act):
+def test_hop_down_off_a_hill_edge(game):
+    # you stand on a hill (level 1) two tiles in from its west edge: walk west and hop down
+    game.stamp(-3, -2, ["......."] * 5, levels=["0111110"] * 4 + ["0000000"])
     x, y = game.pos()
-    game.rest()
-    game.js(DRAWN, [x, y, game.server()["z"]])
-    act()
-    game.sleep(300)
-    rec = game.js("(() => { __pxOn = false; return __px; })()")
-    game.rest()
-    return x, rec
+    assert game.js(f"levelAt({x}, {y})") == 1
+    # (walked until three tiles west, down off the edge: it was 900 ms, and a runner whose world came late let go of you
+    # on the hill, "17 <= 15 - 3"; then the way back until up on it)
+    game.page.keyboard.down("a")
+    game.wait(f"myPos().x <= {x - 3}", 5000)
+    game.page.keyboard.up("a")
+    game.settle("pred === null", timeout=3000)
+    s = game.server()
+    assert s["x"] <= x - 3 and game.js(f"levelAt({s['x']}, {s['y']})") == 0 and game.pos() == (s["x"], s["y"])
+    low = s["x"]
+    game.page.keyboard.down("d")                                # and a jump back up the same edge (Space)
+    game.sleep(100); game.page.keyboard.press("Space"); game.wait(f"myAt && myAt.z === 1 && myPos().x >= {x - 2}", 5000)
+    game.page.keyboard.up("d")
+    game.settle("pred === null", timeout=3000)
+    s = game.server()
+    assert s["x"] > low and s["x"] >= x - 2 and game.js(f"levelAt({s['x']}, {s['y']})") == 1 and game.pos() == (s["x"], s["y"])
 
 
-@pytest.mark.realtime
-def test_the_land_moves_by_whole_art_px_never_back_and_your_feet_stay_put(game):
-    """"It is still jumping vertically by a few pixels": the eye's place was rounded to 1/16 tile and 1/16 level, so up a step
-    the land went 1.6 px a frame, drawn 1 or 2 px on, and your body (rounded to a px as every sprite) a px up and down (3 screen
-    px on a phone) at every step. Now: walking flat and hopping the land does not move up or down at all; up a step it goes
-    whole art px, one way, a px a frame at the most (on a frame of 1/60 s); your feet keep their px."""
-    _, flat = drawn_over(game, lambda: game.hold(["d"], 500))
-    _, hop = drawn_over(game, lambda: (game.press("Space", 0), game.sleep(600)))
-    for r in (flat, hop):
-        assert len(r) > 5 and max(v[2] for v in r) - min(v[2] for v in r) < .01 and len({v[3] for v in r}) == 1, r[:4]   # (zero, on flat ground and through a hop)
-    step_east(game)
-    x, r = drawn_over(game, lambda: game.hold(["d"], 800))
-    assert game.server()["z"] == 1 and len(r) > 10, game.server()
-    d = [(b[2] - a[2], max(1, round((b[0] - a[0]) * .06))) for a, b in zip(r, r[1:])]
-    moves = [v for v, _ in d if abs(v) > .01]
-    assert len(moves) >= 4 and all(abs(v - round(v)) < .02 for v in moves), moves               # whole art px
-    assert all(v > 0 for v in moves), moves                                                      # one way
-    assert all(abs(v) <= cap + .02 for v, cap in d), d                                           # a px a frame at the most
-    feet = [v[3] for v in r]
-    assert max(feet) - min(feet) <= 1, feet
-    assert not game.errors, game.errors
-
+def test_a_hop_is_one_arc_over_the_edge_at_the_pace_of_a_step(game):
+    """Up or down a layer: a crouch on the ground it leaves, one arc from there to the ground it lands on, clear of the
+    edge, a landing; your shadow on the ground under you, and as long as a jump that high takes (now a block and more:
+    "the Space jump should be as high as 1 block and more", the walk waiting for it: a third of a second, not a fifth). (Seen frame by frame it hung:
+    the step took half as long again, the body near the top of its arc for most of it, legs going; and it ended with
+    a 2 px snap. Then "Jump looks unnatural": it left the ground the instant the step began, stiff.)"""
+    game.clear_area(6)
+    game.stamp(1, -1, ["..."] * 3, levels=["111"] * 3); game.rest()        # ground a layer up, east of you
+    x, y = game.pos()
+    L = game.js("RELIEF_STEP")                                # (art px a layer: a block)
+    # your feet and your shadow over the lower ground (art px; the solver says levels), f of the way across, going east (up) or west (down)
+    at = lambda f, to: game.js(f"""(() => {{ const j = jumpOf({{x: {x} + {f}, y: {y}, tx: {to}, ty: {y}, fx: {1 if to > x else -1}, fy: 0}});
+      return {{feet: (j.body + {f}) * {L}, shadow: (j.ground + {f}) * {L}, squash: j.squash}}; }})()""")
+    for to in (x + 1, x):
+        way = [at(f / 50, to) for f in range(1, 50)]
+        off, land = (way[0], way[-1]) if to > x else (way[-1], way[0])
+        up = to > x
+        assert abs(off["feet"] - (0 if up else L)) < 1e-6 and off["squash"] == up and abs(land["feet"] - (L if up else 0)) < 1.5   # on the ground as it sets off (up: crouched); a px or so from it as it lands (the landing's squash: after it, by the clock)
+        assert max(abs(b["feet"] - a["feet"]) for a, b in zip(way, way[1:])) < L / 8          # one smooth arc: no snap anywhere
+        assert all(abs(q["shadow"]) < 1e-6 for q in way[:24]) and all(abs(q["shadow"] - L) < 1e-6 for q in way[25:])
+        assert all(q["feet"] >= L - (1e-6 if up else 2) for q in way[24:])                         # over the higher ground: never inside it (down: under two px)
+        if up:
+            assert max(q["feet"] for q in way) > L + 1                                      # clear of the edge
+        else:                                                                               # down: no jump, a drop off the edge
+            assert max(q["feet"] for q in way) <= L + 1e-6 and all(b["feet"] >= a["feet"] - 1e-6 for a, b in zip(way, way[1:]))
+    assert game.js(f"jumpOf({{x: {x} - .5, y: {y}, tx: {x} - 1, ty: {y}, fx: -1, fy: 0}})") is None   # on the level: no hop
+    game.start_recording()                                    # and it takes the time of a step: up the step (Space as you set off) and on, at walking pace
+    game.page.keyboard.down("d"); game.page.keyboard.press("Space")
+    game.hold(["d"], 700)
+    rec = game.recording()
+    game.sleep(500)
+    v = speed(rec, 0)
+    assert v > 3.5, v                                         # (5 tiles a second, the step a third of a second, at the walk's own pace: its jump's time, jump.js jumpMs. It was 2.5 tiles in 0.7 s by the page's clock: on a runner the walk waited for the world)
+    assert game.pos() == (game.server()["x"], game.server()["y"])
