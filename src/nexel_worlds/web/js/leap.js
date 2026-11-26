@@ -134,10 +134,10 @@ const Leap = (() => {
   // the most, the step the jump is planned in (hits, stairArc: 1/120 s a step): the body rises over the step it clears at the
   // place planned, a frame every 100 ms as at 60 a second
   function frame(p, dt, now) {
-    if (C !== null) cam(null, now, dt);   // (C moves here only: the arc's dt)
     const n = Math.max(1, Math.ceil(dt * 60 - .01));
     let i = 0;
     for (; i < n && L; i++) step(p, dt / n, now);
+    if (C !== null && L) cam(null, now, dt);   // (C moves here only, by the arc's dt, after its steps: to where the body is this frame, not a frame behind it, however long the frame: test_e2e_fall)
     if (!L && i < n && walking && p.walking) walkOn(p, (n - i) * dt / n, now);   // (down mid-frame: the walk takes the time left)
   }
   function step(p, dt, now) {
