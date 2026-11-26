@@ -81,6 +81,7 @@ def test_the_demo_plays_and_remembers_the_world(browser, site):
 
 
 @pytest.mark.realtime
+@pytest.mark.animated                                  # (the wait's animations running with no script: not with less motion, pages.py)
 def test_a_phone_plays_the_demo_in_the_hd_look(browser, site):
     """The demo is what a phone plays, and the HD look had never been run in it: in, the land drawn round you, the
     thumb's stick walks, and the page says nothing went wrong."""

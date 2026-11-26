@@ -22,6 +22,7 @@ FRAMES = "(n) => new Promise((ok) => { const f = () => (n-- > 0 ? requestAnimati
 RUNNING = "document.getAnimations().filter((a) => a.playState === 'running' && a.effect.target.closest('#boot')).length"
 
 
+@pytest.mark.animated                                  # (the wait's own animations: the cat runs, the bar slides: not with less motion, pages.py)
 def test_the_wait_runs_before_any_script_and_its_bar_never_goes_back(browser, server):
     page = browser.new_page(viewport={"width": 390, "height": 844}, device_scale_factor=3, is_mobile=True, has_touch=True)
     held = []
@@ -64,6 +65,7 @@ def test_the_title_does_not_wait_for_the_sheets_it_never_shows(browser, server):
     page.close()
 
 
+@pytest.mark.animated                                  # (the wait moving by CSS alone is what it checks: not with less motion, pages.py)
 def test_the_wait_moves_with_no_script_at_all(browser, server):
     """CSS alone: no script of the page's runs (not even its own few lines), and the wait still moves, by the compositor's
     own steps (two pictures 0.3 s apart are not the same), in the page's ink, its frame there from the first picture."""
