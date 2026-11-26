@@ -46,7 +46,7 @@ class Nyxwing:
     def _step_nyxwing(self, c, online):
         t, raged = self.tick, c.awake == 1
         if c.mode == "" and c.until == 0:                    # it has just come: its entrance
-            c.mode, c.until, c.born = "arrive", t + sec(ARRIVE), t
+            c.mode, c.until, c.born, c.came = "arrive", t + sec(ARRIVE), t, t
             self.emit("boss", c.x, c.y, what="arrive", id=c.id, kind=c.kind)
             return
         if c.mode == "arrive":

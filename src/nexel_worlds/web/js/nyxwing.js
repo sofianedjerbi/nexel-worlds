@@ -16,6 +16,19 @@ const Nyx = (() => {
   const later = (ms, f) => setTimeout(f, Math.max(0, ms));
   const say = (name, e) => sfx(name, e.x, e.y, 30);         // (a dragon carries further than a tortoise: boss.js's 20)
   const owns = (e) => e.kind === "nyxwing" || ents.has("nyxwing" + e.id);
+  // when its entrance began, on this page's clock (its song's start): the server's event, or, for a player who comes
+  // when it is already here, how long ago the server says it came (views.py `came`); what is still to be heard of it is
+  // played when it falls due
+  function came(e, at) {
+    const s = st(e.id);
+    if (s.arriveAt !== undefined) return s.arriveAt;
+    s.arriveAt = at;
+    const due = (after, name) => { const ms = at + after - performance.now(); if (ms >= 0) later(ms, () => say(name, e)); };
+    due(8 * BEAT, "drake_omen");                                            // a roar from far off; its swell lands on the landing
+    due(ARRIVE * BEAT - HIT.drake_descend, "drake_descend");
+    return at;
+  }
+  const began = (e) => e.came === undefined ? st(e.id).arriveAt : came(e, performance.now() - e.came * 1000);
 
   // ---- its body, on the creature's own canvas (drawWild)
   function frame(s, moving, now, id) {
@@ -95,7 +108,7 @@ const Nyx = (() => {
       if (!p.e || p.e.kind !== "nyxwing" || !IMG.nyxwing) continue;
       const e = p.e, s = st(e.id), cx = p.x + .5;
       if (e.act === "arrive") {
-        const u = (now - (s.arriveAt ?? now)) / BEAT, open = Math.min(1, Math.max(0, (u - 1) / 5)), q = Math.min(1, Math.max(0, (u - FALL_FROM) / (ARRIVE - FALL_FROM)));
+        const u = (now - (began(e) ?? now)) / BEAT, open = Math.min(1, Math.max(0, (u - 1) / 5)), q = Math.min(1, Math.max(0, (u - FALL_FROM) / (ARRIVE - FALL_FROM)));
         if (open > 0 && q < 1) at(cx + 4, p.y, eclipse(Math.max(3, Math.round(16 * open))), 7 * 16, 1 - q * q);
         if (u < FALL_FROM) continue;
         const k = 1 - q, ang = q * 2.6 * Math.PI, gx = cx + 4 * k * Math.cos(ang), gy = p.y + 2 * k * Math.sin(ang), high = 7 * 16 * k ** 1.25;
@@ -139,9 +152,7 @@ const Nyx = (() => {
   function event(e) {
     const s = st(e.id), now = performance.now();
     if (e.what === "arrive") {
-      s.arriveAt = now;
-      later(8 * BEAT, () => say("drake_omen", e));                           // a roar from far off; its swell lands on the landing
-      later(ARRIVE * BEAT - HIT.drake_descend, () => say("drake_descend", e));
+      came(e, now);
     } else if (e.what === "land") {
       say("drake_roar", e); say("drake_crash", e);
       blast(e, 1);
@@ -207,5 +218,5 @@ const Nyx = (() => {
   }
   // every beat, its wings (between its moves)
   setInterval(() => { for (const p of ents.values()) if (p.e && p.e.kind === "nyxwing" && !p.e.act) sfx("drake_flap", p.x, p.y, 20); }, BEAT);
-  return {draw, hd, windup, event, died, owns};
+  return {draw, hd, windup, event, died, owns, began};
 })();

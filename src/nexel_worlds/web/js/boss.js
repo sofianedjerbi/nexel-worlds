@@ -12,6 +12,7 @@ function bossEvent(e) {
 // A fight's loop plays while a boss is in view: Old Mossback's while it is awake, Sugar rush while Nyxwing is here (from
 // its entrance, whose landing is the song's drop: audio.js bossMusic).
 setInterval(() => {
-  const here = (k, f) => [...ents.values()].some((q) => q.e && q.e.kind === k && f(q.e));
-  bossMusic(here("nyxwing", () => true) ? "nyxwing" : here("mossback", (e) => e.act !== "sleep") ? "boss" : false);
+  const here = (k, f) => [...ents.values()].some((q) => q.e && q.e.kind === k && f(q.e)), nyx = [...ents.values()].find((q) => q.e && q.e.kind === "nyxwing");
+  if (nyx) bossMusic("nyxwing", Nyx.began(nyx.e));                          // (from where the fight is: you may have come late)
+  else bossMusic(here("mossback", (e) => e.act !== "sleep") ? "boss" : false);
 }, 500);
