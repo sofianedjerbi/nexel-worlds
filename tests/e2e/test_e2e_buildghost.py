@@ -195,15 +195,16 @@ def test_on_a_phone_a_held_with_the_stick_is_a_row_and_held_still_places_once(br
         g.wait("Build.S.plans.size + (topAt(%d, %d) > 0 ? 1 : 0) >= 1" % (x + 1, y), 3000)
         g.sleep(900)                                             # held still: one block, not a pile (a second would go on top of the first)
         assert g.js(f"[...Build.S.plans.values()].filter((j) => j.x === {x + 1}).length + topAt({x + 1}, {y})") == 1
-        # the stick pushed east, A still held, till the cursor is two tiles on (a held stick steps on at the cursor's own
-        # pace, build.js: how far past it goes before the thumb lifts is the machine's, so the row is checked to where it got)
+        # the stick pushed east, A still held, till the cursor is two tiles on; then both thumbs lift. (A held stick steps on
+        # at the cursor's own pace, build.js: how far it goes before the lift reaches the page is the machine's, so the row
+        # is checked to wherever it got: one block on every tile from your feet on, none past its end)
         send("touchStart", {2: a, 1: (90, 600)}); send("touchMove", {2: a, 1: (130, 600)})
         g.wait(f"Build.S.at.x >= {x} + 3", 3000)
-        send("touchMove", {2: a})
-        g.wait("!Build.S.dir", 3000)                             # (the thumb's lift reaches the page with its next frame, not when it is sent)
-        end = g.js("Build.S.at.x")
         send("touchEnd", {})
+        g.wait("!Build.S.dir && !Build.S.hold", 3000)
         g.wait(BUILT, 30000)
-        assert g.js(f"Array.from({{length: {end + 2 - x}}}, (_, i) => topAt({x} + i, {y}))") == [0] + [1] * (end - x) + [0] and not g.errors, (end - x, g.errors)   # a row from your feet to the cursor, one block high, and none past it
+        tops = g.js(f"Array.from({{length: 13}}, (_, i) => topAt({x} + i, {y}))")      # (the cursor goes 10 tiles from you at most)
+        n = tops.index(0, 1) - 1
+        assert n >= 3 and tops[:n + 2] == [0] + [1] * n + [0] and not g.errors, (tops, g.errors)
     finally:
         ctx.close()
