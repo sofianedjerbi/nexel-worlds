@@ -103,7 +103,7 @@ class Needs:
         x, y = self.resolve(*self.target(a, args))
         if self.held(a, args) != "watering_can":
             raise ActionError("need_tool", "watering needs the watering can in hand (with: watering_can)"
-                              + ("" if a.count("watering_can") else "; craft one at a workbench"))
+                              + ("" if a.count("watering_can") else "; craft one at a workbench"), tool="watering_can", have=a.count("watering_can") > 0)
         if self.world.block(x, y) == "well" or (self.world.block(x, y) == "none" and self.world.ground(x, y) in T.DEPTH):
             yield from self.wait(a, 0.6)
             a.can = CAN_SIZE
