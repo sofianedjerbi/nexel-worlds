@@ -58,6 +58,9 @@ function syncWalk() {
   if (want && walking && want.dir === walking.dir && want.run === walking.run) return;
   if (!want && !walking) return;
   const prev = walking, p = ents.get("agent" + myId), now = performance.now();
+  // (let go before a frame walked you: a tap on a page whose frames are slow, its down and its up both handled between two
+  // frames, was a stop where you stood. The walk goes on for that one frame, as if held across it, and lets go after it)
+  if (!want && !prev.walked && p && p.walking) { prev.letGo = true; return; }
   walking = want;
   if (!want) {                                   // let go: you finish the tile you're entering, and the server comes to it
     const args = {};
@@ -154,6 +157,8 @@ function walkOn(p, dt, now) {
     const go = Math.min((a0 + s - p[along]) * s, v * t, autoJump() ? Math.max(0, Leap.room(p, walking)) + v / 60 + 1e-6 : Infinity);   // (no further past where the auto-jump is due than a 60th of a second's walk, as at 60 fps: leap.js room)
     p[along] += s * go; t -= go / v; p.tx = nx; p.ty = ny; p.moved = now;
   }
+  walking.walked = true;
+  if (walking.letGo) { walking.letGo = false; syncWalk(); }   // (let go before this frame: now, at the tile it is entering)
 }
 
 // A tick's word on where you are (state.js). -> true: you're on your own way, the server coming after you.
