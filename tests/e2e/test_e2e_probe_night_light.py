@@ -16,7 +16,7 @@ PROBE = """() => { window.__pr = []; const show = HdView.show; HdView.show = (o)
     const ok = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE; if (ok) { gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); tpx = [...px.slice(0, 3)].join(); } else tpx = "incomplete";
     gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.deleteFramebuffer(fb); }
   const k = devicePixelRatio, s = HdLook.read(Math.round(innerWidth * k / 2), Math.round(innerHeight * k / 2), 1, 1).data;
-  __pr.push([HdLook.why, glpx, [...s.slice(0, 3)].join(), tpx, gl.getError(), o.pic.width + "x" + o.pic.height]); } catch (e) { __pr.push(["err", String(e)]); } return r; }; return 1; }"""
+  __pr.push([HdLook.why, glpx, [...s.slice(0, 3)].join(), tpx, gl.getError(), "roof " + (HdLevel.cover && HdLevel.cover.roof), "lit " + HdLook.youLit, "b " + HdLook.builds, "busy " + (HdLook.busy ? 1 : 0)]); } catch (e) { __pr.push(["err", String(e)]); } return r; }; return 1; }"""
 
 
 def test_probe_the_night_light_frame_by_frame(browser, server):
