@@ -46,7 +46,7 @@ jobs:
           uvx "$RUFF" format --check . > ruff-format.txt || { echo "ruff format: $(tail -n 1 ruff-format.txt)" >> "$GITHUB_STEP_SUMMARY"; exit 1; }
 
   web:
-    name: Lint (prettier, web client)
+    name: "Lint (web client: undefined names, prettier)"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
