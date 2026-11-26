@@ -28,7 +28,7 @@ REC = """(name) => { window.__pr = []; let ref = null, mine = null; const f0 = f
     for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - ref[i]) > 24 || Math.abs(d[i + 1] - ref[i + 1]) > 24 || Math.abs(d[i + 2] - ref[i + 2]) > 24 || Math.abs(d[i + 3] - ref[i + 3]) > 24) off++;
     const m = ents.get('agent' + myId), ms = m && HdLook.screenOf(m.x + .5, m.y + .5, HdLook.drawnAt(m) ?? 0);
     const v = View.of(p);   // (where its picture stands this frame: what the bubble goes with, and what a player sees. Not p.x: sprinting on a slow runner it was drawn 1.6 to 1.9 tiles from it)
-    ref = d; __pr.push({at: b.at.slice(), w: b.w, n: d.length / 4, q: b.q, u: artPx(), body: v ? v : [onArt(s[0]), onArt(s[1])], drawn: !!v, lx: onArt(s[0]), off, x: p.x, mine: mine && ms && mine[0] - onArt(ms[0])}); };
+    ref = d; __pr.push({at: b.at.slice(), w: b.w, n: d.length / 4, q: b.q, u: artPx(), body: v ? v : [onArt(s[0]), onArt(s[1])], drawn: !!v, lx: onArt(s[0]), o: BodyPlace.over(p, 16 * View.u), py: p.y, me: myPos() && [myPos().x, myPos().y], W: innerWidth, off, x: p.x, mine: mine && ms && mine[0] - onArt(ms[0])}); };
   return 1; }"""
 
 
@@ -77,7 +77,11 @@ def test_a_bubble_goes_with_its_speaker_px_for_px_and_its_letters_stay_as_they_a
         free = [f for f in walk if f["drawn"] and 4 < f["at"][0] and f["at"][0] + f["w"] < W - 4]   # (a bubble held inside the screen's edge is not over its speaker: drawBubbles x0. On a slow
         assert len(free) > 12, (len(free), len(walk))                                     # runner one page's sprint ran on further than the other's: 5 tiles ahead, its bubble held, 243 px off)
         tail = {round(f["at"][0] + round(f["w"] / 2 / u) * u - f["body"][0], 4) for f in free}
-        assert len(tail) == 1, (tail, [(f["at"][0], f["body"][0], f["lx"]) for f in free][:12])   # over the speaker's head as it is drawn: the same place every frame
+        if len(tail) > 1:                                                                  # (which frames, and all that was known in each: #61 follow-up)
+            of = lambda f: round(f["at"][0] + round(f["w"] / 2 / u) * u - f["body"][0], 4)
+            mode = max(tail, key=lambda v: sum(of(f) == v for f in free))
+            odd = [{k: f[k] for k in ("at", "w", "body", "lx", "o", "x", "py", "me", "W")} | {"i": walk.index(f), "tail": of(f)} for f in free if of(f) != mode]
+            raise AssertionError((tail, mode, odd[:6], len(odd), len(free)))                # over the speaker's head as it is drawn: the same place every frame
         # its px as the frame before's: not drawn another way (its letters put a fraction of a px aside were most of their
         # px; a few px of the outline, 5 or so, come out another way now and then). At a whole density only: read each frame,
         # the canvas is drawn by the CPU after a while, and at 1.25 or 1.75 that is another raster of its letters (4 to 12 %
@@ -100,6 +104,9 @@ def test_a_bubble_goes_with_its_speaker_px_for_px_and_its_letters_stay_as_they_a
 FREEZE = "(() => { window.__go = frame; frame = () => {}; return 1; })()"
 THAW = "(() => { frame = window.__go; requestAnimationFrame(frame); return 1; })()"
 BUBBLE_AT = "(name) => { const b = bubbles.find((b) => b.name === name && b.at); return b && [b.at[0], b.at[1], b.w, b.h]; }"
+NO_BUBBLE = """(name) => { const p = [...ents.values()].find((e) => e.e && e.e.name === name); return {bubbles: bubbles.map((b) => [b.name, b.at, b.up, b.h]),
+  drawn: p && View.of(p), hid: p && HdLook.hidden(p.x + .5, p.y + .5, p.e.z !== undefined ? p.e.z : floorAt(Math.round(p.x), Math.round(p.y))), at: p && [p.x, p.y],
+  me: myPos() && [myPos().x, myPos().y], W: innerWidth, H: innerHeight, opt: opt("bubbles")}; }"""
 # how many px of each picture differ from the first's by more than 24 in a channel (the pictures read by the page itself)
 DIFFS = """async (b64s) => { const px = [];
   for (const b of b64s) { const im = await createImageBitmap(await (await fetch('data:image/png;base64,' + b)).blob()), c = document.createElement('canvas');
@@ -137,7 +144,7 @@ def test_a_bubble_looks_the_same_on_every_step_of_a_walk(browser, server, dpr):
                 g.js(FREEZE)
                 g.js(FRAMES, 2)                                                        # (frame() asks for the next one first: that one still draws, the bubble a step on)
                 at = g.js(BUBBLE_AT, other.name)
-                assert at, "no bubble drawn"
+                assert at, ("no bubble drawn", g.js(NO_BUBBLE, other.name))
                 X, Y, W, H = (round(v * dpr) / dpr for v in at)                    # (on whole px of the screen)
                 shots.append(base64.b64encode(g.page.screenshot(clip={"x": X, "y": Y, "width": W, "height": H})).decode())
                 places.append(at[:2])
