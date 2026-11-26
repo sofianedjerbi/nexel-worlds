@@ -28,7 +28,7 @@ def test_over_a_cliff_the_block_goes_at_your_level_in_a_straight_line_not_down_o
         game.wait(f"solidAt({x + k}, {y}, 6)", 3000)
         assert not game.js(f"solidAt({x + k}, {y}, 1)")                     # (nothing on the meadow down there)
         if k == 1:
-            game.hold(["d"], 60); game.rest()                              # out onto it, on along the line
+            game.act("step", dir="E"); game.rest()                         # out onto it, on along the line (one tile: a tap of the key walked two on a busy runner, its key let go a frame late)
             assert game.pos() == (x + 1, y)
     assert game.inv("dirt") == 4 and not game.errors
 
@@ -42,6 +42,8 @@ def test_the_pointer_over_the_drop_is_on_the_plane_of_your_level_with_a_block_in
     q = game.js(f"(() => {{ const q = tileAtScreen({m[0]}, {m[1]}); return [q.x, q.y, clickIntent(q, 'use').it.z]; }})()")
     assert q == [x + 2, y, 6], q
     game.js("selected = null")
-    g = game.js(f"(() => {{ const q = tileAtScreen({m[0]}, {m[1]}); return q && [q.x, q.y, topAt(q.x, q.y)]; }})()")
-    assert g is None or g[2] == 0, g                                       # (the land the pointer shows, if any: never a cell in the air)
+    g = game.js(f"(() => {{ const q = tileAtScreen({m[0]}, {m[1]}), p = HdLook.pick({m[0]}, {m[1]}); return [q && [q.x, q.y], p && [p.x, p.y]]; }})()")
+    # (the land the pointer shows, if any, as the picture names it: never the cell in the air. What lies there is the world's
+    # own, past the meadow made for the test: "[-6, -34, 3]", a hill on a runner, where a quick machine had had the meadow)
+    assert g[0] == g[1] and g[0] != [x + 2, y], g
     assert not game.errors
