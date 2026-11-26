@@ -28,5 +28,6 @@ def test_a_cave_winding_back_on_itself_is_opened_to_its_far_ends(browser, server
     shut = [(i, j) for i, j in sorted(CAVE) if g.js(CUT, [x + i, y + j]) is None]
     assert not shut, shut                                                         # every floor of it open
     for t in ([x + 3, y + 5], [x + 11, y + 5]):                                   # the rock beside its branch, past the tile round it: drawn whole
-        assert g.js(CUT, t) is None, t
+        cut = g.js(CUT, t)                                                        # (a cut there, of a hollow beside the window, is at the land's top: none of it taken)
+        assert cut is None or cut >= g.js(f"topAt({t[0]}, {t[1]})"), (t, cut)
     assert not g.errors
