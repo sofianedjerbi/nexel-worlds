@@ -12,7 +12,7 @@ function joinGame(name) {
     if (ACCOUNT.url && !ticket) { agentWs.close(); return; }
     const r = await rpc("hello", {name, token, persona: "human", race: myRace, ...(ticket ? {ticket} : {})});      // (races.js)
     if (r.error === "bad_ticket") accountDrop();
-    if (!r.ok) { toast(r.error === "bad_token" ? `“${name}” is already someone else. Pick another name.` : (r.detail || r.error), true); agentWs.close(); return; }
+    if (!r.ok) { toast(r.error === "bad_token" ? `“${name}” is already someone else. Pick another name.` : errorText(r), true); agentWs.close(); return; }
     me = r.agent.name; myId = r.agent.id; follow = null; sendSpec({op: "me", id: myId}); localStorage.setItem("nexel-name", me);
     camT.x = cam.x = r.agent.x; camT.y = cam.y = r.agent.y;
     $("joinbox").style.display = "none"; $("hud").style.display = "flex"; document.body.classList.add("playing"); if (typeof zoomForTitle === "function") zoomForTitle(false);   // (your own zoom level back: zoom.js)
@@ -80,6 +80,31 @@ function facingTo(p) {  // the direction to look when working on p (the bigger a
   const dx = p.x - s.x, dy = p.y - s.y;
   return Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? "E" : dx < 0 ? "W" : null) : dy > 0 ? "S" : "N";
 }
+// WHY AN ACTION WAS REFUSED, in words for people, from its code and data (#6; sim/entities.py ActionError). A code not here
+// yet says the agents' sentence (`detail`). Looked up by its own keys only: a code from the wire is never a method of Object
+const ERROR_TEXT = {
+  need_tool: (d) => `Needs a ${label(d.tool).toLowerCase()} in hand` + (d.have === false ? ": you have none" : ""),
+  missing_item: (d) => (d.food ? "Nothing it eats in your bag" : d.where === "chest" ? `No ${label(d.item).toLowerCase()} in the chest`
+    : d.need > 1 ? `Takes ${d.need} ${label(d.item).toLowerCase()}: you have ${d.have}` : `No ${label(d.item).toLowerCase()} in your bag`),
+  occupied: (d) => (Object.hasOwn(IN_THE_WAY, d.on) ? IN_THE_WAY[d.on] : `${label(d.on)} is there`),
+  bad_target: (d) => (Object.hasOwn(TARGET_WHY, d.why) ? TARGET_WHY[d.why](d) : Object.hasOwn(Floors.WHY, d.why) ? Floors.WHY[d.why] : "Not there"),   // (a block's cell: build mode's own words, floors.js)
+  changed: () => "Something changed there first",
+  cannot_dig: (d) => (d.what ? `${label(d.what)} can't be dug` : (Object.hasOwn(NO_DIG, d.why) ? NO_DIG[d.why] : "That can't be dug")),
+};
+const NO_DIG = {deepest: "This is as deep as it goes", enclosed: "Inside the land: dig to it from beside it", not_clear: "Stand on clear ground to dig down"};
+const IN_THE_WAY = {body: "Someone is standing there", you: "You stand where it goes: step aside", thing: "Something is there"};
+const lcLabel = (n) => label(n).toLowerCase();
+const TARGET_WHY = {
+  not_a_crop: () => "Water a growing crop in tilled soil", not_open_ground: () => "On open ground only", seed_soil: () => "Seeds grow in tilled soil: dig the ground first",
+  wrong_ground: (d) => `${label(d.item)} goes on ${d.goes_on.map(lcLabel).join(" or ")}`, cannot_place_on: (d) => `Not on ${lcLabel(d.ground)}`, boat_water: () => "A boat goes on the water beside you",
+  needs_dry: (d) => `${label(d.item)} needs dry land`, needs_ground: (d) => `${label(d.item)} needs the ground under it`, no_floor: () => "No floor there to stand it on",
+  no_lean: () => "A ladder goes against something taller", no_higher: () => "Stairs go up to something higher beside them", no_room: () => "No room there for the stairs",
+  ladder_ground: () => "A ladder's foot goes on the ground", nothing_built: () => "Nothing built there", block_on_top: () => "Take the block on top first",
+  no_support: () => "A block goes against something solid", too_high: () => "Nothing is built that high", nothing_overhead: () => "Nothing over your head to dig",
+  self: () => "You can't hit yourself", untouchable: () => "Your hand goes through it", not_kind: (d) => `That is not a ${lcLabel(d.kind)}`, wont_eat: (d) => `A ${lcLabel(d.kind)} doesn't eat that`,
+  not_agent: () => "Give to someone, not a creature",
+};
+const errorText = (r) => (Object.hasOwn(ERROR_TEXT, r.error) && (r.data || !ERROR_TEXT[r.error].length) ? ERROR_TEXT[r.error](r.data) : r.detail || r.error);   // (words that need no data, as "changed"'s, need none sent)
 async function act(tool, args, quiet) {
   if (!me || (eating() && !RULES.meanwhile.includes(tool))) return null;
   while (pred && performance.now() < pred.until) await new Promise((ok) => setTimeout(ok, 16));   // the server is still coming to where you stopped: what you do, you do from there
@@ -99,7 +124,7 @@ async function act(tool, args, quiet) {
     busy = false; progress = null;
     if (walking === null && [...keys].some((k) => KEYDIR[k])) syncWalk();   // still holding a direction: walk on
   }
-  if (!r.ok && !["interrupted", "offline", "too_soon"].includes(r.error) && !quiet) toast(`${label(tool)}: ${r.detail || r.error}`, true);
+  if (!r.ok && !["interrupted", "offline", "too_soon"].includes(r.error) && !quiet) toast(`${label(tool)}: ${errorText(r)}`, true);
   if (r.ok) {
     if (r.result.lost) toast(r.result.lost[0].toUpperCase() + r.result.lost.slice(1), true);   // (ore broken with too low a pickaxe: it crumbled, sim/underground.py lost)
     const c = r.result.changed || {};

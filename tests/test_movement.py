@@ -131,3 +131,21 @@ def test_you_eat_while_you_walk(world):
     dig = sim.submit(a, "dig", {"x": a.x - 1, "y": a.y - 1})                # eaten: the hands are free again
     assert dig.result is None or dig.result["error"] != "hands_full"
 
+
+
+def test_a_stop_on_a_tile_the_walk_went_past_goes_back_to_it(world):
+    # (a screen whose frames came late: the world's walk took the step up and went on down off it before the stop
+    # said the screen had stopped on it: two layers down, not to be walked back up. #131)
+    sim, a = world
+    x, y = a.x, a.y
+    sim.world.set(x, y, level=1)
+    sim.world.set(x + 1, y, level=2)
+    a.z = 1
+    sim.submit(a, "walk", {"dir": "E", "jump": True})
+    for _ in range(40):
+        sim.step()
+        if a.x == x + 2:
+            break
+    assert (a.x, sim.height(a)) == (x + 2, 0)
+    run(sim, a, "stop", {"at": [x + 1, y, 1], "jump": True})
+    assert (a.x, a.y, sim.height(a)) == (x + 1, y, 2)

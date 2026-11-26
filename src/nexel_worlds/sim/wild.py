@@ -14,7 +14,7 @@ from .nyxwing import Nyxwing
 from .gust import Gust
 from .hob import Hob
 from .stump import Bloom, Stump
-from .entities import CREATURES
+from .entities import CREATURES, ref
 
 WILD = ("tusker", "pincer", "strawman", "wisp", "wyrm", "gustling", "grumblestump", "snapbloom", "mossback", "sporeling",
         "nyxwing", "hob")       # (mossback and sporeling: boss.py; nyxwing: nyxwing.py; the hob is no enemy, an ally: hob.py)
@@ -60,8 +60,8 @@ class Wild(Gust, Stump, Bloom, Hob, Boss, Nyxwing):
         if abs(self.height(prey) - self.height(c)) > BITE_HIGH:
             return                                             # (up on a ledge, down a drop: out of its reach, as it is out of yours)
         dmg = self.guarded(prey, dmg or CREATURES[c.kind]["damage"])     # (armor: wear.py)
-        self.emit("attack", c.x, c.y, attacker=f"a {c.kind}", target=prey.name, damage=dmg, id=c.id)
-        self.damage(prey, dmg, c.kind)
+        self.emit("attack", c.x, c.y, attacker=f"a {c.kind}", target=prey.name, who=ref(c), whom=ref(prey), damage=dmg, id=c.id)
+        self.damage(prey, dmg, "bitten", who=c)
 
     def wind_up(self, c, direction, seconds):
         c.mode, c.until, c.dir = "windup", self.tick + sec(seconds), direction

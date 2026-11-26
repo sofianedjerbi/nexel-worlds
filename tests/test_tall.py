@@ -81,8 +81,8 @@ def test_the_ground_is_dug_down_to_the_bottom_and_built_up_to_the_top(world):
     assert run(sim, a, "dig", {"x": x + 1, "y": y, "z": LOW + 1, "with": "pickaxe"})["ok"] and sim.world.level(x + 1, y) == LOW
     r = run(sim, a, "dig", {"x": x + 1, "y": y, "z": LOW, "with": "pickaxe"})
     assert not r["ok"] and "deep as it goes" in r["detail"] and sim.world.solid(x + 1, y, LOW)        # the bottom cell stays
-    assert sim.block_fits(x, y, HIGH + 1) == "nothing is built that high"
-    assert sim.block_fits(x + 3, y, HIGH) != "nothing is built that high"
+    assert sim.block_fits(x, y, HIGH + 1) == ("too_high", None)
+    assert sim.block_fits(x + 3, y, HIGH) != ("too_high", None)
     sim.world.set_cell(x + 2, y, HIGH, True)                  # a block at the very top: it is there, and nothing is over it
     assert sim.world.solid(x + 2, y, HIGH) and not sim.world.solid(x + 2, y, HIGH + 1) and sim.world.top(x + 2, y) == HIGH
 

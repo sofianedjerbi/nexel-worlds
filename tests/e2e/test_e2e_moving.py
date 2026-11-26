@@ -23,13 +23,19 @@ def free(rec):
     return [(a, b) for a, b in zip(rec, rec[1:]) if b[0] > a[0] and -1 <= b[3] - gone(a, b) <= 2]
 
 
-def speed(rec, skip_ms=300):
+def walked(rec, skip_ms=300):
+    """The free frames of a walk, from skip_ms on, up to its last frame that moved you."""
+    moved = [k for k in range(1, len(rec)) if gone(rec[k - 1], rec[k]) > 1e-6]
+    return free([r for r in rec[: moved[-1] if moved else 0] if r[0] > skip_ms])
+
+
+def speed(rec, skip_ms=300, also=()):
     """Tiles per second of the game's time the walk went at its own pace (free frames; a frame cut at 0.1 s counts 0.1 s:
     game_s. A runner's frames are 67 to 280 ms, and by the page's clock a walk read 2 tiles a second), ignoring the start
     and what follows the walk: its last frame that moved you (it ends on a tile, short of a frame's walk), and you
-    standing after it (hold() waits for the server's answer once the key is up: 0.6 s of standing read 3.8)."""
-    moved = [k for k in range(1, len(rec)) if gone(rec[k - 1], rec[k]) > 1e-6]
-    pairs = free([r for r in rec[: moved[-1] if moved else 0] if r[0] > skip_ms])
+    standing after it (hold() waits for the server's answer once the key is up: 0.6 s of standing read 3.8). `also`: more
+    recordings of the same walk, their free frames counted with its own."""
+    pairs = [p for r in (rec, *also) for p in walked(r, skip_ms)]
     assert len(pairs) >= 3, ("too few frames at the walk's own pace", rec[:6])
     return sum(gone(a, b) for a, b in pairs) / sum(game_s(a, b) for a, b in pairs)
 
@@ -48,16 +54,24 @@ def backward_jumps(rec, axis, sign):
 def test_walk_and_sprint_speeds(game):
     # (on a meadow of its own: 7.5 tiles east at a walk, then 15 west at a sprint. It walked over whatever the test before
     # it left, water at half the pace or a step to jump, and read 2.7 to 4 tiles a second now and then: #28)
-    game.clear_area(14)
-    game.start_recording()
-    game.hold(["d"], 1500)
-    walk = game.recording()
-    game.sleep(400)
-    game.start_recording()
-    game.hold(["Shift", "a"], 1500)
-    sprint = game.recording()
-    assert 4.3 < speed(walk) < 5.7, (speed(walk), slow(walk, 5))
-    assert 8.5 < speed(sprint) < 11.5, (speed(sprint), slow(sprint, 10))
+    # (and a second time, back the way it came, when a loaded runner left too few frames at the walk's own pace: its
+    # server, late, then made two tiles in 140 ms, and every frame after was the page catching up: "too few frames", 117 ms)
+    game.clear_area(16)
+
+    def run(keys, back):
+        recs = []
+        for k in (keys, back):
+            game.start_recording()
+            game.hold(k, 1500)
+            recs.append(game.recording())
+            game.sleep(400)
+            if len(walked(recs[0])) >= 3:
+                break
+        return recs[0], recs[1:]
+    walk, more = run(["d"], ["a"])
+    assert 4.3 < speed(walk, also=more) < 5.7, (speed(walk, also=more), slow(walk, 5))
+    sprint, more = run(["Shift", "a"], ["Shift", "d"])
+    assert 8.5 < speed(sprint, also=more) < 11.5, (speed(sprint, also=more), slow(sprint, 10))
     game.sleep(500)
     assert game.pos() == (game.server()["x"], game.server()["y"])
 
@@ -111,15 +125,16 @@ def test_letting_go_and_pressing_another_key_never_stalls(game):
     assert corner > 7.5 and back > 6.5, (corner, back, still[:30])        # (sprinting is 10 a second; it was 5.4 and 3)
 
 
-def stops(rec, ms=60):
+def stops(rec, ms=60, wait=None):
     """The pauses in a recorded walk, its ends left out: frames drawn with you where the frame before had you, two or
     more in a row and more than `ms` of the game's time (ms). (It was any gap of more than 60 ms between two frames that
     moved you: on the runners a frame alone is 70 to 180 ms, and every frame was a stop. At 60 frames a second the two
-    frames are under the 60 ms: as it was)"""
+    frames are under the 60 ms: as it was). `wait`: walk.js LEAD[1], the tiles ahead of the world where the walk waits
+    for it, as it should: a frame standing there is no stop)"""
     mid = [r for r in rec if rec[0][0] + 400 < r[0] < rec[-1][0] - 400]
     out, still, n = [], 0.0, 0
     for a, b in [*zip(mid, mid[1:]), (None, None)]:
-        if b is not None and abs(b[1] - a[1]) + abs(b[2] - a[2]) <= 1e-6:
+        if b is not None and abs(b[1] - a[1]) + abs(b[2] - a[2]) <= 1e-6 and (wait is None or b[3] < wait):
             still, n = still + game_s(a, b) * 1000, n + 1
             continue
         if n >= 2 and still > ms:
@@ -172,7 +187,10 @@ def test_late_ticks_do_not_stop_you(game):
     # should, 6.8. Stopped at a tile ahead of the server's last word, as it was, the free frames would stand still)
     pace = speed(rec, 0)
     game.sleep(900)
-    assert not stops(rec), stops(rec)
+    # (a runner's own late ticks on top of the 220 ms lumps put you LEAD[1] ahead, and the walk waited there for the world,
+    # as it should: "[117]", 133 ms frames. A stop short of it is the fault: one tile ahead, as it was)
+    wait = game.js("LEAD[1]")
+    assert not stops(rec, wait=wait), (stops(rec, wait=wait), [(round(b[0]), round(b[3], 2)) for a, b in zip(rec, rec[1:]) if abs(b[1] - a[1]) + abs(b[2] - a[2]) <= 1e-6])
     assert pace > 8.5, (pace, slow(rec, 10))
     assert game.pos() == (game.server()["x"], game.server()["y"])
 

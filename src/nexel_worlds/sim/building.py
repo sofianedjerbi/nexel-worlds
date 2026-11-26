@@ -62,28 +62,29 @@ class Building:
             if ground.name in built:                       # what you lay, you can take up again
                 item, under = built[ground.name]
                 if under == "water" and self.entity_at(x, y):
-                    raise ActionError("occupied", "someone is standing on it")
+                    raise ActionError("occupied", "someone is standing on it", on="body")
                 yield from self.wait(a, 0.5)
                 a.add(item)
                 self.set_tile(x, y, ground=under, by=a, cause="dig")
                 return {"got": {item: 1}}
             if not ground.diggable or ground.name in ("tilled", "wet_tilled"):
-                raise ActionError("cannot_dig", f"{ground.name} cannot be dug")
+                raise ActionError("cannot_dig", f"{ground.name} cannot be dug", what=ground.name)
             if self.held(a, args) != T.TILL_TOOL:
                 raise ActionError("need_tool", f"tilling needs a {T.TILL_TOOL} in hand (with: {T.TILL_TOOL})"
-                                  + ("" if a.count(T.TILL_TOOL) else "; craft one at a workbench"))
+                                  + ("" if a.count(T.TILL_TOOL) else "; craft one at a workbench"), tool=T.TILL_TOOL, have=a.count(T.TILL_TOOL) > 0)
             yield from self.wait(a, 0.6)
             if self.world.block(x, y) != "none":
                 raise ActionError("changed", "something was placed there")
             self.set_tile(x, y, ground="tilled", by=a, cause="dig")
             return {}
         if block.hardness <= 0:
-            raise ActionError("cannot_dig", f"{block.name} cannot be dug")
+            raise ActionError("cannot_dig", f"{block.name} cannot be dug", what=block.name)
         tool = self.held(a, args)
         kind = T.tool_kind(tool)                            # (any tier of an axe, of a pickaxe: tiles.py TOOLS)
         if block.needs_tool and kind != block.needs_tool:
             raise ActionError("need_tool", f"digging {block.name} needs a {block.needs_tool} in hand "
-                              f"(with: {block.needs_tool})" + ("" if T.best_tool(a.inventory, block.needs_tool) else "; you have none"))
+                              f"(with: {block.needs_tool})" + ("" if T.best_tool(a.inventory, block.needs_tool) else "; you have none"),
+                              tool=block.needs_tool, have=bool(T.best_tool(a.inventory, block.needs_tool)))
         seconds = block.hardness / 20 * (T.tool_time(tool) if kind in (block.tool, block.needs_tool) else 1)   # with the right tool in hand, by its tier
         if block.tool and kind != block.tool:
             seconds *= T.BY_HAND[block.tool]
@@ -135,7 +136,7 @@ class Building:
         if self.world.rim(x, y):
             raise ActionError("cliff_edge", "nothing stays on the edge of a hill: build further in")
         if not a.count(item):
-            raise ActionError("missing_item", f"you have no {item}")
+            raise ActionError("missing_item", f"you have no {item}", item=item, have=0)
         if item == "hob":                                  # a hob set down is lit: a creature, and yours (hob.py)
             return (yield from self._place_hob(a, x, y))
         g, b = self.world.ground(x, y), self.world.block(x, y)
@@ -145,9 +146,9 @@ class Building:
         if item in T.FILLERS:
             options = T.FILLERS[item]
             if b != "none":
-                raise ActionError("occupied", f"{args.get('dir') or 'that tile'} has {b}")
+                raise ActionError("occupied", f"{args.get('dir') or 'that tile'} has {b}", on=b)
             if g not in options:
-                raise ActionError("bad_target", f"{item} goes on {', '.join(sorted(options))}, not {g}")
+                raise ActionError("bad_target", f"{item} goes on {', '.join(sorted(options))}, not {g}", why="wrong_ground", item=item, ground=g, goes_on=sorted(options))
             yield from self.wait(a, 0.3)
             if self.world.ground(x, y) != g or self.world.block(x, y) not in ("none", "flower"):
                 raise ActionError("changed", "the tile changed")
@@ -164,23 +165,23 @@ class Building:
         if block in T.FOOTPRINT:
             return (yield from self._place_structure(a, item, block, x, y))
         if b != "none":
-            raise ActionError("occupied", f"{args.get('dir') or 'that tile'} has {b}")
+            raise ActionError("occupied", f"{args.get('dir') or 'that tile'} has {b}", on=b)
         if block == "boat":
             if g not in T.DEPTH:
-                raise ActionError("bad_target", "boats go on water next to you")
+                raise ActionError("bad_target", "boats go on water next to you", why="boat_water")
         elif not GROUNDS[T.G[g]].walkable:
-            raise ActionError("bad_target", f"cannot place on {g}")
+            raise ActionError("bad_target", f"cannot place on {g}", why="cannot_place_on", ground=g)
         if item == "seed" and g not in T.SEED_GROUNDS:
-            raise ActionError("bad_target", "seeds only grow in tilled soil (dig the ground first)")
+            raise ActionError("bad_target", "seeds only grow in tilled soil (dig the ground first)", why="seed_soil")
         if BLOCKS[T.B[block]].solid and self.entity_at(x, y):
-            raise ActionError("occupied", "someone is standing there")
+            raise ActionError("occupied", "someone is standing there", on="body")
         yield from self.wait(a, 0.3)
         if self.world.block(x, y) not in ("none", "flower"):
             raise ActionError("changed", "tile was taken")
         if self.world.block(x, y) == "flower":
             a.add("flower")
         if BLOCKS[T.B[block]].solid and self.entity_at(x, y):
-            raise ActionError("occupied", "someone stepped there")
+            raise ActionError("occupied", "someone stepped there", on="body")
         a.add(item, -1)
         self.set_tile(x, y, block=block, by=a, cause="place")
         if block == "sprout":
@@ -198,16 +199,16 @@ class Building:
         for tx, ty in tiles:
             if (tx, ty) == (a.x, a.y):
                 raise ActionError("occupied", f"stand outside the {block.replace('_', ' ')}'s spot (it covers "
-                                  f"{T.FOOTPRINT[block][0]}x{T.FOOTPRINT[block][1]} tiles in front of you)")
+                                  f"{T.FOOTPRINT[block][0]}x{T.FOOTPRINT[block][1]} tiles in front of you)", on="you")
             if self.world.rim(tx, ty) or self.world.level(tx, ty) != self.world.level(x, y):
                 raise ActionError("cliff_edge", f"the {block.replace('_', ' ')} has to stand on one level, clear of the edge")
             g = GROUNDS[self.world.get(tx, ty)[0]]
             if not g.walkable or g.liquid:
-                raise ActionError("bad_target", f"{block.replace('_', ' ')} needs dry land ({tx},{ty} is {g.name})")
+                raise ActionError("bad_target", f"{block.replace('_', ' ')} needs dry land ({tx},{ty} is {g.name})", why="needs_dry", item=block, ground=g.name)
             if self.world.block(tx, ty) not in ("none", "flower"):
-                raise ActionError("occupied", f"({tx},{ty}) has {self.world.block(tx, ty)}")
+                raise ActionError("occupied", f"({tx},{ty}) has {self.world.block(tx, ty)}", on=self.world.block(tx, ty))
             if BLOCKS[T.B[block]].solid and self.entity_at(tx, ty):
-                raise ActionError("occupied", "something is standing in the way")
+                raise ActionError("occupied", "something is standing in the way", on="body")
         return anchor, tiles
 
     def _place_structure(self, a, item, block, x, y):

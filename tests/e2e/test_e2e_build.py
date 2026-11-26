@@ -106,8 +106,16 @@ def test_what_the_audit_of_build_mode_found_is_mended(game):
     assert ["Z", "Build mode: plan a lot"] in game.js("availableActions()")           # a piece in hand: B is said
     game.press("b")
     assert game.js("Build.rows()")[3] == ["X", "Break"]                           # nothing built here: X digs
-    kb.down("ArrowRight"); game.sleep(700); kb.up("ArrowRight")                        # an arrow held: at once, then at the cursor's own pace
-    assert game.js("Build.S.at.x") - x >= 5
+    # an arrow held: at once, then on at the cursor's own pace. (Held 700 ms, it was to be 5 tiles on: a runner's 100 ms frames
+    # moved it 4, the cursor stepping a frame at a time. Waited for: a step within two frames, then five on)
+    at0 = game.js("Build.S.at.x")
+    kb.down("ArrowRight")
+    try:
+        game.frames(2)
+        assert game.js("Build.S.at.x") > at0, "a held arrow started late"
+        game.wait(f"Build.S.at.x - {x} >= 5", 5000)
+    finally:
+        kb.up("ArrowRight")
     game.js(f"Build.S.at = {{x: {x + 3}, y: {y + 1}}}")
     kb.down("Space")
     for _ in range(3):

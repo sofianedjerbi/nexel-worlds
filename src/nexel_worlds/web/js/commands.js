@@ -21,7 +21,7 @@ function serverCommand(line, word, orElse) {
   rpc("cmd", {line}).then((r) => {
     if (r.unknown) orElse();
     else if (r.text) chatLine(r.text, r.ok ? "note sys" : "note bad");
-    else if (!r.ok) chatLine(r.detail || r.error || "No answer", "note bad");
+    else if (!r.ok) chatLine(errorText(r) || "No answer", "note bad");
     if (r.ok && (w === "op" || w === "deop")) askCmds();
   });
   return true;

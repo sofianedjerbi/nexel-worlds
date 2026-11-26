@@ -161,6 +161,7 @@ class Movement(Leaping):
         # (`stop` at its edge, then `leap`): the walk waits at the edge for it, a second at the most. It went off first, the world a
         # stride ahead of the screen walking from a standstill, the walk ended by the fall: the screen's drop was not its own)
         ledge, waited = bool(args.get("ledge")), 0
+        a.walked = [(a.x, a.y, self.height(a))]
         def at_ledge():                                  # (the screen's own answer: web/js/leap.js ledge, by the same cells. Where it walked on, the world waiting there was a second behind it)
             if not ledge or waited >= sec(1.0) or a.sailing:
                 return False
@@ -168,7 +169,7 @@ class Movement(Leaping):
             if w.solid(x, y, h + 1) or w.solid(x, y, h + 2):
                 return False
             land = self.landing(a, x, y, j)
-            return land is not None and h - land >= FALL_SAFE
+            return land is not None and h - land >= FALL_SAFE and not self.on_ladder(a.x, a.y, h, x, y, land)   # (down a ladder: climbed, move)
         while steps < 600:
             if not self.can_go(a, a.x + dx, a.y + dy, j):
                 if against():
@@ -188,13 +189,19 @@ class Movement(Leaping):
                 a.spring[(a.x + dx, a.y + dy)] = self.tick       # (Bodies.landing in move: the step is jumped)
             fall = self.move(a, a.x + dx, a.y + dy)
             steps += 1
+            a.walked = [*a.walked[-2:], (a.x, a.y, self.height(a))] if not fall else []
             if fall:                                 # a fall that hurt: the walk ends where you landed
                 return {"steps": steps, "stopped": "fell", **fall}
         return {"steps": steps, "stopped": "limit"}
 
     def _tool_stop(self, a, args):
         """Submitting it interrupts whatever was running. With `at` (a player's screen: the tile it stopped on), the
-        way there is made first."""
+        way there is made first; a tile the walk just went past (its screen's frames late), gone back to (#131)."""
+        walked, a.walked, at = a.walked, [], tuple(args["at"][:2]) if isinstance(args.get("at"), list) else None
+        back = walked and (a.x, a.y) == walked[-1][:2] and next((t for t in walked[:-1] if t[:2] == at), None)
+        if back:
+            a.x, a.y, a.z = back
+            self.via_drop(a)
         if "at" not in args:
             self.via_drop(a)
             return {}

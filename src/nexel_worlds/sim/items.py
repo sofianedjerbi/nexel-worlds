@@ -43,7 +43,7 @@ class Items:
     def _tool_drop(self, a, args):
         item, n = str(args.get("item", "")), self._n(args)
         if a.count(item) < n:
-            raise ActionError("missing_item", f"you have {a.count(item)} {item}")
+            raise ActionError("missing_item", f"you have {a.count(item)} {item}", item=item, have=a.count(item), need=n)
         yield from self.wait(a, 0.1)
         n = min(n, a.count(item))
         a.add(item, -n)
@@ -59,10 +59,10 @@ class Items:
     def _tool_give(self, a, args):
         t = self._find_target(args.get("target"))
         if not isinstance(t, Agent) or t is a:
-            raise ActionError("bad_target", "you can only give to another agent")
+            raise ActionError("bad_target", "you can only give to another agent", why="not_agent")
         item, n = str(args.get("item", "")), self._n(args)
         if a.count(item) < n:
-            raise ActionError("missing_item", f"you have {a.count(item)} {item}")
+            raise ActionError("missing_item", f"you have {a.count(item)} {item}", item=item, have=a.count(item), need=n)
         self.reach(a, t.x, t.y, self.height(t), "give")
         yield from self.wait(a, 0.2)
         if a.count(item) < n or not self.within(a, "give", t.x, t.y, self.height(t)):
@@ -84,7 +84,7 @@ class Items:
         x, y = self._chest(a, args)
         item, n = str(args.get("item", "")), self._n(args)
         if a.count(item) < n:
-            raise ActionError("missing_item", f"you have {a.count(item)} {item}")
+            raise ActionError("missing_item", f"you have {a.count(item)} {item}", item=item, have=a.count(item), need=n)
         if self.world.block(x, y) == "trough" and item not in T.FEED:
             raise ActionError("bad_item", "troughs take animal feed: hay or food")
         yield from self.wait(a, 0.2)
@@ -116,7 +116,7 @@ class Items:
             return {"chest": {}, "took": items}
         n = min(self._n(args), items.get(item, 0))
         if n <= 0:
-            raise ActionError("missing_item", f"chest has no {item}; contents: {items}")
+            raise ActionError("missing_item", f"chest has no {item}; contents: {items}", item=item, have=0, where="chest")
         items[item] -= n
         if not items[item]:
             del items[item]

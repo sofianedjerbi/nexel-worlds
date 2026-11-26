@@ -124,7 +124,7 @@ class Animals:
     def _creature_target(self, a, args, kind=None):
         t = self._find_target(args.get("target"))
         if not isinstance(t, Creature) or (kind and t.kind != kind):
-            raise ActionError("bad_target", f"that is not a {kind or 'creature'}")
+            raise ActionError("bad_target", f"that is not a {kind or 'creature'}", why="not_kind", kind=kind or "creature")
         self.reach(a, t.x, t.y, self.height(t), "animal")
         return t
 
@@ -144,9 +144,9 @@ class Animals:
         animal = self._creature_target(a, args)
         item = str(args.get("item", ""))
         if animal.kind not in FARM:
-            raise ActionError("bad_target", f"a {animal.kind} doesn't eat that")
+            raise ActionError("bad_target", f"a {animal.kind} doesn't eat that", why="wont_eat", kind=animal.kind)
         if item not in T.FEED or not a.count(item):
-            raise ActionError("missing_item", "feed it something edible you carry (or hay)")
+            raise ActionError("missing_item", "feed it something edible you carry (or hay)", food=True)
         yield from self.wait(a, 0.5)
         a.add(item, -1)
         self._fed(animal)
@@ -161,10 +161,10 @@ class Animals:
         if not text:
             raise ActionError("bad_args", "give it a name: text=...")
         if a.inventory.get("name_tag", 0) < 1:
-            raise ActionError("missing_item", "a name needs a name tag (craft one: 1 plank, 1 fiber)")
+            raise ActionError("missing_item", "a name needs a name tag (craft one: 1 plank, 1 fiber)", item="name_tag", have=0)
         yield from self.wait(a, 0.3)
         if a.inventory.get("name_tag", 0) < 1:
-            raise ActionError("missing_item", "the name tag is gone")
+            raise ActionError("missing_item", "the name tag is gone", item="name_tag", have=0)
         a.add("name_tag", -1)
         animal.name = text
         self.emit("named", animal.x, animal.y, by=a.name, id=animal.id, kind=animal.kind, name=text)

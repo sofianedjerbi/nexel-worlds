@@ -48,7 +48,7 @@ class Sessions:
         if race in RACES:                                # asked for one: that is who you are, new or returning
             a.race = race
         a.online = True
-        a.via, a.via_done = [], 0                        # (the screen counts the tiles of its way from 1 again)
+        a.via, a.via_done, a.walked = [], 0, []                        # (the screen counts the tiles of its way from 1 again)
         return a
 
     def enter(self, account: str, name: str, token: str, race: str = "") -> Agent:
