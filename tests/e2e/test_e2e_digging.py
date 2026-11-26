@@ -3,6 +3,8 @@ five mockups the user chose "Earth and a keyhole": dug ground is earth, a shade 
 hides the cursor only its own column is seen through; beside it, how far down it is. By keys: Q sinks the cursor a
 layer into the ground, E brings it back, X digs the room to stand there: a way down is a tunnel, a step at a time."""
 
+from nexel_worlds.ores import ORES
+
 DRAWN = "dirtyTiles.length === 0"
 
 
@@ -13,7 +15,7 @@ def test_q_sinks_the_cursor_a_layer_and_x_digs_the_block_it_is_on(game):
     layer over the cursor; then two blocks at once from the lower one: "why am i unable to break block at my eye
     level ? why do i need to target the one down to dig both at once ?"). Where no air is beside it, its box is dotted and X does nothing."""
     game.clear_area(8)
-    game.give(pickaxe=1)
+    game.give(titanium_pickaxe=1)                             # (the best: an ore cell keeps its ore. With a stone one, copper at -2 crumbled to nothing)
     x, y = game.pos()
     game.face(0, 1)                                           # (facing south: the cursor starts on the tile in front. Turned, not by a key: an arrow held a fifth of a second walks a tile on a busy machine)
     game.press("b")
@@ -37,7 +39,8 @@ def test_q_sinks_the_cursor_a_layer_and_x_digs_the_block_it_is_on(game):
     game.press("x")                                           # ...dug too: the room, and the land over it left
     game.wait(f"surfacesAt({x}, {y + 1}).join() === '-3,0' && Build.S.plans.size === 0", 30000)
     s = game.js(f"stoneAt({x}, {y + 1})")                     # (the blocks themselves, earth or stone as the land is there: stone.py)
-    assert [game.inv("dirt"), game.inv("stone_block")] == [sum(z > s for z in (-1, -2)), sum(z <= s for z in (-1, -2))]
+    rock = game.inv("stone_block") + sum(game.inv(o.item) for o in ORES)   # (a stone cell in a vein is its ore: stone.py made_of)
+    assert [game.inv("dirt"), rock] == [sum(z > s for z in (-1, -2)), sum(z <= s for z in (-1, -2))]
     game.press("b")
     assert not game.errors
 
