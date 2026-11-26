@@ -65,8 +65,12 @@ def test_a_click_picks_on_the_move(game):
     fx, fy = game.pos()[0] + 3, game.pos()[1] - 1
     game.page.keyboard.down("d")
     game.wait(f"(() => {{ const s = myPos(); return walking !== null && s && s.x >= {fx - 2}; }})()", 3000)   # (two tiles off, one across: in reach)
-    sx, sy = game.js(SCREEN, [fx, fy])                       # (the flower's own tile: you are moving, your tile is changing)
-    game.page.mouse.click(sx, sy)                            # a click on the flower while walking...
+    # a click on the flower while walking, where the picture shows it that very frame. (Read from here and clicked from here,
+    # the camera had gone on with you between the two: on a runner drawing every 117 ms, half a tile, and the click fell on
+    # the grass beside it: a walk there, the key's walk stopped and nothing picked, "(0, False, '')")
+    game.js(f"""new Promise((done) => requestAnimationFrame(() => {{ const [x, y] = ({SCREEN})([{fx}, {fy}]);
+      for (const t of ["mousedown", "mouseup"]) cv.dispatchEvent(new MouseEvent(t, {{clientX: x, clientY: y, button: 0, bubbles: true}}));
+      done(1); }}))""")
     toast = game.toast()
     for _ in range(40):                                      # (its answer: the server's word, however late it comes)
         if game.inv("flower") >= 1:
