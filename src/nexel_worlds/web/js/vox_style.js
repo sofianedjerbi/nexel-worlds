@@ -103,7 +103,7 @@ const VoxStyle = (() => {
       const kx = 2 * dx / RW, ky = 2 * dy / RH; for (const i of [0, 4, 8, 12]) { m[i] += kx * m[i + 3]; m[i + 1] -= ky * m[i + 3]; } return {m, eye};
     }
     const PJ = new Float64Array(3);   // (projTo: a place's clip coordinates into PJ, no array made (a few hundred a frame); project: the same as a new array, for a caller that keeps it)
-    const projTo = (m, x, y, z) => { const dn = Math.max(0, lastB[1] - 1 - y), p0 = x, p1 = (z - lastB[0] * VoxStyleGLSL.sink(dn) / H) * H, p2 = y,   // (sunk with the bend north of you, as the shader sinks the land: what stands there stood in the air past the bend, and the aim was off)
+    const projTo = (m, x, y, z, eye) => { const p0 = x, p1 = (z - lastB[0] * (eye ? VoxStyleGLSL.sink(lastB[1] - 1 - y) : VoxStyleGLSL.sinkAt(lastB[1] - 1, y)) / H) * H, p2 = y,   // (sunk with the bend north of you, as the shader sinks the land: what stands there stood in the air past the bend, and the aim was off)
       w = m[3] * p0 + m[7] * p1 + m[11] * p2 + m[15]; PJ[0] = (m[0] * p0 + m[4] * p1 + m[8] * p2 + m[12]) / w; PJ[1] = (m[1] * p0 + m[5] * p1 + m[9] * p2 + m[13]) / w; PJ[2] = (m[2] * p0 + m[6] * p1 + m[10] * p2 + m[14]) / w; return PJ; };
     const project = (m, x, y, z) => { projTo(m, x, y, z); return [PJ[0], PJ[1], PJ[2]]; };
     // the sprites' sheet: each canvas has a place in it (shelves), its picture sent there when it is new or changed (canvas._v); full: all places given again
@@ -250,7 +250,7 @@ const VoxStyle = (() => {
       get made() { return made; }, get fresh() { return fresh; }, get calls() { return calls; }, get why() { return why; }, units,
       bare(y0) { const w = el ? el.width : 0, h = el ? el.height - y0 : 0; if (!gl || w <= 0 || h <= 0) return 0; const b = new Uint8Array(w * h * 4); gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, b); let n = 0; for (let i = 3; i < b.length; i += 4) if (!b[i]) n++; return n; },   // (tests: px of the picture from row y0 down where no land is drawn: the backdrop shows there)
       raw() { const w = el ? el.width : 0, h = el ? el.height : 0; if (!gl || w <= 0 || h <= 0) return 0; const b = new Uint8Array(w * h * 4); gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, b); let n = 0; for (let i = 3; i < b.length; i += 4) if (b[i] > 235 && b[i] < 255) n++; return n; }, blank() { A.px.fill(0); stale = true; },   // (tests: px of the picture drawn from a paint that is not there (the painter marks them: vox_style_glsl.js `raw`); blank: the shown land's paints taken away, as a lost sheet would be)
-      at(x, y, z) { if (!lastM) return null; const f = projTo(lastM, x, y, z); return [(f[0] * .5 + .5) * el.width, (.5 - f[1] * .5) * el.height]; }, get mver() { return mver; }, get faces() { return (cnt.main + cnt.model) / 6; }, get models() { return cnt.model / 6; }};
+      at(x, y, z, eye) { if (!lastM) return null;   /* (eye: bent as from a corner row of the bend, vox_style_glsl.js sink: the sky's line, hd_eye.js, still as you walk) */ const f = projTo(lastM, x, y, z, eye); return [(f[0] * .5 + .5) * el.width, (.5 - f[1] * .5) * el.height]; }, get mver() { return mver; }, get faces() { return (cnt.main + cnt.model) / 6; }, get models() { return cnt.model / 6; }};
   }
   return {create};
 })();
