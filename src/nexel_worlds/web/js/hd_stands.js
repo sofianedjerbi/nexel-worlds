@@ -7,7 +7,8 @@
 const HdStands = (K) => {
   let cand = null, candKey = "";   // (what stands round you, looked for again when you or the land move: ck)
   const lads = new Map(), piles = new Map(), stoodOf = new Map();   // (a ladder's picture, a pile's, a thing's last entry)
-  function stands(F) {
+  // things and furniture round you, and a ladder about to be put (its standing face where it will stand)
+  function things(F) {
     const {p, tx, ty, L, Lf, w, h, now, dt, list, roof, wet, H0, fill, until} = F;
     let {left, nw} = F;
     const {api, eng, ent, seen, solidAt, south, sprs, standAt, thing, topAt, warm, R, gen, EDGE, byY, cutOff, winMap, winRect} = K;
@@ -32,11 +33,25 @@ const HdStands = (K) => {
     // a ladder that would be put (the aim's, on your own tile in a shaft; build mode's plans): the ladder's own standing face where it will stand, as tall as its wall, pale (it was an upright picture laid over the frame: at 68 degrees two tiles over the shaft's rim, and not where the ladder comes)
     { const a = Build.on ? Build.aim() : aimedTile(), it = a && a.it, q = it && (it.own || a.p); if (q && it.ghost === "ladder" && it.z !== undefined && it.ok !== false && !it.info) stood("l", q.x, q.y, it.z, true);
       if (Build.on) for (const j of Build.S.plans.values()) if (j.item === "ladder" && !j.take && j.state !== "bad") stood("l", j.x, j.y, j.z, true); }
+    F.left = left; F.nw = nw;
+  }
+  // what lies on the ground: a pile of up to three things
+  function ground(F) {
+    const {p, tx, ty, L, Lf, w, h, now, dt, list, roof, wet, H0, fill, until} = F;
+    let {left, nw} = F;
+    const {api, eng, ent, seen, solidAt, south, sprs, standAt, thing, topAt, warm, R, gen, EDGE, byY, cutOff, winMap, winRect} = K;
     for (const [ix, iy, pile] of groundItems) if (Math.abs(ix - tx) <= R && iy >= ty - R && iy <= ty + south && !lootAt(ix, iy)) {   // (its drops still hopping in: the pile once they have landed, hd_fx.js)   // what lies on the ground: its small icons as the game lays them (loot.js), a px a px (they were not drawn in this look)
       const names = Object.keys(pile).slice(0, 3), k = names.join(); let c = piles.get(k);
       if (!c) { c = document.createElement("canvas"); c.width = 24; c.height = 16; const g = c.getContext("2d"); names.forEach((n, i) => { const [dx, dy] = pileAt(i, names.length); g.drawImage(ghostIcon(n), 7 + dx, 3 + dy); }); piles.set(k, c); }
       list.push({canvas: c, fx: 12, fy: 14 + Math.round(Math.sin(now / 1000 * 2.4 + ix * 1.3 + iy) + 1), still: true, d: true, pile: true, x: ix + .5, y: HdLevel.foot("pile", ix, iy)[1], z: floorAt(ix, iy)});   // (it hovers, as in the classic picture: 0 to 2 px, a whole px at a time)
     }
+    F.left = left; F.nw = nw;
+  }
+  // every body in view, a creature dying, what moves by itself (hd_fx.js); then all of it north to south
+  function bodies(F) {
+    const {p, tx, ty, L, Lf, w, h, now, dt, list, roof, wet, H0, fill, until} = F;
+    let {left, nw} = F;
+    const {api, eng, ent, seen, solidAt, south, sprs, standAt, thing, topAt, warm, R, gen, EDGE, byY, cutOff, winMap, winRect} = K;
     const wmB = winMap(), wr = wmB.size ? winRect() : null;   // UNDER A ROOF nobody up on the land over you is seen: over the window, or over the land round it (in the window's box on the screen); only who is in your space (like Minecraft: no mob through the ceiling)
     // (who is drawn: whoever's feet are on the picture, or EDGE art px off it (in view a step before it comes in), where it stands as the land is drawn: the bend sinks both alike, so past the horizon the land in front
     //  hides it as it hides its land. It was a box: 16 across, then the land's; 12 rows north whatever the screen: on a hill's side 26 rows off, on a phone held upright 17, a mob went out of being in view)
@@ -59,5 +74,6 @@ const HdStands = (K) => {
     byY(list);   // (north to south, as Array sort by y did, its order kept among equals)
     F.left = left; F.nw = nw;
   }
+  function stands(F) { things(F); ground(F); bodies(F); }
   return {stands};
 };
