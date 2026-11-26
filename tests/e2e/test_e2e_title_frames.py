@@ -78,8 +78,10 @@ def test_the_island_never_leaves_the_screen_even_when_the_gpu_takes_its_context_
         if (el && el.style.display === 'block' && getComputedStyle(el).opacity !== '0') { g.canvas.width = el.width; g.canvas.height = el.height; g.drawImage(el, 0, 0);
           const d = g.getImageData(0, Math.floor(el.height / 2), el.width, Math.ceil(el.height / 2)).data, set = new Set(); for (let i = 0; i < d.length; i += 4 * 37) set.add(d[i] >> 4 << 8 | d[i + 1] >> 4 << 4 | d[i + 2] >> 4); n = set.size; }
         window.__f.push(n); requestAnimationFrame(f); }; requestAnimationFrame(f); }""")
-    # (frames counted, not the machine's time: 4 s and 1.5 s had to hold 60 frames, 40 a second, on a runner's software GPU: #47)
-    page.wait_for_function("window.__f.length >= 60", timeout=30000)      # the island as it goes, the view moving after its people
+    # (the frames AND the time: 4 s and 1.5 s had to hold 60 frames, 40 a second, on a runner's software GPU (#47); a fast
+    # machine's 60 frames are a second of it: both, so neither watches less than it did)
+    page.wait_for_timeout(4000)                           # the island as it goes, the view moving after its people
+    page.wait_for_function("window.__f.length >= 60", timeout=30000)
     # the GPU takes both contexts back and gives none for two seconds (a GPU reset on a busy machine: Chrome asks a page to wait)
     page.evaluate("""() => { window.__lose = [HdView.pic.getContext('webgl2'), VoxGL.gl].map((c) => c.getExtension('WEBGL_lose_context'));
       const g0 = HTMLCanvasElement.prototype.getContext; window.__none = true;
@@ -88,7 +90,8 @@ def test_the_island_never_leaves_the_screen_even_when_the_gpu_takes_its_context_
     page.wait_for_function("!HdLook.live", timeout=5000)  # (it is lost indeed: no context given)
     page.wait_for_function("HdLook.live && HdLook.drew", timeout=10000)   # a context given again: the land drawn anew
     n = page.evaluate("window.__f.length")
-    page.wait_for_function(f"window.__f.length >= {n + 20}", timeout=20000)   # (and twenty frames after it)
+    page.wait_for_timeout(1500)
+    page.wait_for_function(f"window.__f.length >= {n + 20}", timeout=20000)   # (and 1.5 s and twenty frames after it)
     frames = page.evaluate("window.__f")
     page.close()
     empty = [i for i, n in enumerate(frames) if n < 8]
