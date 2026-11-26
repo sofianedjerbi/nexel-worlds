@@ -202,9 +202,15 @@ def test_a_built_house_has_its_roof_outside_and_is_open_inside(browser, server):
         wall = max(b["z"] + b["h"] for b in g.js("([x, y]) => HdThings.at(x, y)", [x0, y0 + 1]) if b["z"] < 32)
         assert wall == 32                                                    # (the wall under it: up to the roof block's underside, two blocks of 16 px)
         g.rpc("dev_teleport", x=x0 + 1, y=y0 + 1, z=0); g.arrive()
+        # (the view come to the room: read once you are seen whole. Read the frame you arrived, a runner's view was still opening
+        # over you, the roof's cut on its way: 0.59 of you seen)
+        try:
+            g.wait("HdLook.catSeen() > .8", 8000)
+        except Exception:
+            raise AssertionError(("you are not seen whole in the room", g.js("HdLook.catSeen()"))) from None
         inside = g.js(AT, over)
         assert not g.js(ROOF, [x0 + 1, y0 + 1]) and not g.js(ROOF, [x0 + 3, y0 + 2]), "the roof is still there inside"
-        assert sum(abs(p - q) for p, q in zip(out, inside)) > 20 and g.js("HdLook.catSeen()") > .8, (out, inside)   # (the roof's wood, then the north wall's planks seen crisp: nothing nearer than ten tiles is under the lens now)
+        assert sum(abs(p - q) for p, q in zip(out, inside)) > 20, (out, inside)   # (the roof's wood, then the north wall's planks seen crisp: nothing nearer than ten tiles is under the lens now)
     finally:
         g.page.close()
 
