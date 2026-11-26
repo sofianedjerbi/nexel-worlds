@@ -82,7 +82,8 @@ function spriteOf(c, x, y, t) {
       return S7(IMG.fruit_bare, fruitKind(x, y) * 48, 0, 48, 48, -16, -28);
     }
     case "*": return S7(IMG.gen, GEN["ore"] * 16, 0, 16, 16, 0, -3);
-    case "M": return S7(IMG.gen, GEN["boulder"] * 16, 0, 16, 16, 0, -3);
+    // a rock: the pack's own (its big one or its small one, by tile), its foot sunk in the ground, its last rows unseen (#282: "they stand out awkwardly")
+    case "M": return h < .55 ? S7(IMG.nature, 101, 27, 22, 14, -3, -3) : S7(IMG.nature, 81, 19, 14, 8, 1, 3);
     case "%": return S7(IMG.gen, GEN["stone_wall"] * 16, 0, 16, 16, 0, -4);
     case "Q": return S7(IMG.nature, [0, 16, 48][Math.floor(h * 3)], 0, 16, 16, 0, 0);
     case "#": return fenceSprite(x, y);
