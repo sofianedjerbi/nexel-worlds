@@ -28,6 +28,9 @@ as fast (`clock.py`), every page shut when its test is over (`pages.py`).
 - On GitHub the files are dealt out to runners by their time (`tools/e2e_shards.py plan`), from `durations.json`: after
   a main run, `python3 tools/e2e_shards.py measure` rebuilds it from that run's own `--durations=0` (commit the change
   when a file's time has moved). A test there has five minutes (`--timeout=300`): one that hangs fails with where it was.
+- **Which tests fail most on main**: `python3 tools/flake_rates.py [N]` reads main's last N full runs (default 6) through
+  `gh` and prints each failing test's fails/runs, worst first, as a markdown table (the one posted on #47); given saved
+  job logs instead of N, it reads those, one run each.
 - `--durations=20` says where the time went. A test that needed its second try is listed at the end
   ("tried a second time", with what the first try said): one that is often there is not sound.
 
