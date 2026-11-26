@@ -174,6 +174,13 @@ class Game(Waits):
         """Flat meadow around us, no animals near (they wander into tests), nothing lying on the ground (left by one)."""
         self.rpc("dev_creatures", clear=40)
         self.stamp(-r, -r, ["." * (2 * r + 1)] * (2 * r + 1))
+        # (and you on it: the stamp lays the meadow at level 0 under you, your own height stays where you woke. Woken on a
+        # hill, your first step was a fall of four layers and more: "assert 'step' in {'fallthud', 'rustle'}", the sound
+        # test on main's run 45843840225)
+        s = self.server()
+        if s.get("z", 0) != 0:
+            self.rpc("dev_teleport", x=s["x"], y=s["y"], z=0)
+            self.arrive()
         # (a tick made after the clearing, and the meadow made: a test's own land is not stamped into chunks still being
         # painted for the clearing. It waited two ticks of whatever came, 0.15 to 0.25 s: most of the painting, by chance)
         self.rest()
