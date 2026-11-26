@@ -46,7 +46,8 @@ def test_land_you_come_to_is_asked_for_at_once_though_it_was_asked_for_as_far_la
             g.page.keyboard.press("Minus")
             g.page.wait_for_timeout(200)
             g.page.keyboard.press("Minus")                # (4 -> 2: the picture twice as wide)
-            g.page.wait_for_timeout(3500)
+            g.page.wait_for_timeout(3500)                 # (a far ask's answer comes 3 s on: a block missing that long shows in this window)
+            g.wait("window.__holes.frames > 30", 15000)  # (and frames enough to have watched it: a runner's 133 ms frames drew 23 in 3.5 s)
             h = g.js("(() => { const H = window.__holes; return {frames: H.frames, worst: Math.round(H.worst), unasked: Math.round(H.unasked), at: H.at}; })()")
             assert g.js("zoom") == 2, g.js("zoom")
             assert h["frames"] > 30, h

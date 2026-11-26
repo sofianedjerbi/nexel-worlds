@@ -46,7 +46,7 @@ def test_a_phone_plays_on_the_one_script_and_keeps_it(browser, bundled):
         scripts = page.evaluate("[...document.scripts].map((s) => s.getAttribute('src')).filter(Boolean)")
         assert len(scripts) == 4 and all(s.startswith("blob:") for s in scripts) and sum(n.startswith("game.") for n in asked) == 1, (scripts, asked)
         assert page.evaluate("document.querySelectorAll('link[rel=stylesheet]').length") == 0
-        assert not [n for n in asked if n.endswith(".png") and n not in ("boot_cat.png", "panel.png", "slot.png", "slot_sel.png", "cursor.png", "cursor_point.png")], asked   # (the sheets came in the pack)
+        assert not set(asked) & set(page.evaluate("Object.keys(ASSET_PACK.files)")), asked   # (the sheets came in the pack: the page's own pictures, its icon and frames, are files of their own)
         assert sum(n.startswith("pack.") for n in asked) == 1 and len(asked) < 25, asked
         assert page.evaluate("Object.keys(IMG).length > 60 && IMG.grass.naturalWidth === 176 && Object.keys(GEN).length > 5")
         # (Join is tapped once the wait is gone (index.html #boot: over everything till the island is painted): tapped as the

@@ -27,7 +27,9 @@ def test_a_jump_that_comes_down_against_a_step_goes_on_up_it(game, run):
             game.page.keyboard.down(k)
         game.wait(f"ents.get('agent' + myId).x >= {x + (2.2 if run else 4.0)}", 3000)   # (a jump that comes down short of the step's top)
         game.page.keyboard.press("Space")
-        game.sleep(900)
+        # (on until up on the step and past its edge: it was 900 ms, and a runner whose world came late (the walk waits
+        # for it, walk.js LEAD) let go of you on the edge, x + 6)
+        game.wait(f"myAt && myAt.z === 1 && myPos().x > {x + 6}", 5000)
         for k in reversed(keys):
             game.page.keyboard.up(k)
     rec = frames(game, act)
@@ -44,7 +46,8 @@ def test_up_a_flight_of_steps_every_jump_clears_the_next_edge(game, run):
     """"when climbing (walking stairs up) it is bad because i hit the block above when automatically jumping": up eight
     steps a layer each, a tile deep, walking or running, the auto-jump's arcs (leap.js stairArc) never meet a step's face
     (the whole jump came down past the next edge: pinned against it six frames a step, 40 frames in all, 2.2 s up a
-    flight that takes 1.6), you get to the top in under 2 s, and the world agrees."""
+    flight that takes 1.6), you get to the top, and the world agrees. (Not "in under 2 s": what was pinned, `__hit`, is
+    counted; the time is the machine's too, the walk waiting for a world that comes late: 3.9 s on a runner, no pin)"""
     game.clear_area(12)
     x, y = game.pos()
     for i in range(1, 12):
@@ -55,15 +58,13 @@ def test_up_a_flight_of_steps_every_jump_clears_the_next_edge(game, run):
       Leap.frame = (p, dt, now) => { const a = Leap.state && {...Leap.state}; f(p, dt, now); const b = Leap.state;
         if (a && b && a.vx > 0 && b.x <= a.x + 1e-4) __hit++; }; } return 1; }""")
     keys = ["Shift", "d"] if run else ["d"]
-    t0 = game.js("performance.now()")
     for k in keys:
         game.page.keyboard.down(k)
-    game.wait(f"myPos().x >= {x + 8} || performance.now() - {t0} > 5000", 7000)
-    took = game.js(f"performance.now() - {t0}")
+    game.wait(f"myPos().x >= {x + 8}", 10000)
     for k in reversed(keys):
         game.page.keyboard.up(k)
     game.rest()
-    assert game.js("__hit") == 0 and took < 2000, (game.js("__hit"), took)
+    assert game.js("__hit") == 0, game.js("__hit")
     assert game.server()["z"] >= 8, game.server()
     agree(game)
     assert not game.errors, game.errors
@@ -97,7 +98,10 @@ def test_off_a_high_ledge_the_fall_is_smooth_on_the_screen(game, how):
     finally:
         game.js("setOpt('shake', 1)")
     air = ("takeoff", "rise", "apex", "fall", "touch", "land", "settle")   # (and the landing's squash and settle: the body's own drawing)
-    jolts = [(a[:10], b[:10]) for a, b in zip(rec, rec[1:]) if abs(b[9] - a[9]) > 6 or (abs(b[8] - a[8]) > 6 and not {a[4], b[4]} & set(air))]   # (the land never; your feet on the ground never: in the air they go as fast as you fall, 7 px a frame at the end of six levels)
+    # (6 art px in a frame of 1/60 s: by the frame's own time on a slower machine, the runners' 120 ms frames the land
+    # following your fall 12 px a frame, as fast as it should)
+    cap = lambda a, b: 6 * max(1, (b[0] - a[0]) / 16.67)
+    jolts = [(a[:10], b[:10]) for a, b in zip(rec, rec[1:]) if abs(b[9] - a[9]) > cap(a, b) or (abs(b[8] - a[8]) > cap(a, b) and not {a[4], b[4]} & set(air))]   # (the land never; your feet on the ground never: in the air they go as fast as you fall, 7 px a frame at the end of six levels)
     assert not jolts, [(round(a[0]), a[4], round(a[5], 2), round(b[5], 2), a[8], b[8], round(a[9], 1), round(b[9], 1)) for a, b in jolts[:5]]
     assert game.server()["z"] == 0, game.server()
     agree(game)
@@ -116,11 +120,13 @@ def test_walking_off_a_high_ledge_into_water_the_jump_s_fall_takes_you_down(game
     game.rpc("dev_teleport", x=x - 2, y=y, z=6); game.arrive(); game.face(1, 0); game.rest()
     game.js("setOpt('shake', 0)")
     try:
-        game.js("(() => { window.__lp = 0; const f = () => { if (Leap.on()) __lp++; if (myAt.z > 5.5 || Leap.on()) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; })()")
+        # (__lp: how long the jump's fall drew you, ms. It counted frames, more than 10: on the runners a frame is 70 to
+        # 130 ms, and a fall of six layers four of them)
+        game.js("(() => { window.__lp = 0; let t = null; const f = (n) => { if (Leap.on()) { if (t !== null) __lp += n - t; t = n; } if (myAt.z > 5.5 || Leap.on()) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; })()")
         game.page.keyboard.down("d"); game.wait("myAt.z < .5", 4000); t = game.js("performance.now()")
         game.page.keyboard.up("d")
         game.wait("meObs.self.z < .5", 1500)                                # (the world down too, soon after)
-        assert game.js("performance.now()") - t < 1500 and game.js("__lp") > 10
+        assert game.js("performance.now()") - t < 1500 and game.js("__lp") > 160, game.js("__lp")
     finally:
         game.js("setOpt('shake', 1)")
     game.rest()
@@ -138,6 +144,7 @@ def test_running_uphill_with_the_jump_key_never_meets_a_step_s_face(game, prof):
     game.clear_area(14)
     x, y = game.pos()
     prof = [0, 1, 1, 2, 2, 2, 3, 4, 4, 5, 5, 6, 7, 7, 7] if prof == "hill" else [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13]
+    prof += [prof[-1]] * 10          # (a top as long as a jump goes: the last one, the keys let go of in the air, comes down on it, not off its end)
     for i, h in enumerate(prof[1:], 1):
         game.rpc("dev_col", tiles=[[x + i, y - 1], [x + i, y], [x + i, y + 1]], col=[h])
     game.rest(); game.face(1, 0)

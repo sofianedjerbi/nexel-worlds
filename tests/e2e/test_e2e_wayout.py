@@ -96,8 +96,12 @@ def test_in_a_cave_with_a_way_out_on_foot_nothing_is_drawn_until_you_stand_still
     assert not w["early"] and w["shown"] - w["at"] >= 1900, w                   # two seconds standing: nothing before
     c = game.js(CUR)
     assert not c["trapped"] and c["digs"] == [] and c["way"] == "E" and c["steps"] >= 2 and c["cap"] == "", c
-    game.hold(["ArrowRight"], 1200)
-    game.wait("myAt && topAt(myAt.x, myAt.y) <= myAt.z && !walking", 4000)
+    # walked out: until out from under the hill, then let go (1.2 s of a held key were five tiles, the tunnel's length,
+    # on a quick machine; on a runner it stopped still under the roof)
+    game.page.keyboard.down("ArrowRight")
+    game.wait("myAt && topAt(myAt.x, myAt.y) <= myAt.z", 15000)
+    game.page.keyboard.up("ArrowRight")
+    game.wait("myAt && topAt(myAt.x, myAt.y) <= myAt.z && !walking", 8000)
     game.frames(3)
     assert not game.js(CUR)["shown"] and not game.errors
 

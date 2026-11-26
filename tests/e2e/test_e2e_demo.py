@@ -48,14 +48,13 @@ def test_the_demo_plays_and_remembers_the_world(browser, site):
     # after a publish is the new build at once; and the strip at the foot of Wake up went all the way
     names = [n for n in asked if n.startswith("game.")]          # (read by the page itself as it comes, web_bundle.py: no tag of its own)
     assert len(names) == 1 and re.fullmatch(r"game\.\w{10}\.js", names[0]) and page.evaluate("ASSET_PACK.game").startswith("js/game."), names
-    assert not [n for n in asked if n.endswith(".png")] and sum(n.startswith("pack.") for n in asked) == 1, asked
+    assert not set(asked) & set(page.evaluate("Object.keys(ASSET_PACK.files)")) and sum(n.startswith("pack.") for n in asked) == 1, asked   # (the sheets came in the pack: the page's own icon is a file of its own)
     assert page.evaluate("(() => { const j = document.getElementById('join'); return parseFloat(j.style.getPropertyValue('--boot-w')) >= j.clientWidth - 8 && bootTook.world > 0; })()")
     page.fill("#name", "visitor")
     page.click("#join")
     page.wait_for_function("meObs !== null", timeout=20000)
     tick = page.evaluate("rpc('ping').then(r => r.tick)")
-    page.wait_for_timeout(1000)
-    assert page.evaluate("rpc('ping').then(r => r.tick)") >= tick + 8      # the world ticks at 10 Hz in the tab
+    page.wait_for_function(f"rpc('ping').then(r => r.tick >= {tick + 8})", polling=250, timeout=20000)      # the world ticks in the tab (at 10 Hz on a free machine: a busy runner's tab made 4 in a second)
     page.evaluate("saveWorld()")                                    # what the 15 s autosave does
     page.reload()
     page.wait_for_function("typeof blocks !== 'undefined' && blocks.size > 0", timeout=90000)
@@ -96,6 +95,7 @@ def test_a_phone_plays_the_demo_in_the_hd_look(browser, site):
         page.touchscreen.tap(*page.evaluate("(() => { const r = document.getElementById('join').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()"))
         page.wait_for_function("meObs !== null && !!myPos() && HdLook.on && HdLook.faces > 500 && HdLook.catSeen() > .8", timeout=30000)
         assert page.evaluate("zoom === 2 && !!document.getElementById('tMenu') && getComputedStyle(document.getElementById('prompts')).display === 'none'")
+        page.evaluate("F3.set(true)")                                # (the phone's budget, #10: its frames are counted while the debug screen is open)
         cdp = ctx.new_cdp_session(page)
         touch = lambda kind, x=0, y=0: cdp.send("Input.dispatchTouchEvent", {"type": kind, "touchPoints": [] if kind == "touchEnd" else [{"x": x, "y": y}]})
         for way in (1, -1):                                         # east, then back west: one of the two is open ground
@@ -106,6 +106,13 @@ def test_a_phone_plays_the_demo_in_the_hd_look(browser, site):
             page.wait_for_timeout(1200)
             touch("touchEnd")
         page.wait_for_function("HdLook.builds > 1 && HdLook.catSeen() > .8", timeout=8000)      # (the land was made again as you went, and you are still drawn on it)
+        # what the page measured of its own load and frames, the numbers the owner reads off F3 on a phone (f3.js
+        # PERF_BUDGET): there, and sane. Not held to the budget here: a runner drawing on its CPU is not a phone
+        r = page.evaluate("F3.report()")
+        assert 0 < r["paint"] < r["world"] and r["title"] > 0 and r["wake"] > 0, r        # (painted before you were in the world)
+        assert r["moved"] > 0 and r["frame"] > 0 and 0 <= r["over"] <= r["moved"], r
+        page.wait_for_function("/load: paint \\d+\\.\\d s.*in the world \\d+\\.\\d s/.test(document.getElementById('f3').innerText) && /moving: frame p95 \\d/.test(document.getElementById('f3').innerText)", timeout=5000)
+        page.evaluate("F3.set(false)")
         assert not errors, errors
     finally:
         ctx.close()
