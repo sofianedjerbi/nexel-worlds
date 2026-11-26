@@ -144,15 +144,13 @@ def test_running_uphill_with_the_jump_key_never_meets_a_step_s_face(game, prof):
     game.clear_area(14)
     x, y = game.pos()
     prof = [0, 1, 1, 2, 2, 2, 3, 4, 4, 5, 5, 6, 7, 7, 7] if prof == "hill" else [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13]
+    prof += [prof[-1]] * 10          # (a top as long as a jump goes: the last one, the keys let go of in the air, comes down on it, not off its end)
     for i, h in enumerate(prof[1:], 1):
         game.rpc("dev_col", tiles=[[x + i, y - 1], [x + i, y], [x + i, y + 1]], col=[h])
     game.rest(); game.face(1, 0)
     game.js("""() => { window.__hit = 0; if (!window.__hitHook) { window.__hitHook = true; const f = Leap.frame;
       Leap.frame = (p, dt, now) => { const a = Leap.state && {...Leap.state}; f(p, dt, now); const b = Leap.state;
         if (a && b && Math.abs(a.vx) + Math.abs(a.vy) > 0 && Math.abs(b.x - a.x) + Math.abs(b.y - a.y) < 1e-4) __hit++; }; } return 1; }""")
-    game.js("""() => { window.__told = []; const f = window.rpc, me = () => { const p = ents.get("agent" + myId); return p && [+p.x.toFixed(2), p.tx, Leap.on()]; };
-      window.rpc = (op, extra) => { const e = op === "act" && extra && ["walk", "stop", "jump", "leap"].includes(extra.tool) && [extra.tool, JSON.stringify(extra.args), me()];
-        if (e) __told.push(e); return f(op, extra).then((r) => { if (e) e.push(r && (r.ok === false ? r.error : r.result && r.result.z)); return r; }); }; return 1; }""")
     t0 = game.js("performance.now()")
     game.page.keyboard.down("Shift"); game.page.keyboard.down("d")
     for _ in range(80):
@@ -162,7 +160,6 @@ def test_running_uphill_with_the_jump_key_never_meets_a_step_s_face(game, prof):
     game.page.keyboard.up("d"); game.page.keyboard.up("Shift")
     game.rest()
     assert game.js("__hit") == 0, game.js("__hit")
-    print("from", x, "page", game.js("myPos()"), "world", game.server(), "told", game.js("__told"))     # (what the world was told on the way up, and said: shown when it fails)
     assert game.server()["z"] == prof[-1], (game.server(), prof[-1])
     agree(game)
     assert not game.errors, game.errors
