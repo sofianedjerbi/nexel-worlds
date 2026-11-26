@@ -2,8 +2,9 @@
 // the key's colour, its faces faintly tinted, dotted when out of reach, a dotted line down to the ground under it. Its
 // colours are the marks' language (target.js, its first lines).
 //   TargetBox.box(P, c, K) -> what is drawn of it; boxRect(Q, c) -> its box on the screen; feet(P, c): X's mark round your feet (unused)
-const TargetBox = (() => {
-  const INK = "#5b3f36", CREAM = "#fff8e8", TAKE = "#ff9d3c", RED = "#e8554a";
+// the painter's lines and faces in whole art px (TargetBox): P = {g, u: an art px, at(x, y, z) -> px, behind(x, y, z)}
+const TargetBoxDraw = (() => {
+  const INK = "#5b3f36";
   // ---- the painter: P = {g, u: an art px, at(x, y, z) -> px, behind(x, y, z), ex: the eye's x}
   const R = (P, v) => onArt(v);   // (on the land's pixel: state.js)
   // a line between two places of the land, a px of paint at a time; hid: one px in two, fainter (behind a face, in the ground, behind land)
@@ -30,7 +31,12 @@ const TargetBox = (() => {
     }
     g.globalAlpha = 1;
   }
-  const CHECK = (i, j) => ((i + j) & 1) === 0, CW = {T: 1, S: 1, W: 1, B: -1, N: -1, E: -1};   // (CW: a face's corners below go clockwise on the screen when its outside faces the eye)
+  return {R, line, face, INK};
+})();
+
+// a cell's own px on the screen (TargetBox.box): pxOf(P, c, full[, inside])
+const TargetBoxPx = (() => {
+  const CW = {T: 1, S: 1, W: 1, B: -1, N: -1, E: -1};   // (CW: a face's corners below go clockwise on the screen when its outside faces the eye)
   // the six faces of a cell: its corners, and the cell beyond it
   const FACES = {T: [[0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1], 0, 0, 1], B: [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0], 0, 0, -1], S: [[0, 1, 1], [1, 1, 1], [1, 1, 0], [0, 1, 0], 0, 1, 0],
     N: [[0, 0, 1], [1, 0, 1], [1, 0, 0], [0, 0, 0], 0, -1, 0], W: [[0, 0, 1], [0, 1, 1], [0, 1, 0], [0, 0, 0], -1, 0, 0], E: [[1, 0, 1], [1, 1, 1], [1, 1, 0], [1, 0, 0], 1, 0, 0]};
@@ -70,6 +76,13 @@ const TargetBox = (() => {
       if (n < 64) { const W = pxOf(P, c, full, true); let m = 0; if (W) for (let o = 0; o < W.f.length; o++) if (W.f[o]) m++; if (n * 4 < m) return W; } }
     return out;
   }
+  return pxOf;
+})();
+
+const TargetBox = (() => {
+  const CREAM = "#fff8e8", TAKE = "#ff9d3c", RED = "#e8554a";
+  const {R, line, face, INK} = TargetBoxDraw, pxOf = TargetBoxPx;   // (the painter's lines and faces, a cell's px: above in this file)
+  const CHECK = (i, j) => ((i + j) & 1) === 0;
   // its outline (the owner: "can you improve the selection hint?": the hatch over an ink wash hid the block, and a row of ink lay under it, on the grass):
   // the px of its silhouette (a px of it beside one that is not) and the seam (the top's last row over its front or side) in colour, a line of ink
   // inside them, its faces its own paint with the colour faintly over them. Behind land: not drawn there; all of it behind land: all of it, seen through.
