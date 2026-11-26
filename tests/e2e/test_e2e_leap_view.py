@@ -120,8 +120,7 @@ SLOW = """(slow) => { const raf = requestAnimationFrame; window.__slow = slow; w
     if (e) __told.push(e); return f(op, extra).then((r) => { if (e) e.push(r && (r.ok === false ? r.error : r.result && r.result.z)); return r; }); }; return 1; }"""
 
 
-@pytest.mark.realtime                                  # (its slow case is a slow frame on purpose: real time)
-@pytest.mark.parametrize("slow", [False, True])
+@pytest.mark.parametrize("slow", [False, pytest.param(True, marks=pytest.mark.realtime)])   # (slow: a slow frame made on purpose, a busy wait on the machine's own time)
 def test_sprint_jumping_down_off_a_high_step_you_go_on_south_never_put_back(game, slow):
     """"sprinting [down the north mountain] my character ends up getting into the floor and glitching, facing the north
     direction": off a step 9 high a sprint jump came down 9 lower and the walk went on; the world, making the flight

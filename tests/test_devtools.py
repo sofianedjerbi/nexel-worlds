@@ -124,6 +124,27 @@ def test_in_lockstep_the_world_ticks_when_its_driver_asks_and_never_stays_frozen
     assert freed >= 2                                         # (back on the wall's clock: 10 a second)
 
 
+def test_in_lockstep_a_screen_with_no_view_yet_hears_every_tick(tmp_path):
+    """A page in lockstep runs its next frame once its tick has come, and tells the world what it watches from a timer of
+    its frames: a screen with no view yet (just woken, the island's view dropped) heard no tick, made no frame, never told
+    it, and the world waited for it (#303's hung run). In lockstep it hears every tick, nothing in it; off, as before."""
+    import asyncio
+    import json
+
+    from nexel_worlds.server import GameServer
+
+    gs = GameServer(tmp_path / "w", seed=3, dev=True)
+    q = asyncio.Queue()
+    gs.spectators[q] = None
+    gs.push_ticks()
+    off = q.qsize()
+    gs.lockstep(object(), {"on": True})
+    gs.push_ticks()
+    d = json.loads(q.get_nowait())
+    gs.sim.close()
+    assert off == 0 and d["type"] == "tick" and d["tick"] == gs.sim.tick and d["entities"] == [] and d["items"] == []
+
+
 def test_a_seeded_worlds_chances_are_the_same_at_every_run(world):
     """dev_seed (#276): the world's chances (sim.rng) from a test's own seed: the same seed, the same draws."""
     sim, a = world

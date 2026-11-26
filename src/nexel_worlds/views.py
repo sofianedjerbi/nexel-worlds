@@ -132,8 +132,14 @@ class Views:
             return
         head = {"type": "tick", "tick": self.sim.tick, "time": self.sim.clock(), "night": self.sim.is_night(),
                 "phase": round(self.sim.time_of_day(), 4)}
+        lockstep = getattr(self, "driver", None) is not None
         for q, rect in list(self.spectators.items()):
-            if rect is not None and q.qsize() < QUEUE_MAX:
+            if rect is None and lockstep and q.qsize() < QUEUE_MAX:
+                # (lockstep, ticking.py: a page runs its next frame once the world's tick has come, and a page tells what it
+                # watches from a timer of its frames: one with no view yet, or its view on its way, got no tick, so made no
+                # frame, so never told it. It hears every tick, nothing in it)
+                q.put_nowait(json.dumps({**head, "entities": [], "items": [], "mail": [], "troughs": [], "fires": []}, separators=(",", ":")))
+            elif rect is not None and q.qsize() < QUEUE_MAX:
                 q.put_nowait(json.dumps({**head, "entities": self.entities_in(*rect), "items": self.items_in(*rect),
                                          "mail": self.mail_in(*rect), "troughs": self.troughs_in(*rect),
                                          "fires": [[fx, fy] for fx, fy in self.sim.fires

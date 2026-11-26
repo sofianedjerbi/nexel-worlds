@@ -12,7 +12,7 @@ from conftest import open_game
 from game import Game, new_name
 from waits import FRAMES
 
-pytestmark = pytest.mark.realtime                 # (every frame of a walk is looked at: on the tests' clock there are four times fewer)
+pytestmark = pytest.mark.realtime                 # (the page's DPR follows what its own frames cost, on the machine's time (state.js DPR): stepped, a frame's cost is not the game's)
 
 DPRS = [1, 2, 1.25, 1.75]
 

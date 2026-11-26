@@ -77,7 +77,11 @@ STEP = """(() => { if (window.__step) return; window.__step = 1;
   let drive = null;
   const ask = () => { const to = drive.asked; drive.sent = pn(); rpc("dev_step", {to}).then((r) => { if (drive && drive.asked === to && r && r.tick >= to) drive.ok = true; }); };
   window.__lockstep = (tick0, hz) => { drive = {tick0, hz, T0: T, asked: tick0, ok: true, sent: 0, tries: 0}; return 1; };
-  const owed = (t) => { if (!drive) return false; const want = drive.tick0 + Math.floor((t - drive.T0) * drive.hz / 1000);
+  // A world ahead of what was asked was sent on by a dev op (dev_time, dev_skip: a day is 12000 ticks): counted from
+  // there, or the page would wait out the jump in frames, the world making nothing meanwhile
+  const owed = (t) => { if (!drive) return false;
+    if (typeof clock === "object" && clock.tick > drive.asked) Object.assign(drive, {tick0: clock.tick, T0: t, asked: clock.tick, ok: true});
+    const want = drive.tick0 + Math.floor((t - drive.T0) * drive.hz / 1000);
     if (want > drive.asked) { drive.asked = want; drive.ok = false; drive.tries = 0; ask(); }
     if (drive.ok && typeof clock === "object" && clock.tick >= drive.asked) return false;
     if (pn() - drive.sent > 2000) { if (++drive.tries % 5 === 0) console.error(`lockstep: no tick ${drive.asked} from the world in ${drive.tries * 2} s (it is at ${clock && clock.tick})`); ask(); }
