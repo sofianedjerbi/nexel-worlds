@@ -62,6 +62,9 @@ def test_eating_your_hands_are_full(game):
     assert game.js("__asked") == ["eat", "dig", "pick_up", "dig"] and not game.errors   # (the first dig: the one asked past the page)
 
 
+SETTLED = "!walking && !pred && (() => { const p = ents.get('agent' + myId); return !!p && p.e.x === Math.round(p.x) && p.e.y === Math.round(p.y); })()"   # (the walk over, and the world come to where you are)
+
+
 @pytest.mark.realtime
 def test_you_eat_while_you_walk(game):
     """Eating is done with the hands: E on the move doesn't stop you, the bites show on a walking you (to others
@@ -72,15 +75,17 @@ def test_you_eat_while_you_walk(game):
     game.hold_item("bread")
     x0 = game.pos()[0]
     game.start_recording()
+    # (each step waits on what the game shows, not on the machine's time: sleeps of 250, 900, 600, 700 and 500 ms were
+    # 3 runs in 23 red on frames of 67 and 100 ms, #47)
     game.page.keyboard.down("d")
-    game.sleep(250)
+    game.wait(f"walking !== null && myPos().x > {x0}", 3000)                                  # (set out: on the move)
     game.press("e", 0)
     game.wait("(() => { const e = ents.get('agent' + myId).e; return e.doing === 'walk' && e.eats === 'bread'; })()", 3000)   # as others are told (when the world has said it)
     assert game.js("walking !== null") and game.js("myAside && myAside.tool") == "eat"       # walking, and the bites showing
-    game.sleep(900)
+    game.wait("meObs.self.hunger === 18 && (meObs.self.inventory.bread || 0) === 2", 8000)   # (walking on till the bread is eaten)
     game.page.keyboard.up("d")
     rec = game.recording()
-    game.sleep(600)
+    game.wait(f"{SETTLED}", 8000)
     assert game.server()["hunger"] == 8 + 10 and game.inv("bread") == 2                 # the bread is eaten...
     stops, i0 = [], 0                                                                       # ...and you never stood still for it
     for i in range(1, len(rec)):
@@ -98,9 +103,9 @@ def test_you_eat_while_you_walk(game):
     game.wait("myAside && myAside.tool === 'eat'")
     game.page.keyboard.down("a")
     game.wait("walking !== null && !!myAside && myAside.tool === 'eat'", 3000)               # ...goes on as you set off (asked at once: the meal is 0.9 s)
-    game.sleep(700)
+    game.wait("(meObs.self.inventory.bread || 0) === 1", 8000)                              # (walking on till it is eaten)
     game.page.keyboard.up("a")
-    game.sleep(500)
+    game.wait(f"{SETTLED}", 8000)
     assert game.inv("bread") == 1 and not game.errors
 
 
