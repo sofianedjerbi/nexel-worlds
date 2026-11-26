@@ -124,7 +124,7 @@ def test_a_sword_cuts_across_and_a_spear_is_thrust(game):
                 drawn = game.js(f"""new Promise((done) => {{ const p = ents.get('agent' + myId), P = CanvasRenderingContext2D.prototype, d0 = P.drawImage, out = [];
                   p.fx = {dx}; p.fy = {dy}; p.swing = {{get t0() {{ return performance.now() - {f * 50 + 45}; }}, with: '{kind}'}};
                   P.drawImage = function (img, ...r) {{ if (r.length === 8 && r[2] === 48 && r[3] === 48 && (img.height === 192 || img.height > 1000)) out.push([img.height, r[0] / 48, r[1] / 48]); return d0.call(this, img, ...r); }};
-                  requestAnimationFrame(() => requestAnimationFrame(() => {{ P.drawImage = d0; done(out); }})); }})""")
+                  let n = 0; const f = () => {{ if (out.some(([h]) => h > 1000) || ++n > 30) {{ P.drawImage = d0; done(out); }} else requestAnimationFrame(f); }}; requestAnimationFrame(f); }})""")   # (until a frame has drawn you: two frames were none, on a runner while the land was made)
                 row = {"down": 0, "up": 1, "right": 2, "left": 3}[way]
                 assert [192, f, row] in drawn, (kind, way, f, drawn)                   # the weapon's frame, for the way faced
                 assert any(h > 1000 and r == row for h, c, r in drawn), drawn          # over the standing body, not the chop
