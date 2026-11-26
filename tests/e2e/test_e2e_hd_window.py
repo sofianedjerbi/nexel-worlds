@@ -190,6 +190,9 @@ def test_turning_to_a_wall_puts_the_shown_way_out_away_and_the_wall_is_aimed_at(
     g.hold_item("pickaxe")
     g.wait("WayShow.cur && !WayShow.led && !aimedTile()", timeout=12000)
     AIM = "!WayShow.cur && HdLook.aim && aimedTile() && aimedTile().it && aimedTile().it.cell === 2"
+    # the server's answer to the step comes after the key is let go (a slow link; a short tap): it is still a turn to the
+    # wall (walk.js dropped it as a walk replaced by the stop: the way out stayed, nothing aimed, at a fitted pace of 2.1)
+    g.js("(() => { const o = rpc; rpc = (op, d) => op === 'act' && d && d.tool === 'walk' ? o(op, d).then((r) => new Promise((ok) => setTimeout(() => ok(r), 400))) : o(op, d); return 1; })()")
     g.hold(["ArrowLeft"], 250)
     try:
         g.wait(AIM, timeout=4000)
