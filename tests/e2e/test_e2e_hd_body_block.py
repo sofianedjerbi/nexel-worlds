@@ -22,8 +22,9 @@ def test_behind_a_block_your_body_below_its_top_edge_is_behind_it_not_drawn_over
     g.settle(f"topAt({x}, {y - 1}) === 1")
     s = go(g, x, y - 2)                                                    # behind it, as in the wall's test
     edge = g.js(f"HdLook.screenOf({x} + .5, {y - 1}, 1)[1]")              # (the block's top, its north edge: CSS px)
-    seen, out, below = g.js("(b) => HdLook.catSeen(b, true)", [0, 0, 10000, edge])
-    print("PROBE #281", {"seen": seen, "drawn whole below the edge": out, "yours below it": below, "state": s})
+    seen, out, below, n = g.js("(b) => HdLook.catSeen(b, true)", [0, 0, 10000, edge])
+    head = (seen * n - out) / max(n - below, 1)                            # (of your px over its edge, the share seen as drawn)
+    print("PROBE #281", {"seen": seen, "drawn whole below the edge": out, "yours below it": below, "yours": n, "head seen": head, "state": s})
     assert below > 20 and s["n"] == 0, (below, s)                          # (part of you is below its edge; no window: it does not hide most of you)
     assert out / below < .6, (out, below, seen)                            # below its edge: behind it, not over it
-    assert seen > .3 and not g.errors, (seen, g.errors)                    # your head over it, whole
+    assert n - below > 10 and head > .9 and not g.errors, (n, below, head, g.errors)   # your head over it, whole (not a share of all of you: with the edge high on you, all of your head was under .3)

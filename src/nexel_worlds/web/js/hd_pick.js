@@ -29,7 +29,7 @@ const HdPick = (K) => {
     }
     return null;
   };
-  // how much of you is seen (tests): the share of your own drawn px that are on the screen as they are drawn; box [x0, y0, x1, y1] (CSS px): -> [that share, how many of them are seen outside the box (all: and how many of yours fall outside it)]
+  // how much of you is seen (tests): the share of your own drawn px that are on the screen as they are drawn; box [x0, y0, x1, y1] (CSS px): -> [that share, how many of them are seen outside the box (all: and how many of yours fall outside it, and how many are yours)]
   api.catSeen = (box, all) => {
     const s = K.seen && K.seen.me; if (!s || !K.eng) return 0; const a = K.eng.at(s.x, s.y, s.z); if (!a) return 0;
     const sg = s.canvas.getContext("2d").getImageData(0, 0, s.canvas.width, s.canvas.height).data, g = HdView.read(0, 0, K.cv.width, K.cv.height).data;
@@ -38,7 +38,7 @@ const HdPick = (K) => {
       const X = Math.floor((Math.round(a[0]) - s.fx + i + .5) * K.Z()), Y = Math.floor((Math.round(a[1]) - s.fy + j + .5) * K.Z()), p = (Y * K.cv.width + X) * 4;
       const away = !!B && (X < B[0] || X > B[2] || Y < B[1] || Y > B[3]); if (away) nOut++;
       if (X >= 0 && Y >= 0 && X < K.cv.width && Y < K.cv.height && Math.abs(g[p] - sg[o]) + Math.abs(g[p + 1] - sg[o + 1]) + Math.abs(g[p + 2] - sg[o + 2]) < 60) { ok++; if (away) out++; } }
-    return box ? (all ? [n ? ok / n : 0, out, nOut] : [n ? ok / n : 0, out]) : n ? ok / n : 0;
+    return box ? (all ? [n ? ok / n : 0, out, nOut, n] : [n ? ok / n : 0, out]) : n ? ok / n : 0;
   };
   return {boxed};
 };
