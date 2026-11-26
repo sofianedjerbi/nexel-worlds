@@ -42,8 +42,9 @@ function rayHit(mx, my) {
 function tileAtScreen(mx, my) {
   if (HdLook.on && Build.on && Build.S.plane === null && Build.S.deep === null) { const h = rayHit(mx, my); if (h) return {x: h.x, y: h.y, fy: .5, z: h.z, cz: h.cz, face: h.face !== "T", side: h.face}; }   // (build mode: the block under the pointer, its top or a side)
   if (HdLook.on && !Build.on && me && LAND_BLOCKS.has(selected)) {      // (a block of the land in hand: over ground lower than yours, the pointer is on the plane of your own level, where the block goes, floors.js intent, not on the ground far down the cliff)
-    const s = myPos(), h = s && myZ(s.x, s.y), q = HdLook.pick(mx, my); if (!s || (q && topAt(q.x, q.y) >= h)) return q;
-    const a = HdLook.pick(mx, my, () => h); return a && topAt(a.x, a.y) < h ? a : q;
+    const s = myPos(), h = s && myZ(s.x, s.y), q = HdLook.pick(mx, my); if (!s) return q;
+    const a = HdLook.pick(mx, my, () => h), low = !!a && topAt(a.x, a.y) < h;   // (a: the cell the ray crosses at your level; low: over a drop)
+    return low && !(q && topAt(q.x, q.y) >= h && q.y >= a.y) ? a : q;   // (the one the ray reaches first: the eye looks north and down, so land shown further north, a hill past the drop, comes after the cell over the drop)
   }
   if (HdLook.on) { const q = HdLook.pick(mx, my, Build.on ? (x, y) => Build.level({x, y}) : null); if (q) return q; }   // (the HD camera: the top or the front under the pointer, hd.js; build mode lifted or sunk by E, Q: at the cursor's height)
   return null;
