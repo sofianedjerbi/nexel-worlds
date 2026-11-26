@@ -27,7 +27,7 @@ class Hob:
                 for f in burnt:
                     self.flee_from(f, c, HOB_SCARES)
                     f.rest = max(f.rest, self.tick + sec(HOB_SCARES))
-                    self.damage(f, HOB_BURN, "burnt by a hob", by=owner)
+                    self.damage(f, HOB_BURN, "burnt", by=owner, who=c)
             return
         foe = min((f for f in self.creatures.values() if f.kind in FOES and cheb(f, c) <= HOB_GUARD and self.level(c, f)),
                   key=lambda f: (cheb(f, c), f.id), default=None)

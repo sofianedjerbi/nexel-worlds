@@ -85,6 +85,15 @@ class Agent:
         self.stats[stat] = self.stats.get(stat, 0) + n
 
 
+def ref(e) -> dict:
+    """Who an event names, as data (#6): {"kind": "agent" or the creature's kind, "id", "name"}. A reader tells a person
+    from a creature by `kind`, never by the words written for people ("a tusker" was told from a player by its "a ":
+    a player named "a bob" was a creature)."""
+    if isinstance(e, Agent):
+        return {"kind": "agent", "id": e.id, "name": e.name}
+    return {"kind": e.kind, "id": e.id, "name": e.name or None}
+
+
 @dataclass
 class Creature:
     id: int
