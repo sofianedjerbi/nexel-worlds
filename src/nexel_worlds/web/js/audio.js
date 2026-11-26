@@ -109,13 +109,14 @@ const bossTrack = {key: null, gain: null, on: false, at: 0, run: 0, nodes: new M
 // before one), and recedes when you enter the world.
 const menuTrack = {key: null, gain: null, on: false, at: 0, run: 0, nodes: new Map(), left: Infinity};
 const moment = {next: Infinity, last: {}};                 // next: when a piece may start (performance.now ms)
-let fight = false, home = false;
+let fight = false, fightFrom, home = false;      // (fightFrom: when its piece began, if it is already on: bossMusic)
 const pause = (ms) => new Promise((ok) => setTimeout(ok, ms));
 const between = ([lo, hi]) => (lo + Math.random() * (hi - lo)) * 1000;
 const piece = (file) => fetch(`audio/${file}?v=${sounds.manifest.version}`)
   .then((r) => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
   .then((raw) => ac().decodeAudioData(raw)).catch(() => null);
-async function stream(tr, done) {
+// from: on the page's clock, when the piece began (Nyxwing's song, from its entrance: boss.js); it comes in where it is by now
+async function stream(tr, done, from) {
   const m = sounds.manifest.tracks[tr.key], a = ac(), rate = a.sampleRate, run = ++tr.run;
   for (const src of tr.nodes.keys()) src.stop();           // (what was left of it fading out)
   tr.on = true; tr.at = 0;
@@ -124,18 +125,26 @@ async function stream(tr, done) {
     tr.far = a.createBiquadFilter(); tr.far.type = "lowpass"; tr.far.frequency.value = FAR; tr.far.Q.value = .5;
     tr.gain.connect(tr.far).connect(musicOut);
   }
-  let next = 0;                                            // where the next part starts, in the context's own samples
+  let next = 0, first = from !== undefined;                // where the next part starts, in the context's own samples; first: the piece is to come in late
+  const whole = (m.files.length - 1) * m.seg + m.last, by = (t) => (((t - from) / 1000) % whole + whole) % whole;   // (where the piece is at page time t, s)
   while (tr.on && tr.run === run) {
     if (!awake()) { await pause(300); continue; }          // (not touched yet: the music waits)
+    if (first) tr.at = Math.min(m.files.length - 1, Math.floor(by(performance.now() + 150) / m.seg));
     const i = tr.at, buf = await piece(m.files[i]);
     if (!tr.on || tr.run !== run) return;
     if (!buf) { await pause(3000); continue; }             // (no network just now: again in a moment)
     const end = i === m.files.length - 1, len = Math.floor((end ? m.last : m.seg) * rate + 1e-6);
     if (next < (a.currentTime + .05) * rate) next = Math.ceil((a.currentTime + .15) * rate);   // the first; or late (a slow line, a sleeping tab): a gap, then on
     const src = a.createBufferSource(), starts = next / rate;
-    src.buffer = buf; src.connect(tr.gain); src.start(starts, m.pad, len / rate);
+    let skip = 0;                                          // (the first part of a piece come in late: from where it is, once it is fetched)
+    if (first) {
+      skip = Math.round((by(performance.now() + (starts - a.currentTime) * 1000) - i * m.seg) * rate);
+      if (skip < 0 || skip >= len) { next = 0; continue; } // (it took so long to come that the piece is past it: the part it is in now)
+      first = false;
+    }
+    src.buffer = buf; src.connect(tr.gain); src.start(starts, m.pad + skip / rate, (len - skip) / rate);
     tr.nodes.set(src, {i, starts}); src.onended = () => { tr.nodes.delete(src); src.disconnect(); };
-    next += len; tr.at = (i + 1) % m.files.length;
+    next += len - skip; tr.at = (i + 1) % m.files.length;
     if (end && --tr.left <= 0) {                           // its last part: fade on the last chord, then it is over
       const ends = next / rate;
       swell(tr, 0, SOUND.ending, ends - SOUND.ending);
@@ -196,7 +205,7 @@ function tune(tc) {
   if (!audio || !m || !m.tracks || !SOUND.music) return;
   const boss = !muted && fight && !!m.tracks[m.play[fight]];               // (fight: which loop, "boss" or "nyxwing": boss.js)
   if (!bossTrack.on) bossTrack.key = m.play[fight] || bossTrack.key;       // (a loop on plays to its fight's end)
-  if (boss && !bossTrack.on) { bossTrack.left = Infinity; stream(bossTrack); swell(bossTrack, SOUND.music * SOUND.bossMusic, SOUND.arrive.boss); }
+  if (boss && !bossTrack.on) { bossTrack.left = Infinity; stream(bossTrack, undefined, fightFrom); swell(bossTrack, SOUND.music * SOUND.bossMusic, SOUND.arrive.boss); }
   else if (!boss && bossTrack.on) {                        // the fight is over (or sound is off): it recedes
     const out = muted ? 3 * tc : SOUND.ending;
     swell(bossTrack, 0, out); halt(bossTrack, out + 1);
@@ -216,9 +225,9 @@ setInterval(() => {                                        // is the first scree
   const on = typeof titleOpen === "function" && titleOpen();
   if (on !== home || (on && !menuTrack.on && !muted)) { home = on; tune(1); }
 }, 500);
-function bossMusic(on) {
+function bossMusic(on, from) {
   if (on === fight) return;
-  fight = on; tune(on ? .3 : 1.3);
+  fight = on; fightFrom = from; tune(on ? .3 : 1.3);
   if (!on && !music.on) moment.next = performance.now() + between(SOUND.afterFight);
 }
 // M: everything off or on. A piece that was playing fades out; sound back on, the next one comes after a few seconds.

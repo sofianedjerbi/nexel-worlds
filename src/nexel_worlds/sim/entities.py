@@ -111,6 +111,7 @@ class Creature:
     foe: int = 0        # ...the id of whoever hit it
     loot: dict = field(default_factory=dict)   # what a gustling snatched: it falls where it dies (wild.py; runtime only)
     owner: int = 0      # a hob: the id of whoever set it down (hob.py; saved)
+    came: int = 0       # Nyxwing: the tick its entrance began, its song's start (nyxwing.py; runtime only)
 
     def __post_init__(self):                       # (one saved on the old scale, 30 for a cow: no more than its kind has)
         self.hp = min(self.hp, CREATURES.get(self.kind, {}).get("hp", self.hp))

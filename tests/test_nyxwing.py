@@ -36,6 +36,22 @@ def test_it_comes_down_out_of_the_sky_on_the_drop_and_nothing_touches_it_meanwhi
     assert c.mode == "" and events(a, "boss", "land")           # 32 beats: the end of the song's rise, its drop
 
 
+def test_a_page_is_told_how_long_ago_its_entrance_began(world):
+    """(#88) A player who comes when it is already coming down is told how far its entrance (and its song) is by now,
+    and still is once it has landed: the page times its descent and the music from that, not from when it first saw it."""
+    from nexel_worlds.views import Views
+    sim, a = world
+    views = Views(); views.sim = sim
+    c = put(sim, "nyxwing", a.x + 6, a.y)
+    sim.step()
+    seen = lambda: next(e for e in views.entities_in(c.x - 1, c.y - 1, 3, 3) if e["kind"] == "nyxwing")["came"]
+    assert seen() == 0
+    run(sim, 5)
+    assert seen() == 5
+    run(sim, ARRIVE)
+    assert c.mode != "arrive" and seen() == round(5 + sec(ARRIVE) / 10, 2)
+
+
 def test_it_is_three_tiles_wide_and_flies_over_anything(world):
     sim, a = world
     c = landed(sim, a, 6, 0)
