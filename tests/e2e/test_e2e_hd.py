@@ -66,10 +66,10 @@ def test_two_walls_side_by_side_touch_and_a_bridge_is_drawn(browser, server):
         before = []
         for _ in range(60):                                          # (the meadow there, before: once it is drawn, up to 60 looks
             before = [g.js(AT, p) for p in join]                     #  5 frames apart; the land laid out round the place comes in
-            if all(green(c) for c in before):                        #  over frames, later on a busy runner: #205)
-                break
+            if sum(map(green, before)) >= 7:                         #  over frames, later on a busy runner: #205. Two of the nine
+                break                                                #  may be what grows on it, a flower, a tuft: still the meadow)
             g.frames(5)
-        assert all(green(c) for c in before), (before, g.js("[HdLook.busy, HdLook.bare(), HdLook.why, clock.phase]"))
+        assert sum(map(green, before)) >= 7, str((before, g.js("[HdLook.busy, HdLook.bare(), HdLook.why, clock.phase]")))
         g.stamp(2, -3, ["%%"]); g.stamp(-4, 2, ["~~~", "~:~", "~~~"]); g.rest()
         seen = [g.js(AT, p) for p in join]
         assert not any(green(c) for c in seen), seen
