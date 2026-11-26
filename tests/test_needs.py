@@ -99,7 +99,7 @@ def test_a_blow_is_in_half_hearts_and_armor_turns_it_to_the_half(world):
     assert [CREATURES[k]["damage"] for k in ("tusker", "pincer", "strawman", "wyrm", "sporeling")] == [3, 1, 2, 3.5, 0.5]
     a.worn = {"head": "iron_helmet", "top": "iron_chestplate"}            # 20 percent
     assert sim.armor(a) == 20 and sim.guarded(a, 3) == 2.5 and sim.guarded(a, 0.5) == 0.5
-    sim.damage(a, sim.guarded(a, 3), "test")
+    sim.damage(a, sim.guarded(a, 3), "dev")
     assert a.hp == 17.5 and sim.observe(a)["self"]["hp"] == 17.5
 
 

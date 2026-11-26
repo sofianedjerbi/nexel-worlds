@@ -157,3 +157,25 @@ def test_what_is_on_a_tile_is_reached_at_its_own_ground(world):
     assert run(s, a, "dig", {"dir": "E"})["error"] == "out_of_range"
     s.world.set(x + 1, y, level=-2, block="flower")
     assert run(s, a, "dig", {"dir": "E"})["ok"] and a.count("flower") == 1
+
+
+def test_a_walk_off_a_cliff_top_down_its_ladder_does_not_wait_for_a_leap(world):
+    # (`ledge`: a screen goes off a ledge through the air itself and the world's walk waits for it at the edge; down a
+    # ladder it is climbed, rung by rung, as the screen does: web/js/leap.js ledge. #131)
+    s, a = world
+    x, y = a.x, a.y
+    for i in (-1, 0, 1):
+        s.world.set(x + i, y - 1, level=6)
+    s.world.set(x, y, block="ladder")
+    a.x, a.y, a.z = x, y - 1, 6
+    s.submit(a, "walk", {"dir": "S", "ledge": True, "jump": True})
+    for t in range(30):
+        s.step()
+        if a.y == y:
+            break
+    assert (a.y, s.height(a)) == (y, 0) and t < 5
+    a.x, a.y, a.z = x + 1, y - 1, 6                            # (off it where there is no ladder: it waits for the leap)
+    s.submit(a, "walk", {"dir": "S", "ledge": True, "jump": True})
+    for _ in range(5):
+        s.step()
+    assert a.y == y - 1

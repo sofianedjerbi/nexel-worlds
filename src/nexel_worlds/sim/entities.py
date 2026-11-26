@@ -10,16 +10,19 @@ if TYPE_CHECKING:
 
 
 class ActionError(Exception):
-    def __init__(self, code: str, detail: str = ""):
+    """A refusal: `code` and `data` say why, as data (#6: the page writes its own words from them, web/js/agent.js
+    ERROR_TEXT); `detail` is the sentence for the agents."""
+
+    def __init__(self, code: str, detail: str = "", **data):
         super().__init__(code, detail)
-        self.code, self.detail = code, detail
+        self.code, self.detail, self.data = code, detail, data
 
 
 def failure(e: Exception) -> dict:
     """An action that stopped on an exception -> what it answers. A refusal (ActionError) says why; anything else is
     a bug: written to the log, and the action only fails (never the whole world's clock with it)."""
     if isinstance(e, ActionError):
-        return {"ok": False, "status": "failed", "error": e.code, "detail": e.detail}
+        return {"ok": False, "status": "failed", "error": e.code, "detail": e.detail, **({"data": e.data} if e.data else {})}
     logging.getLogger(__name__).exception("an action broke")
     return {"ok": False, "status": "failed", "error": "bug", "detail": f"something went wrong in the game ({type(e).__name__})"}
 
@@ -52,6 +55,7 @@ class Agent:
     ready: int = field(default=0, repr=False)   # first tick the next stride may start (movement cooldown)
     via: list = field(default_factory=list, repr=False)   # (x, y, n): tiles a player's screen has already walked to, to make in order (Movement.follow)
     via_done: int = field(default=0, repr=False)
+    walked: list = field(default_factory=list, repr=False)   # (x, y, z): where the running walk has been, in order (Movement._tool_stop)
     flying: int | None = field(default=None, repr=False)   # in the air (leaping.py): the height it left from, kept until it lands
     flying_n: int = field(default=0, repr=False)          # ...the tiles of its flight made so far, and the tick of the last
     flying_at: int = field(default=0, repr=False)   # the number of the last of them reached (or given up)
@@ -83,6 +87,15 @@ class Agent:
 
     def bump(self, stat, n=1):
         self.stats[stat] = self.stats.get(stat, 0) + n
+
+
+def ref(e) -> dict:
+    """Who an event names, as data (#6): {"kind": "agent" or the creature's kind, "id", "name"}. A reader tells a person
+    from a creature by `kind`, never by the words written for people ("a tusker" was told from a player by its "a ":
+    a player named "a bob" was a creature)."""
+    if isinstance(e, Agent):
+        return {"kind": "agent", "id": e.id, "name": e.name}
+    return {"kind": e.kind, "id": e.id, "name": e.name or None}
 
 
 @dataclass

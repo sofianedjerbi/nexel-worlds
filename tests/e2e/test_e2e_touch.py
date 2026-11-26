@@ -102,8 +102,9 @@ def test_out_of_your_own_shaft_with_the_thumbs(browser, server):
         g.wait("!walking && !myAction", 3000)
         s = g.server()
         # out of the shaft, on the ground, east: the tile where it stops is when the thumb is lifted, and on a slow runner
-        # the walk went one more before the release came (#47: x + 2). Not where the stick is let go, the climb out.
-        assert s["z"] == 0 and s["y"] == y and s["x"] in (x + 1, x + 2), (s["x"] - x, s["y"] - y, s["z"])
+        # the walk went on before the release came (#47: x + 2; a runner's 100 ms frames: x + 3). Not where the stick is let
+        # go, the climb out.
+        assert s["z"] == 0 and s["y"] == y and s["x"] > x, (s["x"] - x, s["y"] - y, s["z"])
         g.js("selectItem('plank')")
         g.wait("$('tBuild').style.display === 'flex'", 3000)
         at = mid("tBuild")
@@ -159,8 +160,12 @@ def test_out_of_your_own_shaft_with_the_thumbs_and_a_pickaxe_alone(browser, serv
                 X, z = g.js("[myAt.x, myAt.z]")
         assert said == ["Dig a step", "Dig up", "Dig a step"], said             # (the last step is a hop: the sky is over it)
         g.wait("!walking && (!pred || performance.now() > pred.until)", 4000)
+        try:                                                                  # (the server's word on it, once it has come: on a runner's 83 ms
+            g.wait("meObs && meObs.self.z === 0", 3000)                      #  frames it was read a tick before, still on the step, z -1)
+        except Exception:
+            pass
         s = g.server()
-        assert (s["y"], s["z"]) == (y, 0) and s["x"] >= x + 3
+        assert (s["y"], s["z"]) == (y, 0) and s["x"] >= x + 3, (s["x"] - x, s["y"] - y, s["z"], g.js("[myAt.x - %d, myAt.z]" % x))
         assert not g.errors, g.errors
     finally:
         ctx.close()

@@ -12,7 +12,7 @@ function joinGame(name) {
     if (ACCOUNT.url && !ticket) { agentWs.close(); return; }
     const r = await rpc("hello", {name, token, persona: "human", race: myRace, ...(ticket ? {ticket} : {})});      // (races.js)
     if (r.error === "bad_ticket") accountDrop();
-    if (!r.ok) { toast(r.error === "bad_token" ? `“${name}” is already someone else. Pick another name.` : (r.detail || r.error), true); agentWs.close(); return; }
+    if (!r.ok) { toast(r.error === "bad_token" ? `“${name}” is already someone else. Pick another name.` : errorText(r), true); agentWs.close(); return; }
     me = r.agent.name; myId = r.agent.id; follow = null; sendSpec({op: "me", id: myId}); localStorage.setItem("nexel-name", me);
     camT.x = cam.x = r.agent.x; camT.y = cam.y = r.agent.y;
     $("joinbox").style.display = "none"; $("hud").style.display = "flex"; document.body.classList.add("playing"); if (typeof zoomForTitle === "function") zoomForTitle(false);   // (your own zoom level back: zoom.js)
@@ -80,6 +80,13 @@ function facingTo(p) {  // the direction to look when working on p (the bigger a
   const dx = p.x - s.x, dy = p.y - s.y;
   return Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? "E" : dx < 0 ? "W" : null) : dy > 0 ? "S" : "N";
 }
+// WHY AN ACTION WAS REFUSED, in words for people, from its code and data (#6; sim/entities.py ActionError). A code not here
+// yet says the agents' sentence (`detail`). Looked up by its own keys only: a code from the wire is never a method of Object
+const ERROR_TEXT = {
+  need_tool: (d) => `Needs a ${label(d.tool).toLowerCase()} in hand` + (d.have === false ? ": you have none" : ""),
+  cannot_dig: (d) => (d.what ? `${label(d.what)} can't be dug` : {deepest: "This is as deep as it goes", enclosed: "Inside the land: dig to it from beside it", not_clear: "Stand on clear ground to dig down"}[d.why] || "That can't be dug"),
+};
+const errorText = (r) => (r.data && Object.hasOwn(ERROR_TEXT, r.error) ? ERROR_TEXT[r.error](r.data) : r.detail || r.error);
 async function act(tool, args, quiet) {
   if (!me || (eating() && !RULES.meanwhile.includes(tool))) return null;
   while (pred && performance.now() < pred.until) await new Promise((ok) => setTimeout(ok, 16));   // the server is still coming to where you stopped: what you do, you do from there
@@ -99,7 +106,7 @@ async function act(tool, args, quiet) {
     busy = false; progress = null;
     if (walking === null && [...keys].some((k) => KEYDIR[k])) syncWalk();   // still holding a direction: walk on
   }
-  if (!r.ok && !["interrupted", "offline", "too_soon"].includes(r.error) && !quiet) toast(`${label(tool)}: ${r.detail || r.error}`, true);
+  if (!r.ok && !["interrupted", "offline", "too_soon"].includes(r.error) && !quiet) toast(`${label(tool)}: ${errorText(r)}`, true);
   if (r.ok) {
     if (r.result.lost) toast(r.result.lost[0].toUpperCase() + r.result.lost.slice(1), true);   // (ore broken with too low a pickaxe: it crumbled, sim/underground.py lost)
     const c = r.result.changed || {};

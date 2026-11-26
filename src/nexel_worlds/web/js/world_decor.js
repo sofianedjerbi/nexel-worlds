@@ -46,12 +46,12 @@ const CRY = {
   hob: {warn: "hob_warn"}, wisp: {warn: "gloom"}, mossback: {warn: "boss_groan"},
   nyxwing: {slams: true, hurt: "drake_hurt"},          // (its warnings and blows sound in nyxwing.js: a scream when its jaws open)
 };
-// A blow lands (an "attack" event, `attacker` "a tusker" when it is a wild one): the creature's own sound in place of a
+// A blow lands (an "attack" event, its `who` {kind: "tusker", ...} when it is a wild one): the creature's own sound in place of a
 // punch and a thump; a creature that is hit cries its own cry in place of the thump.
 function wildBlow(e, tgt, tx, ty) {
-  const foe = CRY[String(e.attacker).slice(2)] || {}, cry = tgt && CRY[tgt.e.kind] ? CRY[tgt.e.kind].hurt : null;
+  const kind = e.who ? e.who.kind : "", foe = CRY[kind] || {}, cry = tgt && CRY[tgt.e.kind] ? CRY[tgt.e.kind].hurt : null;
   if (foe.blow) sfx(foe.blow, e.x, e.y);
-  else if (!foe.slams) { if (WILD[String(e.attacker).slice(2)]) sfx("punch", e.x, e.y); sfx(cry || "hit", tx, ty); }
+  else if (!foe.slams) { if (WILD[kind]) sfx("punch", e.x, e.y); sfx(cry || "hit", tx, ty); }
 }
 // The moves of the wild ones and the hob, as the server tells them (sim/wild.py, gust.py, stump.py, hob.py): dust,
 // sparks, a sound, and a flash on whom they touched.
