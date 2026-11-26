@@ -36,6 +36,13 @@ def test_what_is_in_the_way_is_said_by_what_it_is(world):
     assert (r["error"], r["data"]) == ("occupied", {"on": "body"}), r
 
 
+def test_a_wrong_target_says_why_by_a_code(world):
+    sim, a = world
+    r = run(sim, a, "attack", {"target": a.id})
+    assert (r["error"], r["data"]) == ("bad_target", {"why": "self"}), r
+    assert re.search(r"bad_target: \(d\) => \(Object\.hasOwn\(TARGET_WHY, d\.why\)", (JS / "agent.js").read_text())
+
+
 def test_what_cannot_be_dug_is_named():
     from nexel_worlds.sim.entities import ActionError, failure
     r = failure(ActionError("cannot_dig", "water cannot be dug", what="water"))
