@@ -27,8 +27,8 @@
 //      face's own paint (flags in e, vox_style_glsl.js), never another paint in its place.
 // Where the code still breaks it (to route through the rule, then strike from this list): the cut's section takes stone or earth from the
 // surface's top cell and your height, not from each cell it shows (vox_style.js sectAt, flag 8388608); its first line is the land's own
-// top px, grass on a meadow (vox_style_glsl.js wn 11); a riser and a window's side edge "A"
-// are one tone whatever their rock (vox_style_glsl.js); a far patch's skirt is one tile's rock; a model face wider or deeper than a tile is
+// top px, grass on a meadow (vox_style_glsl.js wn 11);
+// a far patch's skirt is one tile's rock; a model face wider or deeper than a tile is
 // its 16 px stretched (model).
 const VoxStyleLand = (() => {
   const H = VoxStyleGLSL.H, C = 16, N = 10, CH = 8, KINDS = ["main", "model", "shade", "water"], TRI = [0, 1, 2, 0, 2, 3];   // (TRI: a quad's two triangles)
