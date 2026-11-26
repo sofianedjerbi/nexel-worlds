@@ -1,4 +1,4 @@
-"""Down into water from a height in the HD look (body_place.js: the landing's lift, leap.js lift, kept for a swimmer;
+"""(probe: #128 reverted) Down into water from a height in the HD look (body_place.js: the landing's lift, leap.js lift, kept for a swimmer;
 swim.js drawSwimmer)."""
 
 import pytest
