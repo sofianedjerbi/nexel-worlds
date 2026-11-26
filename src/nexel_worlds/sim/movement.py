@@ -116,7 +116,7 @@ class Movement(Leaping):
         if isinstance(at, (list, tuple)) and len(at) == 2 and all(type(v) is int for v in at):
             x, y = at
             if abs(x - a.x) + abs(y - a.y) > VIA_FAR:
-                raise ActionError("out_of_range", "that step is too far to jump for")
+                raise ActionError("out_of_range", "that step is too far to jump for", why="jump_far")
         elif args.get("dir") is not None:
             x, y = self.target(a, args, flat=True)
         else:
@@ -281,7 +281,7 @@ class Movement(Leaping):
         if path is None:
             far = abs(gx - a.x) + abs(gy - a.y) > 64
             raise ActionError("no_path", "target further than 64 tiles" if far else
-                              f"no walkable path to ({gx},{gy}) from ({a.x},{a.y})")
+                              f"no walkable path to ({gx},{gy}) from ({a.x},{a.y})", why="far" if far else "none")
         steps = 0
         while path:
             yield from self.pace(a, args)
