@@ -167,13 +167,13 @@ def test_late_ticks_do_not_stop_you(game):
     page.keyboard.up("d")
     page.keyboard.up("Shift")
     rec = game.recording()
-    # (the pace on the frames not cut at 0.1 s, render.js: 17 tiles in 2.1 s, of 21 at full speed. It was the tiles gone:
-    # on a runner, frames of 67 to 180 ms, 16.3)
-    whole = [(a, b) for a, b in zip(rec, rec[1:]) if 0 < b[0] - a[0] <= 100]
-    pace = sum(abs(b[1] - a[1]) + abs(b[2] - a[2]) for a, b in whole) / sum((b[0] - a[0]) / 1000 for a, b in whole)
+    # (the walk's own pace in the game's time, where the world let it go: speed. It was the tiles gone, then the pace on
+    # frames not cut: on a runner the lumps of late ticks put you past LEAD[0] and the walk slowed for them, as it
+    # should, 6.8. Stopped at a tile ahead of the server's last word, as it was, the free frames would stand still)
+    pace = speed(rec, 0)
     game.sleep(900)
     assert not stops(rec), stops(rec)
-    assert pace > 17 / 2.1, pace
+    assert pace > 8.5, (pace, slow(rec, 10))
     assert game.pos() == (game.server()["x"], game.server()["y"])
 
 
