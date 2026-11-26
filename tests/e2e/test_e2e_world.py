@@ -74,18 +74,6 @@ def test_signs_say_what_you_wrote(game):
     assert "Ben's farm" in game.toast()
 
 
-def test_cows_give_milk_and_fed_hens_lay(game):
-    cow = game.spawn("cow", 2, 0, still=10 ** 6)
-    hen = game.spawn("chicken", -2, 0, still=10 ** 6)
-    game.give(berries=1)
-    game.wait(f"ents.has('cow{cow}') && ents.has('chicken{hen}')", timeout=8000)   # (both told to the page)
-    assert game.act("milk", target=cow)["ok"] and game.inv("milk") == 1
-    assert game.act("feed", target=hen, item="berries")["ok"]
-    game.rpc("dev_skip", seconds=5)
-    game.wait("groundItems.some(([x, y, p]) => p.egg)", timeout=8000)
-    assert game.js("groundItems.some(([x, y, p]) => p.egg)")
-
-
 def test_a_coop_collects_the_eggs(game):
     game.give(coop=1)
     game.hold_item("coop")

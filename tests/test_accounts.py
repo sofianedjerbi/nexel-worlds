@@ -1,5 +1,7 @@
 """Accounts: a code mailed to an email, a session, a signed ticket; and the world's door that reads the ticket."""
 
+import asyncio
+import json
 import socketserver
 import threading
 import time
@@ -173,3 +175,56 @@ def test_the_code_is_mailed():
         server.shutdown()
     text = "\n".join(server.got)
     assert "To: ash@example.com" in text and "Subject: 123456 is your Nexel Worlds code" in text and "Your code is 123456" in text
+
+
+class Ws:
+    """A connection as server.py's agent_session reads it: the messages put in, the replies sent back, the Host it
+    came to."""
+    def __init__(self, host):
+        self.inbox, self.sent, self.remote_address = asyncio.Queue(), asyncio.Queue(), ("127.0.0.1", 1)
+        self.request = type("Req", (), {"path": "/agent", "headers": {"Host": host}})()
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        msg = await self.inbox.get()
+        if msg is None:
+            raise StopAsyncIteration
+        return json.dumps(msg)
+
+    async def send(self, raw):
+        await self.sent.put(json.loads(raw))
+
+    async def ask(self, **msg):
+        await self.inbox.put(msg)
+        return await asyncio.wait_for(self.sent.get(), 5)
+
+
+def test_the_qa_tools_are_not_for_who_came_by_ticket(tmp_path, service):
+    """tests/e2e/test_e2e_account.py's `rpc('dev_give')` -> unknown_op, on the world's own door (server.py: dev ops
+    only with --dev, never for an account): a person with a ticket is told there is no such op; a local program
+    holding this world's key, on the same --dev server, is given the wood."""
+    from nexel_worlds.server import GameServer
+    gs = GameServer(tmp_path / "w", seed=3, dev=True, accounts="http://accounts.test")
+    gs.gate.public = tickets.public_text(service.key)                # (asked of the service once; given here)
+    session = logged_in(service)
+    ticket = service.answer("/ticket", {"session": session, "world": "play.test"}, "1.1.1.1")[1]["ticket"]
+
+    async def play():
+        person, program = Ws("play.test"), Ws("play.test")
+        run = [asyncio.create_task(gs.agent_session(w)) for w in (person, program)]
+        assert (await person.ask(id=1, op="hello", ticket=ticket, name="Milo", token="browser-secret"))["ok"]
+        assert (await program.ask(id=1, op="hello", key=gs.gate.agent_key, name="Robo", token="t"))["ok"]
+        said = await person.ask(id=2, op="dev_give", items={"wood": 1})
+        assert said["error"] == "unknown_op", said                    # (the QA tools are not for who came by ticket)
+        given = await program.ask(id=2, op="dev_give", items={"wood": 1})
+        assert given["ok"] and given["inventory"]["wood"] == 1, given
+        for w in (person, program):
+            await w.inbox.put(None)
+        await asyncio.gather(*run)
+
+    try:
+        asyncio.run(play())
+    finally:
+        gs.sim.close()

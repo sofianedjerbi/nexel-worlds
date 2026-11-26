@@ -27,7 +27,7 @@ const NyxBody = (K) => {
     const e = p.e, A = WILD.nyxwing, z = zoom, s = st(e.id);
     if (e.act !== s.act && ATTACKS.has(e.act) && s.anim !== e.act) { s.windAt = now; s.anim = e.act; }    // (a warning we did not hear of)
     s.act = e.act;
-    if (e.act === "arrive") { began(e, now); return; }                       // coming down: drawn in the land (hd), timed from when it came
+    if (e.act === "arrive") { began(e, now); return; }                       // coming through its rift: drawn in the land (hd), timed from when it came
     if (e.act === "sky") return;                                             // up out of sight: its shadow is (hd)
     const moving = now - p.moved < 350 || Math.abs(p.x - p.tx) + Math.abs(p.y - p.ty) > .05;
     const acting = ATTACKS.has(s.anim) && now - s.windAt < WARN + 3 * BEAT + 288;

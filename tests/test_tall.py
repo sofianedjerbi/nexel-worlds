@@ -9,6 +9,7 @@ from array import array
 from helpers import run
 from nexel_worlds.cells import HIGH, LOW, col_cave, col_floor, col_runs, col_solid, col_surfaces, col_top, runs_col
 from nexel_worlds.chunks import FORMAT, Chunk
+from nexel_worlds.devtools import dev_op
 from nexel_worlds.gen import CHUNK
 from nexel_worlds.sim import Simulation
 
@@ -110,3 +111,20 @@ def test_the_block_under_your_feet_is_dug_by_hand_too(world):
     t0 = sim.tick
     assert run(sim, a, "dig_down", {"with": "pickaxe"})["ok"] and sim.height(a) == z - 2
     assert sim.tick - t0 < by_hand
+
+
+def test_a_block_dug_under_a_tunnels_floor_changes_that_block_and_the_tunnel_stays(world):
+    """The world's half of tests/e2e/test_e2e_stacked.py (the page's colAt mirrors these columns): from his hole he
+    dug the block at his eyes under the tunnel's end. The column keeps the tunnel's floor where it was and has the new
+    room under it, and the tunnel goes on past it."""
+    sim, a = world
+    x, y = a.x, a.y
+    dev_op(sim, a, "dev_stamp", {"x": x + 1, "y": y - 4, "rows": ["." * 9] * 9, "levels": ["3" * 9] * 9})
+    X = x + 4                 # a pit; east of it your hole, two layers high, the tunnel's first tile over it; the tunnel on east, a step up at its end
+    for i, col in ((-1, [-9, -4, 3]), (0, [-9, -7, -6, -4, 3]), (1, [-6, -4, 3]), (2, [-6, -4, 3]), (3, [-5, -3, 3])):
+        dev_op(sim, a, "dev_col", {"tiles": [[X + i, y]], "col": col})
+    dev_op(sim, a, "dev_teleport", {"x": X, "y": y, "z": -9})
+    assert (a.x, a.y, sim.height(a)) == (X, y, -9)
+    assert run(sim, a, "dig", {"x": X + 1, "y": y, "z": -7})["ok"]                      # the block at your eyes, in the wall the tunnel's next tile stands on
+    assert col_runs(sim.world.col(X + 1, y)) == [-8, -7, -6, -4, 3]                      # the tunnel's floor is where it was; the wall has one block out, your new room
+    assert [sim.world.surfaces(X, y)[0], sim.world.surfaces(X + 2, y)[0]] == [-9, -6]    # ...and the tunnel goes on past it

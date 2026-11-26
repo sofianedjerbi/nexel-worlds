@@ -12,6 +12,10 @@ def test_dig_tree_and_ground(world):
     assert r["changed"]["tiles"][0]["block"] == "stump"
     assert run(sim, a, "dig", {"dir": "N"})["changed"]["inventory"] == {"wood": 1}
     assert sim.world.block(a.x, a.y - 1) == "none"
+    sim.world.set(a.x + 1, a.y, block="rock")                          # a rock gives two stones (tests/e2e/test_e2e_build.py's X)
+    a.add("pickaxe", 1)
+    assert run(sim, a, "dig", {"dir": "E", "with": "pickaxe"})["changed"]["inventory"] == {"stone": 2}
+    assert sim.world.block(a.x + 1, a.y) == "none"
     assert run(sim, a, "dig", {"dir": "S"})["error"] == "need_tool"          # tilling needs a hoe in hand
     a.add("hoe", 1)
     r = run(sim, a, "dig", {"dir": "S", "with": "hoe"})
@@ -191,3 +195,25 @@ def test_aimed_by_x_and_y_a_refusal_is_said_and_a_bug_never_stops_the_world(worl
     s.step()
     s.step()
     assert s.tick == t + 2 and act.result["error"] == "bug"
+
+
+def test_what_is_stored_in_a_chest_is_taken_back_out(world):
+    """The world's half of tests/e2e/test_e2e_building.py::test_chest_store_and_take: 5 stone stored, then taken
+    back with empty hands (`take` with no item: everything)."""
+    sim, a = world
+    a.add("chest", 1); a.add("stone", 5)
+    assert run(sim, a, "place", {"dir": "E", "item": "chest"})["ok"]
+    assert run(sim, a, "store", {"dir": "E", "item": "stone", "n": 5})["ok"]
+    assert a.count("stone") == 0
+    assert run(sim, a, "take", {"dir": "E"})["ok"]
+    assert a.count("stone") == 5
+
+
+def test_meat_is_cooked_at_a_campfire(world):
+    """The world's half of tests/e2e/test_e2e_world.py::test_cooking_at_a_campfire: a campfire set down beside you,
+    and the meat is cooked there."""
+    sim, a = world
+    a.add("campfire", 1); a.add("meat", 1)
+    assert run(sim, a, "place", {"dir": "E", "item": "campfire"})["ok"]
+    r = run(sim, a, "craft", {"recipe": "cooked_meat"})
+    assert r["ok"] and a.count("cooked_meat") == 1
