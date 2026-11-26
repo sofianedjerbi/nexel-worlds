@@ -35,14 +35,26 @@ def test_space_never_stops_you(game):
     moving = game.js("walking !== null")
     game.sleep(300)
     assert moving and game.inv("flower") == 1
-    x0, _ = game.pos()
+    game.start_recording()
     game.page.keyboard.down("x")                             # X by the tree: chopping waits, you walk on
     game.sleep(500)
-    x1, _ = game.pos()
+    rec = game.recording()
     moving = game.js("walking !== null")
     game.page.keyboard.up("x")
     game.page.keyboard.up("d")
-    assert moving and x1 >= x0 + 2 and game.server()["x"] >= x0 + 2
+    # (never standing: frames drawn where the one before was, more than 80 ms of them, are a stop, unless the walk stood
+    # LEAD[1] ahead of the world, waiting for it as it should. It was 2 tiles in the 500 ms: a runner of 100 ms frames whose
+    # world came late walked 1, "29 >= 28 + 2", and the server's word was as late)
+    wait, stops, i0 = game.js("LEAD[1]"), [], 0
+    for i in range(1, len(rec)):
+        if abs(rec[i][1] - rec[i0][1]) > 1e-6 or rec[i][3] >= wait:
+            if i - i0 > 1 and rec[i][0] - rec[i0][0] > 80:
+                stops.append((round(rec[i0][0]), round(rec[i][0] - rec[i0][0]), round(rec[i][3], 2)))
+            i0 = i
+    assert moving and not stops, (moving, stops)
+    # ...and the world walked on too, to where you stopped (a chop that took the place of its walk left it behind)
+    game.wait("!walking && !pred && (() => { const p = ents.get('agent' + myId); return p.e.x === Math.round(p.x); })()", 8000)
+    assert game.server()["x"] == game.pos()[0] > rec[0][1] + 1
 
 
 def test_a_click_picks_on_the_move(game):
