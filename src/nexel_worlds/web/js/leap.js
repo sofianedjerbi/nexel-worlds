@@ -172,7 +172,7 @@ const Leap = (() => {
   // Down on the ground at `z`: the world is told the way you went; the walk goes on if a way is held
   function land(p, now, z) {
     const path = L.path.filter((t, i, a) => !i || t[0] !== a[i - 1][0] || t[1] !== a[i - 1][1]), run = L.run, z0 = L.z0;
-    const h = held(), past = h && (p.x - p.tx) * h[0] + (p.y - p.ty) * h[1] >= 0 && Math.abs((p.x - p.tx) * h[1]) + Math.abs((p.y - p.ty) * h[0]) < .01 && fits(p.tx + h[0], p.ty + h[1], z);   // (and room on the way held: down by a wide hole's far wall, on into the wall was a step up four levels drawn as its arc, the body 20 px up and down)
+    const h = held(), ahead = h && (p.x - p.tx) * h[0] + (p.y - p.ty) * h[1] >= 0 && Math.abs((p.x - p.tx) * h[1]) + Math.abs((p.y - p.ty) * h[0]) < .01, past = ahead && fits(p.tx + h[0], p.ty + h[1], z);   // (and room on the way held: down by a wide hole's far wall, on into the wall was a step up four levels drawn as its arc, the body 20 px up and down)
     const st = BodyPlace.state(p); L = null; st.settle = now; fallWind(-1);
     // (the eye's way left to go, from this frame on: the body drawn on the ground is lifted by it (lift) from the frame
     //  you land, not at the eye's next look (cam): else the landing frame draws you with none, 20 px up from the arc's
@@ -186,7 +186,7 @@ const Leap = (() => {
     //  sprinting + jumping the player is getting hit by the block AFTER jumping and it loses all his velocity")
     const nx = h && p.tx + h[0], ny = h && p.ty + h[1];
     const bump = !past && h && autoJump() && solidAt(nx, ny, z + 1) && landAt(z, nx, ny, p.tx, p.ty) === z + 1 && leapable(p.tx, p.ty, z, nx, ny);
-    st.leapAt = past || bump ? null : {x: p.tx, y: p.ty, z};
+    st.leapAt = past || bump || ahead ? null : {x: p.tx, y: p.ty, z};   // (ahead: past the middle the way you go: never back to it, the walk goes on from there)
     if (myAt) myAt.z = z;
     if (z0 - z >= FALL.from) {                // (what it costs shown as you land, by the world's own rule: sim/movement.py fell. Waiting for its `fall` event showed it most of a second after)
       const n = (z0 - z - RULES.fall_safe) * RULES.fall_hp; if (n > 0) { st.hurt = n; st.told = now; hurtNow(n); }   // (a server without fall_hp in its rules: NaN, its event says it)
@@ -198,7 +198,8 @@ const Leap = (() => {
       rpc("act", {tool: "leap", args: {land: z, n, run}}).then(() => refresh());   // (the world's own count as soon as it has the fall: hurtNow guessed it)
     } else rpc("act", {tool: "jump", args: {}}).then(() => refresh());
     if (past) { p.tx += h[0]; p.ty += h[1]; syncWalk(); }   // (on into the next tile, as the walk is: the tile behind you read as a step down to it)
-    else if (bump) { if (can(p)) start(p, now, {w: h, run}, true); else st.leapAt = {x: p.tx, y: p.ty, z}; }
+    else if (bump) { if (can(p)) start(p, now, {w: h, run}, true); else if (ahead) syncWalk(); else st.leapAt = {x: p.tx, y: p.ty, z}; }
+    else if (ahead) syncWalk();   // (against a step a jump from here would not clear, past the middle: the walk on, its auto-jump takes the step)
   }
   // You on the tile you came down on, on your way to its middle: its height (else null; and off it, put elsewhere by the
   // world, null too: else a teleport there leaves you gliding for good, the walk never on again). (jump.js jumpOf, relief.js liftOf, hd_level.js)

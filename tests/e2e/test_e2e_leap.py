@@ -10,11 +10,11 @@ import pytest
 pytestmark = pytest.mark.e2e
 
 # every frame drawn: [ms, x, y, body over the level drawn from (art px), pose, the level drawn from, the world's x, its z, feet on the screen (art px), a fixed place of the land (art px), your level, the land's top there, the eye's pitch,
-#  the tile you are going to (x, y), how far ahead of the world you are (tiles: walk.js leadOf), which jump (the hop's start, the step's key, in the air)]
+#  the tile you are going to (x, y), how far ahead of the world you are (tiles: walk.js leadOf; in the air, from the tile the world has you on), which jump (the hop's start, the step's key, in the air)]
 FRAMES = """([ox, oy, oz]) => { window.__fr = []; window.__frOn = true; if (!window.__frHook) { window.__frHook = true; const show = HdView.show;
   HdView.show = (...A) => { const r = show(...A); if (window.__frOn) { const p = ents.get('agent' + myId), lv = HdLook.level, a = HdLook.art(); if (p && a) {
     const now = lastT, j = jumping(p, now), b = HdLook.screenOf(p.x + .5, p.y + .5, lv[2]), o = HdLook.screenOf(window.__o[0] + .5, window.__o[1] + .5, window.__o[2]);
-    __fr.push([now, p.x, p.y, j ? Math.round(j.body) : 0, j && j.pose || '', lv[2], p.e.x, p.e.z, Math.round(b[1] / a.u) - (j ? Math.round(j.body) : 0), o[1] / a.u, myAt ? myAt.z : null, topAt(Math.round(p.x), Math.round(p.y)), HdLook.cam.pitch, p.tx, p.ty, walking ? leadOf(p, now) : 0, (() => { const s = BodyPlace.state(p), q = jumpOf(p); return s.hop + '/' + (q ? q.key : '') + '/' + !!Leap.state; })()]); } } return r; }; }
+    __fr.push([now, p.x, p.y, j ? Math.round(j.body) : 0, j && j.pose || '', lv[2], p.e.x, p.e.z, Math.round(b[1] / a.u) - (j ? Math.round(j.body) : 0), o[1] / a.u, myAt ? myAt.z : null, topAt(Math.round(p.x), Math.round(p.y)), HdLook.cam.pitch, p.tx, p.ty, walking ? leadOf(p, now) : Math.abs(p.x - p.e.x) + Math.abs(p.y - p.e.y), (() => { const s = BodyPlace.state(p), q = jumpOf(p); return s.hop + '/' + (q ? q.key : '') + '/' + !!Leap.state; })()]); } } return r; }; }
   window.__o = [ox, oy, oz]; return 1; }"""
 
 
