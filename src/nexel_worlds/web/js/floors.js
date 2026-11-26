@@ -34,15 +34,24 @@ const Floors = (() => {
   const cells = (x, y) => (FLOORS && colOf(x, y)) || null, built = (x, y, z) => { const c = FLOORS && colOf(x, y); return !!c && c.has(z); };
   // What stands at height z of the tile: on a built block, what was put on it; on the land, the tile's own
   const thingAt = (x, y, z) => { const c = get(x, y, z); return c ? c[1] : z === groundAt(x, y) ? combAt(x, y) || "" : ""; };
-  // As the server's block_fits: why no block can go in the cell (x, y, z), in a few words; nothing when one can
+  // Why a piece cannot go somewhere, by code (fits, Build.landFits, the stairs' and the ladder's: climbing.js), and its
+  // few words. The game reads the code, never the words: UNHELD, nothing holds it yet (nothing beside it, built or
+  // planned; stairs with nothing higher beside them), is drawn as a dotted box and said nothing in build mode (build.js hint)
+  const WHY = {block_there: "A block is there", in_way: "Something is in the way", on_water: "Not on water: a bridge first", too_low: "Too low over the floor",
+    no_wall: "Needs a wall under it", taken: "Something is there", you_there: "You stand there", unheld: "Nothing holds it", planned: "Planned",
+    no_higher: "Stairs go up to something higher beside them", no_lean: "Needs something taller behind", as_high: "The ground there is as high",
+    no_room: "No room: leave the floor open over them", too_far: "Too far down"};
+  const UNHELD = new Set(["no_wall", "unheld", "no_higher", "no_lean"]);
+  const no = (why, o) => ({text: WHY[why] ?? "", why, ok: false, ...o});      // (a piece that cannot go: its words, its code)
+  // As the server's block_fits: why no block can go in the cell (x, y, z), a code of WHY; nothing when one can
   // (planned: blocks that are only planned yet, which hold the ones planned beside them: build.js)
   function fits(x, y, z, planned = () => false) {
-    if (solidAt(x, y, z)) return "A block is there";
+    if (solidAt(x, y, z)) return "block_there";
     const under = settleAt(x, y, z - 1), on = thingAt(x, y, under), t = tile(x, y);
-    if (under === z - 1) return on && !GROUND.has(on) ? "Something is in the way" : !get(x, y, under) && t && wet(t[1]) ? "Not on water: a bridge first" : null;
-    if (z - under < STOREY) return "Too low over the floor";
+    if (under === z - 1) return on && !GROUND.has(on) ? "in_way" : !get(x, y, under) && t && wet(t[1]) ? "on_water" : null;
+    if (z - under < STOREY) return "too_low";
     if (z - under === STOREY && tileOf(on).holds) return null;
-    return Object.values(DIRV).some(([dx, dy]) => solidAt(x + dx, y + dy, z) || planned(x + dx, y + dy, z)) ? null : "Needs a wall under it";
+    return Object.values(DIRV).some(([dx, dy]) => solidAt(x + dx, y + dy, z) || planned(x + dx, y + dy, z)) ? null : "no_wall";
   }
 
   // The height a body is drawn at on a tile: the land's, or, where something is built, its own (yours: caves.js keeps
@@ -94,7 +103,7 @@ const Floors = (() => {
     // points over such ground at your level too: tileAtScreen)
     if (LAND_BLOCKS.has(it) && FLOORS && !isMe && topAt(p.x, p.y) < h) {
       const why = Build.landFits(p.x, p.y, h, () => false);
-      return why ? {text: why, ghost: it, ok: false, z: h} : place(h, `Place ${label(it)}`);
+      return why ? no(why, {ghost: it, z: h}) : place(h, `Place ${label(it)}`);
     }
     const t = tile(p.x, p.y);                         // earth on open ground: the ground comes up a layer (as digging takes it down one)
     if (LAND_BLOCKS.has(it) && FLOORS && t && ".,'".includes(t[1]) && (GROUND.has(t[0]) || t[0] === "f") && !isMe && !c && z === topAt(p.x, p.y) && colAt(p.x, p.y) === colSolid(z) && !colOf(p.x, p.y))
@@ -103,7 +112,7 @@ const Floors = (() => {
     if (it === "plank" && FLOORS && get(s.x, s.y, h) && !isMe && !solidAt(p.x, p.y, h) && !fits(p.x, p.y, h)) return place(h, "Lay planks");
     if (it === "roof" || (it === "plank" && c && !isMe)) {       // a block: a roof a storey over the tile; planks on the block you face
       const zz = z + (it === "roof" ? STOREY : 1), why = fits(p.x, p.y, zz);
-      return why ? {text: why, ghost: it, ok: false, z: zz} : place(zz, it === "roof" ? "Lay roof" : "Put planks on top");
+      return why ? no(why, {ghost: it, z: zz}) : place(zz, it === "roof" ? "Lay roof" : "Put planks on top");
     }
     if (!c || isMe) return null;
     if (it && PLACEABLE_BLOCK[it] && c[0] === "stairs") return {text: "Not on a step", ghost: it, ok: false, z};
@@ -114,5 +123,5 @@ const Floors = (() => {
     if (shift) return {text: c[0] === "roof" ? "Take the roof block" : c[0] === "stairs" ? "Take up the step" : "Take up the planks", z, ground: true, run: (d) => act("dig", {dir: d, z})};
     return {text: "Walk here", walk: true, run: () => act("move_to", {x: p.x, y: p.y, z})};
   }
-  return {STOREY, K, any: (x, y) => !!colOf(x, y), get, set, load, cells, built, thingAt, fits, standOf, between, rise, alpha, cell, intent, get ver() { return ver; }};
+  return {STOREY, K, WHY, UNHELD, no, any: (x, y) => !!colOf(x, y), get, set, load, cells, built, thingAt, fits, standOf, between, rise, alpha, cell, intent, get ver() { return ver; }};
 })();
