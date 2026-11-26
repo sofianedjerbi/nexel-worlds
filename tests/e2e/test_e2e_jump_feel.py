@@ -12,7 +12,7 @@ pytestmark = pytest.mark.e2e
 # (at the frame's own time, as the game draws it: it was the clock when this was called, and two calls close together
 # after a slow frame, 8 ms apart on a runner, read a whole frame's move as a jolt)
 BODY = """() => { window.__bd = []; window.__bdOn = true; const f = (now) => { const p = ents.get('agent' + myId), j = p && jumping(p, now);
-  if (p) __bd.push([now, +p.x.toFixed(3), j ? Math.round(j.body) : 0, j && j.pose || '', !!(j && j.tuck)]); if (__bdOn) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""
+  if (p) __bd.push([now, +p.x.toFixed(3), j ? Math.round(j.body) : 0, j && j.pose || '', !!(j && j.tuck), j && j.key || '']); if (__bdOn) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""
 
 
 def body_over(game, act):
@@ -29,8 +29,10 @@ def smooth(rec):
     leaves the ground and lands), a px on a quicker frame; no pose shown and gone back from (a flash)."""
     for a, b in zip(rec, rec[1:]):           # (4 px more as it leaves the ground, as test_e2e_leap's smooth: up a flight, one jump's touch to the next one's takeoff, 13 to 8 in a 60th of a second)
         assert abs(b[2] - a[2]) <= max(1, -(-3.5 * (b[0] - a[0]) // 16.67)) + (4 if "takeoff" in (a[3], b[3]) else 0), (a, b)
-    runs = [r[3] for r, q in zip(rec, [None] + rec) if q is None or r[3] != q[3]]
-    assert not [i for i in range(1, len(runs) - 1) if runs[i - 1] == runs[i + 1] and runs[i]], runs
+    # (a flash is a pose gone back to within one jump (its key: the step it jumps). Up a flight each step is a jump of its own: on a
+    # frame of 83 ms the next one's takeoff fell between two frames, its rise came after the last one's apex: "rise, apex, rise")
+    runs = [(r[3], r[5] if len(r) > 5 else '') for r, q in zip(rec, [None] + rec) if q is None or r[3] != q[3]]
+    assert not [i for i in range(1, len(runs) - 1) if runs[i - 1] == runs[i + 1] and runs[i][0]], [p for p, _ in runs]
 
 
 @pytest.mark.realtime

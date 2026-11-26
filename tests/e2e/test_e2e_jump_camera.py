@@ -77,7 +77,7 @@ def test_a_step_jump_by_a_cliffs_foot_keeps_the_camera_and_the_window_steady(gam
 # after each frame drawn: [ms, your x, the drawn y of a fixed place of the land by you (art px), your feet's (art px, rounded as the sprite is)]
 DRAWN = """([ox, oy, oz]) => { window.__px = []; window.__pxOn = true; if (!window.__pxHook) { window.__pxHook = true; const show = HdView.show;
   HdView.show = (...A) => { const r = show(...A); if (window.__pxOn) { const p = ents.get('agent' + myId), lv = HdLook.level, a = HdLook.art(); if (p && a) {
-    const o = HdLook.screenOf(ox + .5, oy + .5, oz), b = HdLook.screenOf(p.x + .5, p.y + .5, lv[2]); __px.push([performance.now(), p.x, o[1] / a.u, Math.round(b[1] / a.u)]); } } return r; }; } return 1; }"""
+    const o = HdLook.screenOf(ox + .5, oy + .5, oz), b = HdLook.screenOf(p.x + .5, p.y + .5, lv[2]); __px.push([lastT, p.x, o[1] / a.u, Math.round(b[1] / a.u)]); } } return r; }; } return 1; }"""
 
 
 def drawn_over(game, act):
