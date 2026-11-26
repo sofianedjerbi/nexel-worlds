@@ -1,4 +1,4 @@
-// The HD look's thickets (hd_things.js): a thicket is boxes in the land ("thicket are ugly", #277: it was the hedge
+// The HD look's thickets (hd_things.js): a thicket is boxes in the land ("thicket are ugly", #277: not the hedge
 // painted flat on the grass, a wall with no height), painted px for px from the pack's bush sheet (hedge.png: its
 // 3 x 3 hedge, rows 0-47; its lone bush, rows 48-63 at column 48). An overgrown hedge, picked 2026-11-26:
 //   a dark foot (the hedge's darkest rows), set in two px where no thicket is beside it, on under a run of them;

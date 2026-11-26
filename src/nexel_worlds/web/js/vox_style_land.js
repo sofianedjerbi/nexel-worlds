@@ -191,11 +191,15 @@ const VoxStyleLand = (() => {
       //  the far land changes at each step, each patch's height read from other tiles: the far hills shimmer as you walk)
       function* patches() { const fl = [], fs = []; if (o.sea === undefined) return [new Float32Array(0), new Float32Array(0)];
         const cut = (a, b, s, l = []) => { for (let v = a; v < b;) { const e = Math.min(b, (Math.floor(v / s) + 1) * s); l.push([v, e - v]); v = e; } return l; };
-        const ax = (c, box, one) => { const lo = c - r - 40, hi = c + r + 41, a4 = Math.floor((c - r - 16) / 8) * 8, b4 = Math.ceil((c + r + 17) / 8) * 8;   // (along one axis round c: 8s past the 4s, the 4s from 16 past the box; box: the box's own span left out, or one: a tile a patch over it)
-          const mid = box ? cut(a4, c - r, 4).concat(one ? cut(c - r, c + r + 1, 1) : [], cut(c + r + 1, b4, 4)) : cut(a4, b4, 4); return cut(lo, a4, 8).concat(mid, cut(b4, hi, 8)); };
+        // (the far edge out to the 8s' grid, and a run against the box: its s on the world's grid, its ragged ends a tile each. Cut from the box's edge, a patch was
+        // keyed by where the box was, and the land is made at some of the tiles you walk, not all (frames): walking back, every
+        // place it had not been made at made the patches beside the box again in every row, 13 of 35 a row walking 8 tiles and back, #240)
+        const grid = (a, b, s) => { const i = Math.ceil(a / s) * s, j = Math.floor(b / s) * s; return i >= j ? cut(a, b, 1) : cut(a, i, 1).concat(cut(i, j, s), cut(j, b, 1)); };
+        const ax = (c, box, one) => { const lo = Math.floor((c - r - 40) / 8) * 8, hi = Math.ceil((c + r + 41) / 8) * 8, a4 = Math.floor((c - r - 16) / 8) * 8, b4 = Math.ceil((c + r + 17) / 8) * 8;   // (along one axis round c: 8s past the 4s, the 4s from 16 past the box; box: the box's own span left out, or one: a tile a patch over it)
+          const mid = box ? grid(a4, c - r, 4).concat(one ? cut(c - r, c + r + 1, 1) : [], grid(c + r + 1, b4, 4)) : cut(a4, b4, 4); return cut(lo, a4, 8).concat(mid, cut(b4, hi, 8)); };
         const out = ax(cx, false), side = ax(cx, true), one = ax(cx, true, true), b4 = Math.ceil((cy + r + 17) / 8) * 8;
-        const rows = cut(cy - r - 40, Math.floor((cy - r - 16) / 8) * 8, 8).map((q) => [...q, out]).concat(cut(Math.floor((cy - r - 16) / 8) * 8, cy - r, 4).map((q) => [...q, out]), cut(cy - r, cy + r + 1, 4).map((q) => [...q, side]),
-          cut(cy + r + 1, cy + r + 5, 1).map((q) => [...q, one]), cut(cy + r + 5, b4, 4).map((q) => [...q, out]), cut(b4, cy + r + 41, 8).map((q) => [...q, out]));   // (the first four rows south of the box a tile each, its own paint (e 8): tall land there stands at the screen's foot, a tile as big as a hand)
+        const rows = cut(Math.floor((cy - r - 40) / 8) * 8, Math.floor((cy - r - 16) / 8) * 8, 8).map((q) => [...q, out]).concat(grid(Math.floor((cy - r - 16) / 8) * 8, cy - r, 4).map((q) => [...q, out]), grid(cy - r, cy + r + 1, 4).map((q) => [...q, side]),
+          cut(cy + r + 1, cy + r + 5, 1).map((q) => [...q, one]), grid(cy + r + 5, b4, 4).map((q) => [...q, out]), cut(b4, Math.ceil((cy + r + 41) / 8) * 8, 8).map((q) => [...q, out]));   // (the first four rows south of the box a tile each, its own paint (e 8): tall land there stands at the screen's foot, a tile as big as a hand)
         const tz = (x, y) => { const c = host.column(x, y); return c && c.length ? c[c.length - 1] : null; }, flat = (x, y, z) => tz(x - 1, y) === z && tz(x + 1, y) === z && tz(x, y - 1) === z && tz(x, y + 1) === z;
         const made = (x, y, w, h, a, b) => { into = []; patch(x, y, w, h, a, b); const s = into; into = null; return s; };   // (a patch drawn: the places of the paints it names, kept with it)
         yield* far.rows(rows, made, fl, fs);
@@ -231,7 +235,7 @@ const VoxStyleLand = (() => {
       } finally { making = false; }
     }
     return {steps, touch, touchBox, wet, model, clear() { store.clear(); far.clear(); }, farKeep: () => far.keep(), evicted(kept) { for (const k of [...store.keys()]) if (!wantK || !wantK.has(k)) store.delete(k); if (kept) far.free(kept); else far.clear(); },   // (paints given again: what was made with them and is not of this land goes)
-      get stamp() { return stamp; }, get fars() { return far.fars; }, get forgot() { return far.forgot; }, get part() { return partOf ? partN / partOf : 0; }};   // (fars: far patches made, all told: tests)
+      get stamp() { return stamp; }, get fars() { return far.fars; }, get forgot() { return far.forgot; }, get fresh() { return far.fresh; }, get part() { return partOf ? partN / partOf : 0; }};   // (fars: far patches made, all told: tests)
   }
   return {create, N, CH};
 })();
