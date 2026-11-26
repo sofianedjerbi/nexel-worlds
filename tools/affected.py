@@ -7,8 +7,8 @@ Printed: the e2e test files to run (and the unit test files), one a line. The ma
 - a web/js file: the e2e tests whose text names one of the globals it makes (top-level const/let/var/function/class,
   window.X =; names of 4 letters or more, or a module's of 3: Nyx) or the file itself ("hd_sun.js"); an hd*.js or vox_*.js file: and every
   test_e2e_hd*.py; and the unit tests naming the file (a vox_* file: those naming vox_, test_vox_layer.py); a part of
-  a split one, NAME_part.js beside NAME.js (build_do.js, nyxwing_sky.js): and what NAME.js selects (its tests name the
-  whole: a part's change ran none of them);
+  another (its globals used by that one file alone: hd_cards.js's HdCards by hd_things.js, build_do.js's by build.js):
+  and what that file selects (the tests name the whole: a part's change ran none of them);
 - a .css file: the ui, menu, title and phone tests; web/index.html: those and the e2e tests naming an id it has changed (not
   read: all of the ui set);
 - a python file of the game (src/nexel_worlds/**.py, not web/): the unit tests that name its module, all of them if
@@ -146,10 +146,10 @@ def affected(changed, root: Path = ROOT, why=None):
             for t, text in U.items():
                 if named(text, name) or (name.startswith("vox_") and "vox_" in text):
                     add(unit, t, f"{name}: named")
-            whole = JS + p.stem.split("_")[0] + ".js"
-            if "_" in p.stem and whole != f and (root / whole).exists():
-                for t in affected([whole], root)[0]:
-                    add(e2e, t, f"{name}: a part of {Path(whole).name}")
+            whole = [j for j in (root / JS).glob("*.js") if j.name != name and mentions(code(j.read_text(errors="replace")), names)]
+            if len(whole) == 1:
+                for t in affected([JS + whole[0].name], root)[0]:
+                    add(e2e, t, f"{name}: a part of {whole[0].name}")
             if name.startswith(("hd", "vox_")):
                 for t in E:
                     if Path(t).name.startswith("test_e2e_hd"):
