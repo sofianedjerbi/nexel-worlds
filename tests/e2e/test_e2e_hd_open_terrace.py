@@ -12,9 +12,13 @@ STATE = "({win: HdLook.win.n, open: HdLook.win.a, hid: HdLook.hid, roof: HdLevel
 
 # the same terraces climbing to the SOUTH: the land between the eye and you rises (HdLevel.hides)
 UP_SOUTH = list(reversed(TERRACES))
+# (#274) a steeper slope climbing south, a level a tile: you (7) right behind a block a level up, the next a level higher again.
+# From the surface's pitch (36 degrees) the terrace two tiles on stands .91 of you over the eye's line: the eye tilts; from
+# the tilted eye (58) all of you shows over them, and the land was cut round you all the same: "ugly !!"
+STEEP_UP_SOUTH = [str(i) for i in range(1, 10)] + ["9"] * 4
 
 
-@pytest.mark.parametrize("rows, dx", [(TERRACES, 0), (TERRACES, 3), (UP_SOUTH, 0)], ids=["down_south", "down_south_east", "up_south"])
+@pytest.mark.parametrize("rows, dx", [(TERRACES, 0), (TERRACES, 3), (UP_SOUTH, 0), (STEEP_UP_SOUTH, 0)], ids=["down_south", "down_south_east", "up_south", "up_south_steep_behind_a_block"])
 def test_on_an_open_stone_terrace_the_land_is_not_cut(browser, server, rows, dx):
     g = hd(browser, server)
     try:
