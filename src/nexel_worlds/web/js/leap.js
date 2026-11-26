@@ -188,7 +188,7 @@ const Leap = (() => {
     //  sprinting + jumping the player is getting hit by the block AFTER jumping and it loses all his velocity")
     const nx = h && p.tx + h[0], ny = h && p.ty + h[1];
     const bump = !past && h && autoJump() && solidAt(nx, ny, z + 1) && landAt(z, nx, ny, p.tx, p.ty) === z + 1 && leapable(p.tx, p.ty, z, nx, ny);
-    landed0 = {x: +p.x.toFixed(3), y: +p.y.toFixed(3), tx: p.tx, ty: p.ty, z, h, past: !!past, bump: !!bump, can: can(p), up: !!h && solidAt(nx, ny, z + 1), to: h ? landAt(z, nx, ny, p.tx, p.ty) : null, room: !!h && leapable(p.tx, p.ty, z, nx, ny)};   // (what this landing decided, for a test that fails to say: Leap.landed)
+    landed0 = {x: p.x, y: p.y, tx: p.tx, ty: p.ty, z, h, past, bump, can: can(p), up: !!h && solidAt(nx, ny, z + 1), to: h && landAt(z, nx, ny, p.tx, p.ty), room: !!h && leapable(p.tx, p.ty, z, nx, ny)};   // (Leap.landed: shown by a test that fails)
     st.leapAt = past || bump ? null : {x: p.tx, y: p.ty, z};
     if (myAt) myAt.z = z;
     if (z0 - z >= FALL.from) {                // (what it costs shown as you land, by the world's own rule: sim/movement.py fell. Waiting for its `fall` event showed it most of a second after)
