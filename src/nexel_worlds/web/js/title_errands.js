@@ -2,9 +2,11 @@
 // Split out of TitleCast (#191): the same errands, given TitleCast's ways of going and doing (K: route, go, work, rest, visit,
 // beside, crop, talk, mutter...) and the island being shown, K.I (title_scene.js gives it at each visit: read when an errand runs).
 // An errand is a generator: each `yield` is a tenth of a second going by.
+//   the errands come in three groups, each a function of its own: what is done in the field and woods, about the farm, and in company or on the water
 //   TitleErrands(K) -> {water, harvest, chop, ...: (p) -> the errand of person p}
-const TitleErrands = (K) => {
-  const {afloat, beside, crop, dry, far, go, mutter, one, rest, ripe, route, someone, talk, toward, visit, work} = K;
+// field and woods: water, harvest, chop, mine, pick
+const titleWork = (K) => {
+  const {crop, dry, go, mutter, rest, ripe, visit, work} = K;
   function* gather(p, kind, full, picked, food) {
     const s = yield* visit(p, kind, (c) => c === CHAR[full]);
     if (!s) return;
@@ -13,8 +15,7 @@ const TitleErrands = (K) => {
     K.I.later(500 + K.I.pick(400), () => K.I.put(s[3], s[4], {block: full}, "grew"));
     yield* work(p, {doing: "eat", item: food, dir: "S"}, 24); mutter(p, "eat");
   }
-
-  const DO = {
+  const WORK = {
     *water(p) {                                      // the field's dry soil, a few tiles of it
       for (let n = 2 + K.I.pick(3); n > 0; n--) {
         const s = crop(p, dry);
@@ -54,6 +55,14 @@ const TitleErrands = (K) => {
     },
     berries: (p) => gather(p, "bushes", "berry_bush", "bare_bush", "berries"),
     fruit: (p) => gather(p, "fruit", "fruit_tree", "bare_fruit_tree", "fruit"),
+  };
+  return WORK;
+};
+
+// about the farm and the house
+const titleChores = (K) => {
+  const {beside, go, mutter, one, rest, visit, work} = K;
+  const CHORES = {
     *flower(p) {
       const s = yield* visit(p, "flowers", (c) => c === "f");
       if (!s) return;
@@ -97,6 +106,14 @@ const TitleErrands = (K) => {
       yield* work(p, {doing: "eat", item: one(["bread", "fruit", "carrot", "pumpkin", "berries"]), dir: "S"}, 26);
       burst(K.I.ox + p.x, K.I.oy + p.y, "food", 6, {dy: -.6, g: 3}); emote(p.name, "love"); yield* rest(p, 10, "S");
     },
+  };
+  return CHORES;
+};
+
+// company and the water: a stroll, a word, the fire, the pond, the boat
+const titleOutings = (K) => {
+  const {afloat, beside, far, go, mutter, one, rest, route, someone, talk, toward, visit, work} = K;
+  const OUTINGS = {
     *stroll(p) {                                     // nowhere in particular
       for (let n = 12; n > 0; n--) {
         const x = p.x + K.I.pick(21) - 10, y = p.y + K.I.pick(15) - 7, t = K.I.at(x, y);
@@ -152,5 +169,6 @@ const TitleErrands = (K) => {
       yield* rest(p, 8, "W");
     },
   };
-  return DO;
+  return OUTINGS;
 };
+const TitleErrands = (K) => ({...titleWork(K), ...titleChores(K), ...titleOutings(K)});
