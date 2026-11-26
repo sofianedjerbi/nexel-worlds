@@ -112,7 +112,7 @@ KEPT = {
     "swing_art.js STEP": "art: the swings that lunge",
     "tiles.js MARKS": "art: what is drawn on a ground (tilled soil, ash, a floor, a path)",
     "title_cast.js HARD": "the title scene's cast: grounds its actors walk round",
-    "title_errands.js DO": "the title scene's cast: what its actors do",
+    "title_errands.js WORK": "the title scene's cast: what its actors do in the field and woods",
     "ui.js ICONS": "art: an item's icon",
     "ui.js BARE": "art: the icons drawn without a ring",
     "wear.js LOOK": "art: how each worn thing is drawn",
