@@ -4,7 +4,6 @@
 import pytest
 
 from test_e2e_leap import agree, frames, smooth
-from waits import ANSWERED
 
 pytestmark = pytest.mark.e2e
 
@@ -77,10 +76,11 @@ def test_sprint_jumping_up_a_hill_under_the_open_sky_keeps_the_open_view(game, w
     game.wait("myAt && myAt.z >= 5", 8000)
     for k in (key, "Shift"):
         game.page.keyboard.up(k)
-    # (and until the world has answered all the page said: it makes a flight a stride behind the screen, at the height
-    # it left from until it is told where it came down (sim/leaping.py). Read as the screen landed, it had you on the
-    # hill's top tile a level low, z 4: main's run 45880440852)
-    game.wait(f"({ANSWERED})()", 8000)
+    # (and until the world's tick has you there too: it makes a flight a stride behind the screen, at the height it left
+    # from until it is told where it came down (sim/leaping.py). Read as the screen landed, it had you on the top a level
+    # low, z 4 (main's run 45880440852); waited for with nothing unasked of it, never, as a page always has something
+    # asked (main's run 45902578064). The tick comes at its own pace, whatever the frames' length)
+    game.wait(f"(() => {{ const e = ents.get('agent' + myId).e; return !!e && e.z === 5 && e.x === myAt.x && e.y === myAt.y; }})()", 8000)
     game.rest()
     rec = game.js("(() => { __vwOn = false; return __vw; })()")
     assert game.server()["z"] == 5, game.server()
@@ -141,15 +141,15 @@ def test_sprint_jumping_down_off_a_high_step_you_go_on_south_never_put_back(game
     game.page.keyboard.press("Space")
     game.wait("Leap.on()", 2000)
     game.wait("!Leap.on()", 4000)
-    # (on three tiles from where it came down, then the keys up, and until the walk is over and the world has answered
-    #  all of it: where it ends is the game's, at any frame's length. Time held, 700 ms then 500, ran on further the
+    # (on three tiles from where it came down, then the keys up, and until the walk is over and the world's tick has you
+    #  where you stopped: where it ends is the game's, at any frame's length. Time held, 700 ms then 500, ran on further the
     #  slower the frames; a frame moves you a tile at most (render.js: 0.1 s at most, at a sprint's 10 a second), the
     #  keys are up a frame or two after the third tile, and the arc lands where it does at any frame (leap.js: steps of
     #  1/60 s): the run ends some 10 + 3 + 2 tiles south of the edge, on the run-out laid for it)
     land = game.js("ents.get('agent' + myId).y")
     game.wait(f"ents.get('agent' + myId).y >= {land + 3}", 4000)
     game.page.keyboard.up("s"); game.page.keyboard.up("Shift")
-    game.wait("walking === null && !pred && !Leap.on() && !Object.keys(pending).length", 4000)
+    game.wait("(() => { const p = ents.get('agent' + myId); return walking === null && !Leap.on() && p.x === p.tx && p.y === p.ty && !!p.e && p.e.x === p.tx && p.e.y === p.ty; })()", 4000)
     r = game.js("(() => { __fcOn = false; return __fc; })()")
     game.js("__slow = false")
     print("frames", r, "told", game.js("__told"), "world", game.server())         # (shown when it fails)
