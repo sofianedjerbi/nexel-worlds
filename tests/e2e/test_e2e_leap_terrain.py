@@ -150,6 +150,9 @@ def test_running_uphill_with_the_jump_key_never_meets_a_step_s_face(game, prof):
     game.js("""() => { window.__hit = 0; if (!window.__hitHook) { window.__hitHook = true; const f = Leap.frame;
       Leap.frame = (p, dt, now) => { const a = Leap.state && {...Leap.state}; f(p, dt, now); const b = Leap.state;
         if (a && b && Math.abs(a.vx) + Math.abs(a.vy) > 0 && Math.abs(b.x - a.x) + Math.abs(b.y - a.y) < 1e-4) __hit++; }; } return 1; }""")
+    game.js("""() => { window.__told = []; const f = window.rpc, me = () => { const p = ents.get("agent" + myId); return p && [+p.x.toFixed(2), p.tx, Leap.on()]; };
+      window.rpc = (op, extra) => { const e = op === "act" && extra && ["walk", "stop", "jump", "leap"].includes(extra.tool) && [extra.tool, JSON.stringify(extra.args), me()];
+        if (e) __told.push(e); return f(op, extra).then((r) => { if (e) e.push(r && (r.ok === false ? r.error : r.result && r.result.z)); return r; }); }; return 1; }""")
     t0 = game.js("performance.now()")
     game.page.keyboard.down("Shift"); game.page.keyboard.down("d")
     for _ in range(80):
@@ -159,6 +162,6 @@ def test_running_uphill_with_the_jump_key_never_meets_a_step_s_face(game, prof):
     game.page.keyboard.up("d"); game.page.keyboard.up("Shift")
     game.rest()
     assert game.js("__hit") == 0, game.js("__hit")
-    assert game.server()["z"] == prof[-1], (game.server(), prof[-1])
+    assert game.server()["z"] == prof[-1], (game.server(), prof[-1], x, game.js("__told"))     # (what the world was told on the way up, and said)
     agree(game)
     assert not game.errors, game.errors
