@@ -1,4 +1,4 @@
-"""(probe #193: run beside hd_splash) Land coming in at the view distances (hd.js viewOf, state.js viewRect: the land box is the view): teleported onto land nobody has seen,
+"""Land coming in at the view distances (hd.js viewOf, state.js viewRect: the land box is the view): teleported onto land nobody has seen,
 at each setting, zoomed in and out, the land made tile by tile comes at once and is drawn whole. A file of its own: it
 makes land at eight places, and the land the server is then left to keep and put away slowed the next tests' ticks
 (test_e2e_hd_sky's sky line, run after it on the same server)."""

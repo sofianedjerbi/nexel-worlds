@@ -46,6 +46,6 @@ def test_off_a_high_ledge_into_water_your_body_does_not_jump_up_the_screen(brows
     # move after a landing on the ground: 6 art px in a 60th of a second, by the frame's own time: test_e2e_leap_terrain)
     cap = lambda a, b: 6 * max(1, (b[7] - a[7]) / 16.67)
     jolts = [(a, b) for a, b in zip(fr[k - 1:], fr[k:]) if abs(b[0] - a[0]) > cap(a, b)]
-    assert not jolts, str(jolts[:4]) + ' PROBE ' + str(fr[max(0, k - 6):k + 18])
+    assert not jolts, str(jolts[:4])
     g.rest()
     assert g.server()["swimming"] and not g.errors, g.errors
