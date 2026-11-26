@@ -34,7 +34,7 @@ def test_a_jump_that_comes_down_against_a_step_goes_on_up_it(game, run):
             game.page.keyboard.up(k)
     rec = frames(game, act)
     back = [(a[:5], b[:5]) for a, b in zip(rec, rec[1:]) if b[1] < a[1] - 1e-3]
-    assert not back, back
+    assert not back, (back, game.js("Leap.landed"))     # (with what its last landing decided: leap.js land)
     assert game.server()["z"] == 1 and game.server()["x"] > x + 6, (game.server(), x)
     agree(game)
     assert not game.errors, game.errors

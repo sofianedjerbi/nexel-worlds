@@ -21,6 +21,7 @@ const Leap = (() => {
   const tileOf = (x, y) => [Math.round(x), Math.round(y)];
   // the body (feet at level z, two cells tall) fits on tile (x, y)
   const fits = (x, y, z) => { const c = Math.floor(z + 1e-6); return !solidAt(x, y, c + 1) && !solidAt(x, y, c + 2); };
+  let landed0 = null;
   const held = () => { const k = [...keys].reverse().find((k) => KEYDIR[k]); return k ? DIRV[KEYDIR[k]] : null; };
   // May you jump from where you are? (in the water, in a boat, on a ladder, falling, building: the old ways)
   function can(p, ledge) {   // (ledge: walking off one: the fall jump.js begins on the tile before the edge does not stop it, it is taken over)
@@ -186,6 +187,7 @@ const Leap = (() => {
     //  sprinting + jumping the player is getting hit by the block AFTER jumping and it loses all his velocity")
     const nx = h && p.tx + h[0], ny = h && p.ty + h[1];
     const bump = !past && h && autoJump() && solidAt(nx, ny, z + 1) && landAt(z, nx, ny, p.tx, p.ty) === z + 1 && leapable(p.tx, p.ty, z, nx, ny);
+    landed0 = {x: +p.x.toFixed(3), y: +p.y.toFixed(3), tx: p.tx, ty: p.ty, z, h, past: !!past, bump: !!bump, can: can(p), up: !!h && solidAt(nx, ny, z + 1), to: h ? landAt(z, nx, ny, p.tx, p.ty) : null, room: !!h && leapable(p.tx, p.ty, z, nx, ny)};   // (what this landing decided, for a test that fails to say: Leap.landed)
     st.leapAt = past || bump ? null : {x: p.tx, y: p.ty, z};
     if (myAt) myAt.z = z;
     if (z0 - z >= FALL.from) {                // (what it costs shown as you land, by the world's own rule: sim/movement.py fell. Waiting for its `fall` event showed it most of a second after)
@@ -250,5 +252,5 @@ const Leap = (() => {
   const seen = () => Math.cos(HdLook.cam.pitch * Math.PI / 180);
   // hd_level.js: the level you stand at (the ground under you) and the one you are drawn from (the one you left)
   const level = () => (L ? [settleAt(L.tx, L.ty, L.z + 1e-6), L.z0] : null);
-  return {leapable, can, due, room, dropDue, ledge, start, ahead, frame, body, level, landedOn, after, cam, lift, seen, on: () => !!L, landing: (p) => !!(BodyPlace.peek(p) || {}).leapAt, gliding: () => { const p = ents.get("agent" + myId); return !!(p && landedOn(p) !== null); }, get state() { return L; }};
+  return {leapable, can, due, room, dropDue, ledge, start, ahead, frame, body, level, landedOn, after, cam, lift, seen, on: () => !!L, landing: (p) => !!(BodyPlace.peek(p) || {}).leapAt, get landed() { return landed0; }, gliding: () => { const p = ents.get("agent" + myId); return !!(p && landedOn(p) !== null); }, get state() { return L; }};
 })();
