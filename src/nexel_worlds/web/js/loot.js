@@ -1,6 +1,6 @@
 // Loot: what a creature (or a person) drops pops out of the poof, arcs up and lands with a bounce or two, right where
 // the pile then shows. The pile at that tile waits until everything has landed, so nothing appears twice.
-// A thing on the ground is smaller than its icon (16 px across, it was far too big beside a body), and a pixel of it
+// A thing on the ground is smaller than its icon (16 px across is far too big beside a body), and a pixel of it
 // is a pixel of the land all the same: the icon is made two thirds the size by whole pixels, 11 for 16 (smallPx).
 // The HUD shows the same small picture in its slots, at the land's pixel too (slotIcon, ui.js).
 

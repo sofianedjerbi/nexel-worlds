@@ -52,7 +52,7 @@ const F3 = (() => {
     if (!el) make();
     el.style.display = ""; document.body.classList.add("f3");
     write(el.children[0], lines("game")); write(el.children[1], lines("perf"));
-    // the top left corner, always (the owner: "goal shouldn't push everything down": it was put under the goals and the chat); what it covers there (goals, chat) is hidden while it is open: body.f3 (style.css)
+    // the top left corner, always (the owner: "goal shouldn't push everything down": not under the goals and the chat); what it covers there (goals, chat) is hidden while it is open: body.f3 (style.css)
     S.cost = performance.now() - t0; S.at = now;
   }
   // a phone: hold the goals' chip (or card) for half a second

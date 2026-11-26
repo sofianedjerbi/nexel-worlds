@@ -63,7 +63,7 @@ const TitleCast = (() => {
   }
   const rest = (p, ticks, dir) => work(p, {dir}, ticks);
   // A free place of a kind (title_map.js: where to stand, the way to face, the tile it is about), one of the four
-  // nearest, not the one they were last at; it is theirs till the errand is over. `ok`: what must be on its tile
+  // nearest, not the one they last stood at; it is theirs till the errand is over. `ok`: what must be on its tile
   function place(p, kind, ok) {
     const s = one(I.C.places[kind].filter((q) => !taken.has(q) && q !== p.was && (!ok || ok(I.at(q[3], q[4])[0]))).sort((a, b) => far(p, a) - far(p, b)).slice(0, 4));
     if (s) { taken.set(s, p); p.spot = s; }
@@ -81,7 +81,7 @@ const TitleCast = (() => {
   const field = (want) => { const [x0, y0, x1, y1] = I.C.field, out = []; for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const t = I.at(x, y); if (t && want(t[0], t[1])) out.push([x, y]); } return out; };
   const crop = (p, want) => one(field(want).map(([x, y]) => beside(p, x, y)).filter(Boolean).sort((a, b) => far(p, a) - far(p, b)).slice(0, 2));
   const ripe = (c) => c === "w", dry = (c, g) => g === "o";
-  // Two of them, a line and its answer: the one spoken to stops what they were at and turns
+  // Two of them, a line and its answer: the one spoken to stops what they are doing and turns
   function* talk(p, q, lines) {
     if (!q) return;
     const [a, b] = one(lines);
@@ -109,7 +109,7 @@ const TitleCast = (() => {
       }
       mutter(p, "water");
     },
-    *harvest(p) {                                    // ripe wheat comes up, and seed goes in where it was
+    *harvest(p) {                                    // ripe wheat comes up, and seed goes in where it grew
       for (let n = 2 + I.pick(3); n > 0; n--) {
         const s = crop(p, ripe);
         if (!s || !(yield* go(p, s[0], s[1]))) return;

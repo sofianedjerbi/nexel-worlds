@@ -154,7 +154,7 @@ function swell(tr, level, secs, at) {
   const t = Math.max(at ?? 0, audio.currentTime), g = tr.gain.gain, f = tr.far.frequency;
   g.cancelScheduledValues(t); f.cancelScheduledValues(t);
   g.setTargetAtTime(level, t, secs / 3);
-  f.setValueAtTime(level ? Math.min(f.value, NEAR / 2) : Math.max(f.value, FAR * 2), t);      // (from where it is, if it was already moving)
+  f.setValueAtTime(level ? Math.min(f.value, NEAR / 2) : Math.max(f.value, FAR * 2), t);      // (from where it is, if it is already moving)
   f.exponentialRampToValueAtTime(level ? NEAR : FAR, t + secs);
 }
 function halt(tr, after) {                                 // stop it, `after` seconds from now (its gain fades meanwhile)

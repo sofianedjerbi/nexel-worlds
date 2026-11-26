@@ -1,4 +1,4 @@
-// Touch: the game on a phone. Only on touch screens (body.touch); the keyboard and mouse play stays as it was.
+// Touch: the game on a phone. Only on touch screens (body.touch); the keyboard and mouse play is untouched.
 //   Left thumb: a joystick wherever it lands on the left of the screen (pushed far, you sprint).
 //   Right thumb: the main button (E: act on what you face, or eat, wear what you hold; held it keeps going) and the
 //   other one (X), each labelled with what it will do right now; jump and pick up show up when you can. Items (the inventory), craft, talk and the menu at the top.
@@ -51,8 +51,8 @@ function setDir(dir, run) {
 }
 
 // A button here acts when the finger lands (no wait for it to lift). The click the browser sends after that same touch
-// belongs to the button: it went to whatever had come up under the finger (held upright, the inventory's and the
-// book's "x" open right under Items and Craft: they opened and shut on one tap). That one click is taken out.
+// belongs to the button, not to whatever has come up under the finger (held upright, the inventory's and the
+// book's "x" open right under Items and Craft: they would open and shut on one tap). That one click is taken out.
 let tapEat = null;                            // {id: the pointer that pressed a button, until: once lifted, its click is due before this}
 addEventListener("pointerup", (e) => { if (tapEat && e.pointerId === tapEat.id) tapEat.until = performance.now() + 120; }, true);
 addEventListener("pointercancel", (e) => { if (tapEat && e.pointerId === tapEat.id) tapEat = null; }, true);
@@ -123,7 +123,7 @@ if (TOUCH) {
   };
   for (const ev of ["pointerup", "pointercancel"]) pad.addEventListener(ev, release);
 
-  // (build mode: A held while the stick moves the cursor is a row, as Space held is: it was a tap a block. Held still it places once: a second one would go on top of the first)
+  // (build mode: A held while the stick moves the cursor is a row, as Space held is, not a tap a block. Held still it places once: a second one would go on top of the first)
   holdButton($("tA"), (again) => { if (!me) return; if (!Build.on) useFacing(false, again); else if (!again) { Build.click(Build.S.at, false); Build.S.hold = " "; } });
   for (const ev of ["pointerup", "pointercancel"]) $("tA").addEventListener(ev, () => { if (Build.S.hold === " ") Build.S.hold = null; });
   holdButton($("tB"), () => { if (!me) return; if (Build.on) Build.click(Build.S.at, true); else useFacing(true); });
@@ -137,7 +137,7 @@ if (TOUCH) {
   tapButton($("tJump"), () => jumpKey());                  // (walk.js: up the step in front; shown when there is one, held stick and all)
   tapButton($("tBag"), () => toggleBag());
   // (on its side Talk and Menu stand beside the goals, phone.css: where the goals end, known as soon as they are laid out: measured five times a second, Menu moved under the finger that was coming down on it)
-  const beside = () => { const r = Math.round($("goalhint").getBoundingClientRect().right); if (r > 0) document.body.style.setProperty("--goalsr", r + "px"); };      // (the goals shut, a window open over them: they stay where they were)
+  const beside = () => { const r = Math.round($("goalhint").getBoundingClientRect().right); if (r > 0) document.body.style.setProperty("--goalsr", r + "px"); };      // (the goals shut, a window open over them: they keep their place)
   new ResizeObserver(beside).observe($("goalhint"));
   tapButton($("tCraft"), () => toggleCraft());
   tapButton($("tTalk"), () => openChat());
