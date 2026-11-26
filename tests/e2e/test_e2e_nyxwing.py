@@ -44,13 +44,16 @@ def test_a_player_who_comes_late_sees_its_entrance_where_it_is(game, browser, se
     """(#88) Someone walks in while it is coming down: their page timed its entrance, and its song, from when it first
     saw it, so it showed them the start of the descent and played the song from its start, out of step with the fight.
     Now the server says how long ago it came (views.py `came`): the late page's entrance began that long ago."""
-    game.clear_area(12)
-    cid = game.spawn("nyxwing", 6, 0)
-    nyx = NYX.format(cid)
-    game.wait(f"(() => {{ const q = {nyx}; return q && q.e.act === 'arrive' && q.e.came >= 4; }})()", 30000)
     x, y = game.pos()
+    # (the late page joined first, 300 tiles off, out of sight and hearing (a boss carries VIEW_R): joined after the wait, a
+    # runner's join took the rest of the entrance, and it first saw it landed: came 12.3, the whole of ARRIVE, act '')
     late = open_game(browser, server)
     try:
+        late.rpc("dev_teleport", x=x + 300, y=y); late.arrive()
+        game.clear_area(12)
+        cid = game.spawn("nyxwing", 6, 0)
+        nyx = NYX.format(cid)
+        game.wait(f"(() => {{ const q = {nyx}; return q && q.e.act === 'arrive' && q.e.came >= 4; }})()", 30000)
         late.rpc("dev_teleport", x=x, y=y + 1)
         late.wait(f"(() => {{ const q = {nyx}; return q && Nyx.began(q.e) !== undefined; }})()", 15000)
         ago, came, act = late.js(f"(() => {{ const q = {nyx}; return [(performance.now() - Nyx.began(q.e)) / 1000, q.e.came, q.e.act]; }})()")
