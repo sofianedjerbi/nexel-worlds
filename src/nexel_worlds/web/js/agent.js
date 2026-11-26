@@ -117,6 +117,18 @@ const TARGET_WHY = {
   not_agent: () => "Give to someone, not a creature",
 };
 const errorText = (r) => (Object.hasOwn(ERROR_TEXT, r.error) && (r.data || !ERROR_TEXT[r.error].length) ? ERROR_TEXT[r.error](r.data) : r.detail || r.error);   // (words that need no data, as "changed"'s, need none sent)
+// A dig done with no strike heard: the strike sounds as the frame drawn at its fourth (characters.js), and a frame
+// longer than the swing's first third (a slow device; the tests' fast clock on a runner: 0.47 s of the game a frame)
+// went from before it to the action's end. The axe was silent ("chop" not heard, test_e2e_ui #47). Once, on the tile
+// as it was when the key was pressed (a tree felled is a stump by now), and only if no strike sounded since the press:
+// the frames draw your dig from the world's tick until the server's word that it started comes in (another socket, it
+// may come later), with a time of its own, so a strike is told by when it sounded, not by which action drew it
+function struckOnce(a, r) {
+  if (!a || a.tool !== "dig" || !a.at || a.was == null || !r || !r.ok) return;
+  const q = ents.get("agent" + myId);
+  if (q && q.strikeAt >= a.pressed) return;
+  sfx(strikeSound(a.was, a.with && SWING_ROW[toolArt(a.with)]), a.at[0], a.at[1]);
+}
 async function act(tool, args, quiet) {
   if (!me || (eating() && !RULES.meanwhile.includes(tool))) return null;
   while (pred && performance.now() < pred.until) await new Promise((ok) => setTimeout(ok, 16));   // the server is still coming to where you stopped: what you do, you do from there
@@ -128,10 +140,11 @@ async function act(tool, args, quiet) {
   const aside = RULES.aside.includes(tool);
   // the facing only shows once the server says the action takes time (instant things don't turn you or stop you)
   if (aside) pendingAside = {tool, item: args.item};
-  else { busy = true; pendingAct = {tool, dir: look, at, tid: args.target, with: args.with, item: args.item}; }
+  else { busy = true; pendingAct = {tool, dir: look, at, tid: args.target, with: args.with, item: args.item, pressed: performance.now(), was: at ? combAt(...at) : null}; }
   const r = await rpc("act", {tool, args});
   if (aside) { pendingAside = myAside = null; if (progress && progress.tool === tool) progress = null; }
   else {
+    struckOnce(myAction, r);
     pendingAct = null; myAction = null;
     busy = false; progress = null;
     if (walking === null && [...keys].some((k) => KEYDIR[k])) syncWalk();   // still holding a direction: walk on
