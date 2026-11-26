@@ -74,12 +74,11 @@ def test_a_bubble_goes_with_its_speaker_px_for_px_and_its_letters_stay_as_they_a
         tail = {round(f["at"][0] + round(f["w"] / 2 / u) * u - f["body"][0], 4) for f in walk}
         assert len(tail) == 1, tail                                                        # over the speaker's head: the same place every frame
         # its px as the frame before's: not drawn another way (its letters put a fraction of a px aside were most of their
-        # px; a few px of the outline, 5 or so, come out another way now and then). At a whole density only: at 1.25 and
-        # 1.75 on the runners' renderer (Mesa lavapipe) the letters' soft px are another raster each frame of a walk (4 to
-        # 11 % of the bubble's px) while the bubble is on whole px of the screen, as asserted above (#61)
-        if dpr == int(dpr):
-            offs = [f["off"] for f in still + walk]
-            assert max(offs) < walk[0]["n"] / 100, [(i, o) for i, o in enumerate(offs) if o]
+        # px; a few px of the outline, 5 or so, come out another way now and then). At every density: at 1.25 and 1.75 the
+        # letters were drawn from 24.000000000000004 px of the screen and not 24 one frame in five, another raster each
+        # step (4 to 11 % of the bubble's px); they are drawn in the screen's own whole px now (bubbles.js bubbleText, #61)
+        offs = [f["off"] for f in still + walk]
+        assert max(offs) < walk[0]["n"] / 100, [(i, o) for i, o in enumerate(offs) if o]
         mine = {round(f["mine"], 4) for f in walk if f["mine"] is not None}
         assert len(mine) == 1, mine        # your own name over your head: the same place every frame (from your place to 1/16 tile, it was an art px off and back)
         assert not g.errors and not other.errors
