@@ -15,7 +15,7 @@ LOG = """(() => { window.__fr = []; const f = () => { if (!window.__fr) return; 
 LOGGED = "(() => { const l = window.__fr; window.__fr = null; return l; })()"
 
 
-@pytest.mark.realtime
+@pytest.mark.stepped
 def test_off_a_high_ledge_into_water_your_body_does_not_jump_up_the_screen(browser, server):
     """(#24) Off a ledge six high into a pond: the frame you came down in the water your body went 13 px up the screen
     (art y 112 to 99), the eye still a level and a half over the water, coming down. A landing on the ground is drawn
@@ -51,11 +51,12 @@ def test_off_a_high_ledge_into_water_your_body_does_not_jump_up_the_screen(brows
     # picture, the pond and you alike, up to 10 px a frame (render.js fallShake): that is the game's own, not a jolt of yours)
     cap = lambda a, b: 6 * max(1, (b[7] - a[7]) / 16.67)
     rel, foot, pose = (lambda r: r[0] - r[9]), (lambda r: r[8] - r[9]), (lambda r: r[0] - r[8])
-    # (your feet into the water at the fall's own speed, by the frame's time, a px or two of rounding aside: the jump's place
-    # and the swimmer's are one, BodyPlace up. Then the picture changes over them, the fall's pose to the swimmer's, as far
-    # as the swimmer sinks under the water's face and a stroke's bob, a frame: swim.js SWIM.sink, #193)
-    dt = lambda a, b: b[7] - a[7]
-    assert k < 2 or -3 < foot(fr[k]) - foot(fr[k - 1]) <= (foot(fr[k - 1]) - foot(fr[k - 2])) * max(1, dt(fr[k - 1], fr[k]) / dt(fr[k - 2], fr[k - 1])) + 3, str(fr[max(0, k - 4):k + 4])
+    # (stepped: every frame a 60th of a second of the page's time, whatever the machine draws it in, clock.py STEP: the same
+    # frames on a runner at 200 ms a frame as at 16. Your feet go into the water at the fall's own step, a px or two of
+    # rounding aside: the jump's place and the swimmer's are one, BodyPlace up. Then the picture changes over them, the
+    # fall's pose to the swimmer's, as far as the swimmer sinks under the water's face and a stroke's bob, a frame: swim.js
+    # SWIM.sink, #193)
+    assert k < 2 or -3 < foot(fr[k]) - foot(fr[k - 1]) <= foot(fr[k - 1]) - foot(fr[k - 2]) + 3, str(fr[max(0, k - 4):k + 4])
     sink = g.js("SWIM.sink") + 1
     poses = [(a, b) for a, b in zip(fr[k - 1:], fr[k:]) if abs(pose(b) - pose(a)) > sink]
     assert not poses, str(poses[:4])
