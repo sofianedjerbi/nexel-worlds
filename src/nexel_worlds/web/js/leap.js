@@ -216,13 +216,13 @@ const Leap = (() => {
     const st = BodyPlace.peek(p), a = st && st.leapAt;
     if (a && Math.abs(p.x - a.x) < 1e-3 && Math.abs(p.y - a.y) < 1e-3) { st.leapAt = null; if (st.jumpNext) { st.jumpNext = false; jumpKey(); } else if (held()) syncWalk(); }
   }
-  // What jump.js jumping() draws for you in the air: as a jump's, its height over the level you left
+  // What jump.js jumping() draws for you in the air: its height over this frame's level (cam)
   function body(p, now) {
     if (!L || !p.e || p.e.kind !== "agent" || p.e.id !== myId) return null;
     const ground = settleAt(L.tx, L.ty, L.z + 1e-6), v0 = V0();
     const now1 = L.t < .03 ? "takeoff" : L.vz < 0 && L.z - ground < .12 ? "touch" : L.vz > .4 * v0 ? "rise" : L.vz < -.3 * v0 ? "fall" : "apex";
     const pose = ORDER[L.pi = Math.max(L.pi || 0, ORDER.indexOf(now1))];   // (one after the other, never back: a touch over the start of a step, then its edge, flashed)
-    const c = C === null ? L.z0 : C;
+    const c = C === null ? L.z0 : cam(null, now);
     return {body: L.z - c, ground: ground - c, air: false, squash: false, tuck: true, pose, leap: true};
   }
   // The level you are drawn from (hd_level.js): from the jump on, it goes towards where you are a px a frame at the
