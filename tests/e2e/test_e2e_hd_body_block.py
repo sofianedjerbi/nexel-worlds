@@ -8,6 +8,7 @@ from test_e2e_hd_sun import hd
 pytestmark = pytest.mark.e2e
 
 
+@pytest.mark.stepped   # (go()'s 700 ms, the window's hold and the eye's tilt, are 42 frames of 1/60 s: the eye at rest when it is read, whatever a frame takes, #47)
 def test_behind_a_block_your_body_below_its_top_edge_is_behind_it_not_drawn_over_it(browser, server):
     """(#281) Right behind a block a level up, on the meadow: the block's top edge crosses you at your middle. Below that
     edge the block is nearer the eye than you: there you are behind it (one px in two of you through it), not drawn whole
