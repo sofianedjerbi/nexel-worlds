@@ -118,7 +118,9 @@ def test_a_jump_onto_a_block_is_smooth_and_agreed(game):
     # lower, about a px at a runner's 94 ms frames. The record's own gaps say how much its highest frame may miss by)
     gap = max(min(b[0] - a[0], 100) for a, b in zip(rec, rec[1:])) / 1000
     top, miss = max(r[3] for r in rec), game.js("JUMP.g * P") / 2 * (gap / 2) ** 2
-    assert game.server()["z"] == 1 and game.pos()[0] == x + 2 and top + .5 >= 8 - miss, (game.server(), top, round(miss, 2))
+    k = max(range(len(rec)), key=lambda i: rec[i][3])
+    around = "; ".join(str([round(v, 3) if isinstance(v, float) else v for v in r]) for r in rec[max(0, k - 4):k + 5])   # (the frames round the top: a string, not cut)
+    assert game.server()["z"] == 1 and game.pos()[0] == x + 2 and top + .5 >= 8 - miss, f"{game.server()}, top {top}, miss {miss:.2f}: {around}"
     agree(game)
     assert not game.errors, game.errors
 
