@@ -72,7 +72,10 @@ def test_a_bubble_goes_with_its_speaker_px_for_px_and_its_letters_stay_as_they_a
             x0, y0 = f["at"]
             assert whole(x0 * dpr) and whole(y0 * dpr), f                                  # on whole px of the screen
             assert whole(x0 / u), f                                                        # ...and on the land's pixel
-        tail = {round(f["at"][0] + round(f["w"] / 2 / u) * u - f["body"][0], 4) for f in walk}
+        W = g.js("innerWidth")
+        free = [f for f in walk if 4 < f["at"][0] and f["at"][0] + f["w"] < W - 4]       # (a bubble held inside the screen's edge is not over its speaker: drawBubbles x0. On a slow
+        assert len(free) > 12, (len(free), len(walk))                                     # runner one page's sprint ran on further than the other's: 5 tiles ahead, its bubble held, 243 px off)
+        tail = {round(f["at"][0] + round(f["w"] / 2 / u) * u - f["body"][0], 4) for f in free}
         assert len(tail) == 1, tail                                                        # over the speaker's head: the same place every frame
         # its px as the frame before's: not drawn another way (its letters put a fraction of a px aside were most of their
         # px; a few px of the outline, 5 or so, come out another way now and then). At a whole density only: read each frame,
