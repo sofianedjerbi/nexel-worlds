@@ -19,6 +19,21 @@ def repo(tmp_path, files):
 def test_the_globals_a_script_makes():
     js = "const WayShow = (() => {})();\nlet busyNow = 0, x = 1;\nfunction drawTile(a) {}\nclass Keyhole {}\nwindow.HdLook = {};\n  const inner = 1;\nconst {alpha, beta: gamma} = Q;\nconst ab = 1;"
     assert A.globals_of(js) == {"WayShow", "busyNow", "drawTile", "Keyhole", "HdLook", "alpha", "gamma"}
+    assert A.globals_of("const Nyx = 1;\nconst IMG = {}, now = 0;") == {"Nyx"}      # (a module's name of 3, not a constant or a word)
+
+
+def test_a_part_of_a_split_file_asks_for_the_tests_of_the_whole(tmp_path):
+    """(nyxwing_sky.js is a part of nyxwing.js, the one file that calls NyxSky: its tests use Nyx, the whole's, and a part's
+    change ran none of them)"""
+    r = repo(tmp_path, {"src/nexel_worlds/web/js/nyxwing.js": "const Nyx = (() => { const K = NyxSky({}); })();\n",
+                        "src/nexel_worlds/web/js/nyxwing_sky.js": "const NyxSky = (K) => {};\n",
+                        "src/nexel_worlds/web/js/shared.js": "const SharedThing = 1;\n",
+                        "src/nexel_worlds/web/js/one.js": "const OneUser = SharedThing;\n",
+                        "src/nexel_worlds/web/js/two.js": "const TwoUser = SharedThing;\n",
+                        "tests/e2e/test_e2e_nyx.py": 'def test_a(g):\n    g.wait("Nyx.owns")\n',
+                        "tests/e2e/test_e2e_one.py": 'def test_o(g):\n    g.wait("OneUser")\n'})
+    assert A.affected(["src/nexel_worlds/web/js/nyxwing_sky.js"], r)[0] == ["tests/e2e/test_e2e_nyx.py"]
+    assert A.affected(["src/nexel_worlds/web/js/shared.js"], r)[0] == []          # (used by two files: a part of neither)
 
 
 def test_a_js_change_asks_for_the_tests_that_use_its_globals_not_those_that_only_say_the_word(tmp_path):
