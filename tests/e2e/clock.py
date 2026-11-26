@@ -26,6 +26,10 @@ PACE = max(1.0, float(os.environ.get("E2E_PACE", "4")))
 FRAME_BUDGET = 70
 AHEAD = os.environ.get("E2E_AHEAD", "1") != "0"     # the next test's page loads while this one plays (pages.py)
 now = 1.0           # the pace of the test that is running (conftest.py: the `pace` fixture)
+# LOCKSTEP (#276): every test is stepped (STEP) and its world ticks when its page asks (server.py dev_step), unless it
+# is `realtime`: it measures the machine's own time, or has a clock that is not the page's. E2E_LOCKSTEP=0: as before,
+# only the tests marked `stepped` are, on the world's own clock, and the others run on the fast clock (PACE)
+LOCKSTEP = os.environ.get("E2E_LOCKSTEP", "1") != "0"
 step = False        # the test that is running is `stepped`: its pages' time goes 1/60 s a frame, whatever the machine (STEP)
 coming = None       # the pace of the test after it, if it plays on the `game` fixture's page; None: it does not, or there is none (conftest.py)
 
@@ -64,11 +68,23 @@ STEP = """(() => { if (window.__step) return; window.__step = 1;
   window.setTimeout = (f, ms, ...a) => { timers.set(++id, {at: T + (+ms || 0), f, a}); return id; };
   window.setInterval = (f, ms, ...a) => { const e = Math.max(1, +ms || 0); timers.set(++id, {at: T + e, f, a, every: e}); return id; };
   window.clearTimeout = window.clearInterval = (k) => { timers.delete(k); };
-  const tick = () => { T += F; n++;
+  // LOCKSTEP (#276): the page that drives the world (window.__lockstep, game.py join: the test's first) runs a frame only
+  // once the world is at the tick of that frame's time (dev_step, server.py), its answer and the tick itself come: page
+  // and world one time, however slow the machine. An answer not come in 2 s of the wall's time is asked again (to is
+  // absolute: nothing made twice), and said every fifth time
+  let drive = null;
+  const ask = () => { const to = drive.asked; drive.sent = pn(); rpc("dev_step", {to}).then((r) => { if (drive && drive.asked === to && r && r.tick >= to) drive.ok = true; }); };
+  window.__lockstep = (tick0, hz) => { drive = {tick0, hz, T0: T, asked: tick0, ok: true, sent: 0, tries: 0}; return 1; };
+  const owed = (t) => { if (!drive) return false; const want = drive.tick0 + Math.floor((t - drive.T0) * drive.hz / 1000);
+    if (want > drive.asked) { drive.asked = want; drive.ok = false; drive.tries = 0; ask(); }
+    if (drive.ok && typeof clock === "object" && clock.tick >= drive.asked) return false;
+    if (pn() - drive.sent > 2000) { if (++drive.tries % 5 === 0) console.error(`lockstep: no tick ${drive.asked} from the world in ${drive.tries * 2} s (it is at ${clock && clock.tick})`); ask(); }
+    return true; };
+  const tick = () => { if (owed(T + F)) { raf(tick); return; } T += F; n++;
     for (const [k, t] of [...timers].sort((a, b) => a[1].at - b[1].at)) if (t.at <= T && timers.has(k)) {
       if (t.every) t.at += t.every; else timers.delete(k); try { if (typeof t.f === "function") t.f(...t.a); } catch (e) { later(e); } }
     const fs = [...frames.values()]; frames.clear(); for (const f of fs) try { f(T); } catch (e) { later(e); }
-    if (n % 30 === 0) { const r = (T - v0) / Math.max(1, pn() - w0); w0 = pn(); v0 = T;
+    if (n % 30 === 0 && !drive) { const r = (T - v0) / Math.max(1, pn() - w0); w0 = pn(); v0 = T;
       if (typeof rpc === "function") rpc("dev_pace", {pace: Math.max(.05, Math.min(1, r))}); }
     raf(tick); };
   raf(tick); })()"""
@@ -128,6 +144,16 @@ def paced(page, pace=None):
         page.wait_for_timeout = lambda ms: nap(real(ms))
         page.nap = nap
     return page
+
+
+def let_go(url: str):
+    """The world at `url` back on the wall's clock, whoever drove its ticks (LOCKSTEP)."""
+    from websockets.sync.client import connect
+    with connect(url.replace("http", "ws", 1) + "/agent") as ws:
+        for i, m in enumerate(({"op": "hello", "name": f"clock{os.getpid() % 100000}", "token": "clock", "persona": "clock"}, {"op": "dev_lockstep", "on": False, "force": True})):
+            ws.send(json.dumps({"id": i, **m}))
+            r = json.loads(ws.recv(timeout=10))
+            assert r.get("ok"), r
 
 
 def set_world(url: str, pace: float):

@@ -86,8 +86,14 @@ def pytest_collection_modifyitems(config, items):
                 item.add_marker(pytest.mark.quick)
 
 
+def stepped(item) -> bool:
+    """Its pages' time 1/60 s a frame (clock.py STEP), and its world's ticks when its page asks (LOCKSTEP): every test
+    but a `realtime` one (E2E_LOCKSTEP=0: those marked `stepped` only)."""
+    return item.get_closest_marker("stepped") is not None or (clock.LOCKSTEP and item.get_closest_marker("realtime") is None)
+
+
 def pace_of(item) -> float:
-    return 1.0 if item.get_closest_marker("realtime") or item.get_closest_marker("stepped") else clock.PACE
+    return 1.0 if item.get_closest_marker("realtime") or stepped(item) else clock.PACE
 
 
 @pytest.hookimpl(wrapper=True)
@@ -101,7 +107,7 @@ def pytest_runtest_makereport(item, call):
 
 def pytest_runtest_protocol(item, nextitem):
     """What the test after this one will play on, for the page that is loaded ahead (pages.py)."""
-    clock.coming = pace_of(nextitem) if nextitem is not None and "game" in getattr(nextitem, "fixturenames", ()) and not nextitem.get_closest_marker("stepped") else None
+    clock.coming = pace_of(nextitem) if nextitem is not None and "game" in getattr(nextitem, "fixturenames", ()) and not stepped(nextitem) else None
 
 
 def free_port() -> int:
@@ -246,7 +252,7 @@ def pace(request):
     if "browser" in request.fixturenames:
         request.getfixturevalue("machine")
     clock.now = pace_of(request.node)
-    clock.step = request.node.get_closest_marker("stepped") is not None   # (its pages' time 1/60 s a frame: clock.py STEP)
+    clock.step = stepped(request.node)                    # (its pages' time 1/60 s a frame: clock.py STEP)
     if "server" in request.fixturenames:
         url = request.getfixturevalue("server")
         if _world_pace.get(url, 1.0) != clock.now:
@@ -258,6 +264,8 @@ def pace(request):
         request.getfixturevalue("browser").shut(failed=bool(rep and rep.failed))
     if clock.step and "server" in request.fixturenames:  # (a stepped page set the world's pace to its own, 0.15 on a slow runner: unknown now, so the
         _world_pace[request.getfixturevalue("server")] = None   # next test sets it whatever its pace, 1 too: dropped, it read as 1 and a test at 1 kept 0.15)
+        if clock.LOCKSTEP:                                # (and the world let go of its driver now, not when the server hears its page shut: a
+            clock.let_go(request.getfixturevalue("server"))   # realtime test next would start on a world still waiting for a page's ticks)
     clock.now, clock.step = 1.0, False
 
 

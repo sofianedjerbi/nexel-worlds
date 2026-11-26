@@ -85,3 +85,40 @@ def test_the_worlds_clock_is_paced_only_by_the_dev_tool_and_the_server_ticks_by_
         return n / secs / TICK_HZ
 
     assert .7 < ticks(None) < 1.3 and 3 < ticks(4) < 5
+
+
+def test_in_lockstep_the_world_ticks_when_its_driver_asks_and_never_stays_frozen(tmp_path):
+    """dev_lockstep and dev_step (#276, the browser tests' one clock): a socket driving the ticks gets the world at the
+    tick it asks for, once (absolute: asked again, nothing more is made), and none in between; another socket is not
+    the driver; let go, or its socket gone, the world is on the wall's clock again."""
+    import asyncio
+
+    from nexel_worlds.server import GameServer
+
+    gs = GameServer(tmp_path / "w", seed=3, dev=True)
+    page, other = object(), object()
+
+    async def play():
+        loop = asyncio.create_task(gs.tick_loop())
+        await asyncio.sleep(.15)
+        t0 = gs.lockstep(page, {"on": True})["tick"]
+        await asyncio.sleep(.4)
+        held = gs.sim.tick - t0                               # (4 ticks of the wall's: none in lockstep)
+        to = (await gs.step(page, {"to": t0 + 3}))["tick"]
+        again = (await gs.step(page, {"to": t0 + 3}))["tick"]
+        await asyncio.sleep(.2)
+        still = gs.sim.tick
+        refused = await gs.step(other, {"to": t0 + 9})
+        far = (await gs.step(page, {"to": t0 + 10 ** 6}))["tick"]   # (100 ticks on at the most)
+        gs.lockstep(page, {"on": False})
+        t1 = gs.sim.tick
+        await asyncio.sleep(.4)
+        gs.stopping.set()
+        await loop
+        return held, to, again, still, refused, far, gs.sim.tick - t1
+    held, to, again, still, refused, far, freed = asyncio.run(play())
+    gs.sim.close()
+    t0 = to - 3
+    assert held == 0 and to == again == still == t0 + 3, (held, to, again, still)
+    assert refused["ok"] is False and refused["error"] == "not_driver" and far == still + 100
+    assert freed >= 2                                         # (back on the wall's clock: 10 a second)

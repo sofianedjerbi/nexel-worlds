@@ -54,6 +54,12 @@ class GameServer(Views):
         self.sim.screens = lambda: [r for r in self.spectators.values() if r]   # (nothing comes or goes on a screen: spawning.py)
         self.tick_ms = collections.deque(maxlen=250)
         self.tick_parts = collections.deque(maxlen=250)      # (each tick's parts: its step's ms, whether it flushed the world to disk)
+        # LOCKSTEP (browser tests, #276: only with --dev): the world's ticks come when the page driving it asks for them
+        # (dev_step), not on the wall's clock, so a page and its world keep one time however slow the machine draws
+        self.driver = None             # the socket driving the ticks (dev_lockstep), or None: the wall's clock
+        self.step_to = 0               # the tick it asked the world to be at
+        self.ticked = asyncio.Event()  # set at each tick made: a dev_step waits for its own
+        self.owe = asyncio.Event()     # set when a tick is owed or the driver lets go: the loop waits for it
         self.started = time.time()
         self.stopping = asyncio.Event()
         self.admin = Admins(self, world_dir, admins)      # (an operator, out of the world: the server's /commands, admin.py)
@@ -64,6 +70,11 @@ class GameServer(Views):
         period = 1.0 / TICK_HZ
         nxt = loop.time()
         while not self.stopping.is_set():
+            if self.driver is not None:
+                await self.owed()
+                nxt = loop.time()                    # (let go again: on the wall's clock from now, nothing to catch up)
+                if self.stopping.is_set():
+                    break
             t0 = time.perf_counter()
             chunks0 = len(self.sim.world.chunks)
             try:
@@ -81,6 +92,9 @@ class GameServer(Views):
             if dt > 50:
                 log.warning("slow tick %d: %.0f ms (step %.0f ms, chunks %d -> %d)", self.sim.tick, dt,
                             (t1 - t0) * 1000, chunks0, len(self.sim.world.chunks))
+            self.ticked.set()
+            if self.driver is not None:              # (the next tick when the page asks for it: owed)
+                continue
             nxt += period / getattr(self.sim, "clock_rate", 1)      # (pace: the browser tests' clock, devtools.py dev_pace: only with --dev)
             # In the browser (no threads) land is made in the time to spare, 8 ms at a time, the loop turning three times
             # between two (heard, answered, sent): what the tick said leaves first and the page is answered meanwhile
@@ -94,6 +108,39 @@ class GameServer(Views):
                 nxt = loop.time()
                 delay = 0
             await asyncio.sleep(max(0.0, delay))
+
+    async def owed(self):
+        """Lockstep: until a tick is owed (the driver asked for a later one) or the driver lets go, the world's spare
+        work (land made, 8 ms at a time) as on the wall's clock."""
+        while self.driver is not None and self.sim.tick >= self.step_to and not self.stopping.is_set():
+            if self.sim.world.work(time.perf_counter() + 0.008):     # (nothing left to make: wait to be owed one)
+                self.owe.clear()
+                await self.owe.wait()
+            else:
+                await asyncio.sleep(0)
+
+    def lockstep(self, ws, msg: dict) -> dict:
+        """dev_lockstep {on}: this socket drives the world's ticks (dev_step), or lets them go back to the wall's clock."""
+        if msg.get("on"):
+            self.driver, self.step_to = ws, self.sim.tick
+        elif self.driver is ws or msg.get("force"):
+            self.driver = None
+        self.owe.set()
+        self.ticked.set()
+        return {"lockstep": self.driver is not None, "tick": self.sim.tick}
+
+    async def step(self, ws, msg: dict) -> dict:
+        """dev_step {to}: the world at tick `to` (absolute: asked again, or late, nothing is made twice), answered once
+        that tick is made and sent to the screens. At most 100 ticks on (10 s) from where it is."""
+        if self.driver is not ws:
+            return {"ok": False, "error": "not_driver", "tick": self.sim.tick}
+        to = min(int(msg.get("to", self.sim.tick + 1)), self.sim.tick + 100)
+        self.step_to = max(self.step_to, to)
+        self.owe.set()
+        while self.sim.tick < to and self.driver is ws and not self.stopping.is_set():
+            self.ticked.clear()
+            await self.ticked.wait()
+        return {"tick": self.sim.tick}
 
     def metrics(self) -> dict:
         ms = sorted(self.tick_ms) or [0.0]
@@ -239,6 +286,13 @@ class GameServer(Views):
                     self.sim.submit(agent, tool, args, on_done=done)
                 elif op == "hold":                                 # what is in your hand (the bar's selected slot): the others see it in your paw (views.py)
                     agent.held = str(msg["item"])[:40] if msg.get("item") else None; reply(mid, held=agent.held)  # noqa: E702
+                elif op == "dev_lockstep" and self.dev and not account:   # (the browser tests' one clock, #276)
+                    reply(mid, **self.lockstep(ws, msg))
+                elif op == "dev_step" and self.dev and not account:
+                    async def stepped(mid=mid, msg=msg):
+                        r = await self.step(ws, msg)
+                        reply(mid, **r)
+                    asyncio.create_task(stepped())              # (the socket goes on meanwhile: the test's own asks)
                 elif op.startswith("dev_") and self.dev and not account:  # QA tools, only with --dev, never for who came by ticket
                     reply(mid, **dev_op(self.sim, agent, op, msg))
                 elif op in ("cmd", "cmds") and limits.allow("act"):     # the chat line's /commands (admin.py)
@@ -251,6 +305,10 @@ class GameServer(Views):
                 else:
                     reply(mid, False, error="unknown_op", detail="ops: hello, observe, act, hold, tools, recipes, metrics, ping")
         finally:
+            if self.driver is ws:                                 # (a driver gone: the world back on the wall's clock, never left frozen)
+                self.driver = None
+                self.owe.set()
+                self.ticked.set()
             if agent is not None and self.conns.get(agent.id) is ws:
                 del self.conns[agent.id]
                 self.notify.pop(agent.id, None)
