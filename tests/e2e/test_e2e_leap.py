@@ -34,10 +34,11 @@ def smooth(rec, speed=10):
     and gone back from in the same jump (the same tile and the same jump: two jumps one after the other, the frame on
     the ground between them not drawn, were "apex, rise, apex" on the runners, a frame every 80 ms; and up a stair
     with Space pressed at each step, a hop on the tile you had just come up to, "rise, fall, rise"). -> the largest move along x in a frame, in tiles."""
-    for a, b in zip(rec, rec[1:]):
+    near = lambda i: "; ".join(str([round(v, 3) if isinstance(v, float) else v for v in r]) for r in rec[max(0, i - 3):i + 4])   # (the frames round it, every column: a string, not cut)
+    for i, (a, b) in enumerate(zip(rec, rec[1:])):
         dt = max(b[0] - a[0], 1) / 1000
-        assert abs(b[1] - a[1]) + abs(b[2] - a[2]) <= speed * dt * 1.35 + .1, ("a jump along the ground", a, b)
-        assert abs(b[8] - a[8]) <= max(2, -(-4 * dt * 1000 // 16.67)) + (4 if "takeoff" in (a[4], b[4]) else 0), ("a jump on the screen", a, b)   # (more as it leaves the ground: a jump, as the brief has it)
+        assert abs(b[1] - a[1]) + abs(b[2] - a[2]) <= speed * dt * 1.35 + .1, "a jump along the ground: " + near(i)
+        assert abs(b[8] - a[8]) <= max(2, -(-4 * dt * 1000 // 16.67)) + (4 if "takeoff" in (a[4], b[4]) else 0), "a jump on the screen: " + near(i)   # (more as it leaves the ground: a jump, as the brief has it)
     key = lambda r: (r[4], r[13], r[14], r[16])
     runs = [key(r) for r, q in zip(rec, [None] + rec) if q is None or key(r) != key(q)]
     assert not [i for i in range(1, len(runs) - 1) if runs[i - 1] == runs[i + 1] and runs[i][0]], runs
