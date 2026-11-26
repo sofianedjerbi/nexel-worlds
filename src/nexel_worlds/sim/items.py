@@ -59,7 +59,7 @@ class Items:
     def _tool_give(self, a, args):
         t = self._find_target(args.get("target"))
         if not isinstance(t, Agent) or t is a:
-            raise ActionError("bad_target", "you can only give to another agent")
+            raise ActionError("bad_target", "you can only give to another agent", why="not_agent")
         item, n = str(args.get("item", "")), self._n(args)
         if a.count(item) < n:
             raise ActionError("missing_item", f"you have {a.count(item)} {item}", item=item, have=a.count(item), need=n)
