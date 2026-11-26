@@ -105,6 +105,8 @@ def test_off_a_high_ledge_the_fall_is_smooth_on_the_screen(game, how):
     cap = lambda a, b: 6 * max(1, (b[0] - a[0]) / 16.67)
     jolts = [(a[:10], b[:10]) for a, b in zip(rec, rec[1:]) if abs(b[9] - a[9]) > cap(a, b) or (abs(b[8] - a[8]) > cap(a, b) and not {a[4], b[4]} & set(air))]   # (the land never; your feet on the ground never: in the air they go as fast as you fall, 7 px a frame at the end of six levels)
     assert not jolts, [(round(a[0]), a[4], round(a[5], 2), round(b[5], 2), a[8], b[8], round(a[9], 1), round(b[9], 1)) for a, b in jolts[:5]]
+    # (the world come down too: since #257 the keys go up when the page has landed, and a runner's world was a tick behind, z 1)
+    game.wait("!walking && !pred && (() => { const p = ents.get('agent' + myId); return !!p && p.e.z === 0 && p.e.x === Math.round(p.x) && p.e.y === Math.round(p.y); })()", 8000)
     assert game.server()["z"] == 0, game.server()
     agree(game)
     assert not game.errors, game.errors
