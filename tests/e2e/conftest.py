@@ -86,7 +86,7 @@ def pytest_collection_modifyitems(config, items):
 
 
 def pace_of(item) -> float:
-    return 1.0 if item.get_closest_marker("realtime") else clock.PACE
+    return 1.0 if item.get_closest_marker("realtime") or item.get_closest_marker("stepped") else clock.PACE
 
 
 @pytest.hookimpl(wrapper=True)
@@ -100,7 +100,7 @@ def pytest_runtest_makereport(item, call):
 
 def pytest_runtest_protocol(item, nextitem):
     """What the test after this one will play on, for the page that is loaded ahead (pages.py)."""
-    clock.coming = pace_of(nextitem) if nextitem is not None and "game" in getattr(nextitem, "fixturenames", ()) else None
+    clock.coming = pace_of(nextitem) if nextitem is not None and "game" in getattr(nextitem, "fixturenames", ()) and not nextitem.get_closest_marker("stepped") else None
 
 
 def free_port() -> int:
@@ -216,6 +216,7 @@ def pace(request):
     if "browser" in request.fixturenames:
         request.getfixturevalue("machine")
     clock.now = pace_of(request.node)
+    clock.step = request.node.get_closest_marker("stepped") is not None   # (its pages' time 1/60 s a frame: clock.py STEP)
     if "server" in request.fixturenames:
         url = request.getfixturevalue("server")
         if _world_pace.get(url, 1.0) != clock.now:
@@ -225,7 +226,9 @@ def pace(request):
     if "browser" in request.fixturenames:                 # (a page left open is a player left awake in the next test's world: pages.py)
         rep = getattr(request.node, "rep_call", None)
         request.getfixturevalue("browser").shut(failed=bool(rep and rep.failed))
-    clock.now = 1.0
+    if clock.step and "server" in request.fixturenames:  # (a stepped page set the world's pace to its own, 0.15 on a slow runner: unknown now, so the
+        _world_pace[request.getfixturevalue("server")] = None   # next test sets it whatever its pace, 1 too: dropped, it read as 1 and a test at 1 kept 0.15)
+    clock.now, clock.step = 1.0, False
 
 
 @pytest.fixture

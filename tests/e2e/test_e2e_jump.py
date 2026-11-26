@@ -244,6 +244,7 @@ def test_hop_down_off_a_hill_edge(game):
     assert s["x"] > low and s["x"] >= x - 2 and game.js(f"levelAt({s['x']}, {s['y']})") == 1 and game.pos() == (s["x"], s["y"])
 
 
+@pytest.mark.stepped   # (the tile times are read off the frames: on the page's own 1/60 s frames, not a runner's 100+ ms ones, #47)
 def test_a_hop_is_one_arc_over_the_edge_at_the_pace_of_a_step(game):
     """Up or down a layer: a crouch on the ground it leaves, one arc from there to the ground it lands on, clear of the
     edge, a landing; your shadow on the ground under you, and as long as a jump that high takes (now a block and more:

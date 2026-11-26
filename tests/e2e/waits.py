@@ -105,7 +105,7 @@ class Waits:
             self.rest()
         self.rpc("dev_time", phase=phase)
         try:
-            self.page.wait_for_function("(p) => Math.abs((((clock.phase || 0) - p) % 1 + 1.5) % 1 - .5) < .004", arg=phase, timeout=timeout)
+            self._until("(p) => Math.abs((((clock.phase || 0) - p) % 1 + 1.5) % 1 - .5) < .004", timeout, phase)
         except NotYet as e:
             raise AssertionError(f"the hour {phase} did not come to the page: {self.js('[clock.phase, clock.tick, clock.time]')}") from e
         if still:

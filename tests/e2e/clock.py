@@ -26,6 +26,7 @@ PACE = max(1.0, float(os.environ.get("E2E_PACE", "4")))
 FRAME_BUDGET = 70
 AHEAD = os.environ.get("E2E_AHEAD", "1") != "0"     # the next test's page loads while this one plays (pages.py)
 now = 1.0           # the pace of the test that is running (conftest.py: the `pace` fixture)
+step = False        # the test that is running is `stepped`: its pages' time goes 1/60 s a frame, whatever the machine (STEP)
 coming = None       # the pace of the test after it, if it plays on the `game` fixture's page; None: it does not, or there is none (conftest.py)
 
 # (a sleep is never cut under SHORT ms of the machine's time, or its own length: what it waited for may be an answer
@@ -43,6 +44,40 @@ SHIM = """(() => { const K = %s; if (K === 1 || window.__pace) return; window.__
   // multiplied: the browser moves that one by the rate its animations are given, below, and from when they were)
   let raw = -1, at = 0;
   window.requestAnimationFrame = (f) => raf((t) => { if (t !== raw) { raw = t; at = P.now(); } f(at); }); })()"""
+
+
+# STEPPED (a test marked `stepped`, #47): the page's time is its own, 1/60 s a frame, whatever the machine. A test of how
+# a move looks frame by frame (a jump's arc, the eye's easing, a sprint's speed) gets the same frames on a runner drawing
+# a frame in 100 ms as on one drawing it in 16: what moves in a frame is never cut (render.js: 0.1 s at the most), a
+# jump's top is never between two frames. performance.now() and Date.now() say T; a frame asked for (rAF) runs at the
+# next of the machine's, with T a 60th of a second on; a timer runs when T reaches it. The world keeps the machine's
+# clock: twice a second of T the page tells it how fast T goes (dev_pace), so it stays with the page (the walk's LEAD).
+# A wait on the page (game.sleep, a key held) is ms of T. A busy wait on performance.now() would never end: such a test
+# (a slow frame made on purpose: test_e2e_tap_slow.py) stays `realtime`.
+STEP = """(() => { if (window.__step) return; window.__step = 1;
+  const P = performance, pn = P.now.bind(P), dn = Date.now.bind(Date), raf = window.requestAnimationFrame.bind(window), st = window.setTimeout.bind(window);
+  const F = 1000 / 60, T0 = pn(), D0 = dn(); let T = T0, n = 0, id = 0, w0 = T0, v0 = T0;
+  P.real = pn; P.now = () => T; Date.now = () => Math.round(D0 + T - T0);
+  const frames = new Map(), timers = new Map(), later = (e) => st(() => { throw e; });
+  window.requestAnimationFrame = (f) => { frames.set(++id, f); return id; };
+  window.cancelAnimationFrame = (k) => { frames.delete(k); };
+  window.setTimeout = (f, ms, ...a) => { timers.set(++id, {at: T + (+ms || 0), f, a}); return id; };
+  window.setInterval = (f, ms, ...a) => { const e = Math.max(1, +ms || 0); timers.set(++id, {at: T + e, f, a, every: e}); return id; };
+  window.clearTimeout = window.clearInterval = (k) => { timers.delete(k); };
+  const tick = () => { T += F; n++;
+    for (const [k, t] of [...timers].sort((a, b) => a[1].at - b[1].at)) if (t.at <= T && timers.has(k)) {
+      if (t.every) t.at += t.every; else timers.delete(k); try { if (typeof t.f === "function") t.f(...t.a); } catch (e) { later(e); } }
+    const fs = [...frames.values()]; frames.clear(); for (const f of fs) try { f(T); } catch (e) { later(e); }
+    if (n % 30 === 0) { const r = (T - v0) / Math.max(1, pn() - w0); w0 = pn(); v0 = T;
+      if (typeof rpc === "function") rpc("dev_pace", {pace: Math.max(.05, Math.min(1, r))}); }
+    raf(tick); };
+  raf(tick); })()"""
+
+
+def stepped_wait(page, ms: float):
+    """ms of a stepped page's own time (STEP): until its T has gone on by ms (the machine's time it takes, as it comes)."""
+    t = page.evaluate("performance.now()")
+    page.wait_for_function("(t) => performance.now() >= t", arg=t + ms, timeout=max(30000, ms * 30))
 
 
 # The day at the machine's pace on a page that plays (game.py join): the hour the page hears moves on from the last
@@ -73,7 +108,13 @@ def held(page, ms: float):
 
 def paced(page, pace=None):
     """A page whose clocks run at the pace of the test that made it (or at `pace`: the next test's, pages.py)."""
+    mine = pace is None                          # (this test's own page; a page asked for ahead is the next test's: pages.py)
     pace = pace or now
+    if step and mine and pace == 1:
+        page.add_init_script(STEP)
+        page.wait_for_timeout = lambda ms: stepped_wait(page, ms)
+        page.nap = page.wait_for_timeout
+        return page
     if pace != 1:
         page.add_init_script(SHIM % pace)
         page.add_init_script(clock_sound.SHIM % pace)
