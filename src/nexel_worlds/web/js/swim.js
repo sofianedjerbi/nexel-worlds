@@ -67,6 +67,13 @@ function wakePicture(p, now) {
 }
 // how far under the water's face a swimmer is drawn: SWIM.sink, eased in over SWIM.sinkMs from going in (all at once, the body
 // dropped 5 art px in a frame on top of the leap's own fall: hd_splash's jolt, 11 px in 27 ms), in whole art px
+// a swimmer's top, cellY0 its own place: in its first SWIM.sinkMs in the water from where the body's top was drawn the frame
+// before (characters.js: state top, over its row), in whole art px: going in from a leap, never a level lower in one frame (hd_splash)
+function inTop(st, cellY0, rowY, now, z) {
+  if (st.swamAt === now) st.from = st.top;
+  const k = st.from === undefined ? 0 : Math.max(0, 1 - (now - st.swamAt) / SWIM.sinkMs);
+  return k ? Math.round((cellY0 + (st.from + rowY - cellY0) * k) / z) * z : cellY0;
+}
 const sinkOf = (st, now) => Math.round(SWIM.sink * Math.min(1, (now - (st.swamAt ?? -1e9)) / SWIM.sinkMs));
 function drawSwimmer(p, e, sheet, x, y, z, now, sx, sy) {
   y -= BodyPlace.of(p).up * z;                              // (just down from a leap: its lift, body_place.js)
@@ -97,7 +104,7 @@ function drawSwimmer(p, e, sheet, x, y, z, now, sx, sy) {
     if (stroke % 2) sfx("swim", Math.round(p.x), Math.round(p.y));      // a soft pull, every second stroke; treading water is silent
   }
   p.lastStroke = stroke;
-  const row = DIR_ROW(p), col = Math.floor(now / (dash ? 70 : 140)) % 8, cellX = x - 16 * z, cellY = y - 18 * z + sinkOf(st, now) * z + bob, wl = y + 14 * z;
+  const row = DIR_ROW(p), col = Math.floor(now / (dash ? 70 : 140)) % 8, cellX = x - 16 * z, cellY = inTop(st, y - 18 * z + sinkOf(st, now) * z + bob, sy(p.y), now, z), wl = y + 14 * z;
   const back = [-p.fx, -p.fy], fi = row * 8 + col;
   wearFx("back", e, sheet, fi, cellX, cellY, z, now, moving, back);
   if (WaterBed.on) WaterBed.under(sheet, col * 48, row * 48 + SWIM.line, 48, 12, cellX, cellY + SWIM.line * z, z, Math.round(p.x), Math.round(p.y));      // (clear water: the body under the face, tinted by its depth)
