@@ -22,7 +22,7 @@ PROBE = """() => { window.__pr = []; const show = HdView.show; HdView.show = (o)
     const W2 = 320, H2 = 180;   // (the hour's light picture's size, as the probe recorded it: 320 x 180)
     if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE) { gl.readPixels(Math.round(FX / c.width * W2), Math.round((1 - FY / c.height) * H2), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); fl = [...px.slice(0, 3)].join(); }
     gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.deleteFramebuffer(fb); }
-  __pr.push([HdLook.why, glpx, [...s.slice(0, 3)].join(), tpx, gl.getError(), "roof " + (HdLevel.cover && HdLevel.cover.roof), "lit " + HdLook.youLit, "b " + HdLook.builds, "busy " + (HdLook.busy ? 1 : 0), "feet " + [...fs.slice(0, 3)].join(), "light@feet " + fl, "feet@ " + FX + "," + FY, "raw " + (typeof HdLook.raw === "function" ? HdLook.raw() : "?")]); } catch (e) { __pr.push(["err", String(e)]); } return r; }; return 1; }"""
+  __pr.push([HdLook.why, glpx, [...s.slice(0, 3)].join(), tpx, gl.getError(), "roof " + (HdLevel.cover && HdLevel.cover.roof), "lit " + HdLook.youLit, "b " + HdLook.builds, "busy " + (HdLook.busy ? 1 : 0), "feet " + [...fs.slice(0, 3)].join(), "light@feet " + fl, "feet@ " + FX + "," + FY, "raw " + (typeof HdLook.raw === "function" ? HdLook.raw() : "?"), "pin " + JSON.stringify(HdLook.pinned && HdLook.pinned.map((v) => (typeof v === "number" ? Math.round(v * 100) / 100 : v)))]); } catch (e) { __pr.push(["err", String(e)]); } return r; }; return 1; }"""
 
 
 @pytest.mark.parametrize("run", range(4))
