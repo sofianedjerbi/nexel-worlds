@@ -28,7 +28,7 @@
 // Where the code still breaks it (to route through the rule, then strike from this list): the cut's section takes stone or earth from the
 // surface's top cell and your height, not from each cell it shows (vox_style.js sectAt, flag 8388608); its first line is the land's own
 // top px, grass on a meadow (vox_style_glsl.js wn 11);
-// a far patch's skirt is one tile's rock; a model face wider or deeper than a tile is
+// a model face wider or deeper than a tile is
 // its 16 px stretched (model).
 const VoxStyleLand = (() => {
   const H = VoxStyleGLSL.H, C = 16, N = 10, CH = 8, KINDS = ["main", "model", "shade", "water"], TRI = [0, 1, 2, 0, 2, 3];   // (TRI: a quad's two triangles)
@@ -273,7 +273,10 @@ const VoxStyleLand = (() => {
           const put = (q, k, s, e) => { const u0 = land ? (s % SL) * C : 0, v0 = land ? (s / SL | 0) * C : 0, dst = land ? fl : fs, kind = land ? 7 : 3; for (let t = 0; t < 6; t++) { const p = q[TRI[t]]; emit(dst, p[0], p[2] * H, p[1], u0, v0, k, 1, kind, z, e); } };   // (no vertex made as an array of its own)
           put([[x, y, z], [x + w, y, z], [x + w, y + h, z], [x, y + h, z]], 1, sl, w * h === 1 && tz(x, y) === z ? 8 : 9);
           if (land) { const lo = (t) => Math.min(z - 10, t === null ? o.sea : t), s = lo(tz(mx, y + h)), wz = lo(tz(x - 1, my)), ez = lo(tz(x + w, my));   // (each skirt down to the land beside it: ten levels were a mountain's patches hung in the air over the meadow, the sky under them)
-            put([[x, y + h, z], [x + w, y + h, z], [x + w, y + h, s], [x, y + h, s]], .8, fr, 10); put([[x, y, z], [x, y + h, z], [x, y + h, wz], [x, y, wz]], .7, fr, 11); put([[x + w, y + h, z], [x + w, y, z], [x + w, y, ez], [x + w, y + h, ez]], .78, fr, 11); } } }
+            // (each skirt its cells' own rock, face rule 2: earth from the top down to the middle tile's stone, its stone under that, split at a whole level)
+            let st = null; if (host.rock) for (let q = z; q > z - 64 && st === null; q--) if (host.rock(mx, my, q) === 2) st = q;
+            const fs2 = st !== null && st < z && host.paintFront ? front(mx, my, st, z) : fr, sk = (q, lo, k, e) => { if (st === null || st >= z || st <= lo) { put(q(z, lo), k, st !== null && st >= z ? fs2 : fr, e); return; } put(q(z, st), k, fr, e); put(q(st, lo), k, fs2, e); };
+            sk((a, b) => [[x, y + h, a], [x + w, y + h, a], [x + w, y + h, b], [x, y + h, b]], s, .8, 10); sk((a, b) => [[x, y, a], [x, y + h, a], [x, y + h, b], [x, y, b]], wz, .7, 11); sk((a, b) => [[x + w, y + h, a], [x + w, y, a], [x + w, y, b], [x + w, y + h, b]], ez, .78, 11); } } }
       const want = []; for (let by = Math.floor(Y0 / CH); by <= Math.floor(Y1 / CH); by++) for (let bx = Math.floor(X0 / CH); bx <= Math.floor(X1 / CH); bx++) want.push([bx, by]);
       if (P.start(!!o.again)) { store.clear(); farClear(); }   // (a land made with its paints from none keeps no chunk made before: they name places of paints that are gone. The land was wiped (eng.lost: forget) while one was being made, that one's chunks were kept, and the next, from none, drew them with other tiles' paints: grey and green squares on a meadow, the mean colour, a shadow's black blades on the grass)
       making = true; late.clear();   // (the paints and the land that names them change together: vox_style.js)
