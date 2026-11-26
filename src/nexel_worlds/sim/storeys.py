@@ -131,7 +131,7 @@ class Storeys:
     def lay_block(self, a, x, y, z, item):
         """Put a block of the pack in the cell (x, y, z)."""
         if not a.count(item):
-            raise ActionError("missing_item", f"you have no {item}")
+            raise ActionError("missing_item", f"you have no {item}", item=item, have=0)
         self.reach(a, x, y, z=z)
         for again in (False, True):
             why = self.block_fits(x, y, z)
@@ -152,7 +152,7 @@ class Storeys:
         if block not in UPSTAIRS:
             raise ActionError("bad_target", f"a {item.replace('_', ' ')} needs the ground under it")
         if not a.count(item):
-            raise ActionError("missing_item", f"you have no {item}")
+            raise ActionError("missing_item", f"you have no {item}", item=item, have=0)
         self.reach(a, x, y, z=z)
         for again in (False, True):
             cell = self.floors.get(x, y, z)
@@ -268,7 +268,7 @@ class Storeys:
             raise ActionError("bad_target", "a ladder goes against something taller beside it")
         if item in EARTH:
             if not a.count(item):
-                raise ActionError("missing_item", f"you have no {item}")
+                raise ActionError("missing_item", f"you have no {item}", item=item, have=0)
             if "z" in args and not (s == self.world.top(x, y) + 1 and self.world.col(x, y) == col_solid(s - 1)):
                 return self.put_land(a, x, y, s, item)   # (a cell named by its height, not the open ground's next layer)
             land = on_land and s in (self.world.top(x, y), self.world.top(x, y) + 1) and self.world.block(x, y) in ("none", "flower")

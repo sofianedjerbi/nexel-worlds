@@ -71,12 +71,12 @@ class Needs:
         if item not in T.FOOD:
             raise ActionError("not_food", f"food: {', '.join(T.FOOD)}")
         if not a.count(item):
-            raise ActionError("missing_item", f"you have no {item}")
+            raise ActionError("missing_item", f"you have no {item}", item=item, have=0)
         if a.hunger >= FOOD_MAX:
             raise ActionError("full", "you're full")
         yield from self.wait(a, EAT_SECONDS)       # a proper bite, with the hands (constants.ASIDE): walking goes on, doing something else stops it
         if not a.count(item):
-            raise ActionError("missing_item", "it's gone")
+            raise ActionError("missing_item", "it's gone", item=item, have=0)
         a.add(item, -1)
         here = self.resolve(a.x, a.y)
         picnic = self.world.block(*here) == "picnic_blanket"
