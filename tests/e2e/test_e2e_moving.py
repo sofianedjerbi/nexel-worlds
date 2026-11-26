@@ -18,8 +18,11 @@ def free(rec):
 
 
 def speed(rec, skip_ms=300):
-    """Tiles per second of the walk's own pace over a recording (free frames), ignoring the start."""
-    pairs = free([r for r in rec if r[0] > skip_ms])
+    """Tiles per second of the walk's own pace over a recording (free frames), ignoring the start and what follows the
+    walk: its last frame that moved you (it ends on a tile, short of a frame's walk), and you standing after it (hold()
+    waits for the server's answer once the key is up: 0.6 s of standing on a runner read the walk at 3.8)."""
+    moved = [k for k in range(1, len(rec)) if abs(rec[k][1] - rec[k - 1][1]) + abs(rec[k][2] - rec[k - 1][2]) > 1e-6]
+    pairs = free([r for r in rec[: moved[-1] if moved else 0] if r[0] > skip_ms])
     assert len(pairs) >= 3, ("too few frames at the walk's own pace", rec[:6])
     return sum(abs(b[1] - a[1]) + abs(b[2] - a[2]) for a, b in pairs) / sum((b[0] - a[0]) / 1000 for a, b in pairs)
 
