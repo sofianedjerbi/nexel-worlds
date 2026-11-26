@@ -181,7 +181,6 @@ function drawBody(p, sx, sy, S, t, now) {
     const fl = flashes.get("agent" + e.id), hitK = fl ? (now - fl) / 1000 : 9;
     const kb = hitK < .15 ? Math.round((1 - hitK / .15) * 2) * z : 0;
     const cellX = x - 16 * z - p.fx * (kb - lunge), cellY = y - 18 * z - bob - p.fy * (kb - lunge), fi = syy / 48 * 8 + frame; p.fi = fi;   // (fi: the frame drawn, tests)
-    BodyPlace.state(p).top = cellY - sy(p.y);   // (where its top was drawn over its row, for the next frame: one going into water goes on from there, inTop)
     wearFx("back", e, sheetImg, fi, cellX, cellY, z, now, moving, [-p.fx, -p.fy]);      // a charm's effect (wear_items.js)
     // the weapon of a cut or a thrust: in front of the body, behind it when they face away
     const arm = () => blow && ctx.drawImage(SwingArt.sheetFor(blow[0], sheetImg), blow[1] * 48, DIR_ROW(p) * 48, 48, 48, cellX, cellY, 48 * z, 48 * z);
