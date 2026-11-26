@@ -4,12 +4,12 @@
 // white is plain day, the night's is blue) and a wash (a colour laid thinly over all of it: r, g, b and how much).
 // Between two moments all are mixed: sunrise comes out of the night rose, then peach, the morning clears, the
 // afternoon turns gold, the sunset orange and rose, dusk violet, and the night is blue, deepest in its middle.
-// (It was plain day until a twentieth of a day before night, then one blue. And the warm hours were first made by
-// multiplying alone, then by a wash of a sixth: grass and orange are mud. The wash is a tenth at most, and the twilights are
+// (Not plain day until a twentieth of a day before night, then one blue. And the warm hours are not made by
+// multiplying alone, nor by a wash of a sixth: grass and orange are mud. The wash is a tenth at most, and the twilights are
 // mostly the night's blue coming or going: the green stays green.)
 // At night the fires and the people carry light. It is worked out small, a px of it an art px of the land, and put
 // on the picture enlarged: a light is rings of whole pixels, each a step brighter (small steps at its rim), with a
-// checkered edge between two steps that stays on the land's own pixels as you walk. (They were smooth round glows
+// checkered edge between two steps that stays on the land's own pixels as you walk. (Not smooth round glows
 // added over the picture.)
 
 const DAYLIGHT = [
@@ -31,7 +31,7 @@ const washAt = (phase) => { const [a, b, f] = dayAt(phase); return [...mix(a[3].
 // The day as a bar of w x h cells (who.js: 68 x 3, each cell two px of the window's): the sky's colours from one
 // midnight to the next as flat bands, one moment's colour then the next's, with one step between them, and where two
 // meet a checker of the two. Few colours and cells big enough to count: it is a pixel picture, not a smooth fade.
-// (It was 136 x 6 with four steps and a finer dither: at that size it read as a smooth gradient.)
+// (At 136 x 6 with four steps and a finer dither it would read as a smooth gradient.)
 const BAYER2 = [0, 2, 3, 1];                         // 2 x 2, in quarters
 function skyBar(cv, w, h) {
   cv.width = w; cv.height = h;
@@ -75,8 +75,8 @@ function lamp(g, cx, cy, r, color, a, shift, steps = LIGHT.steps) {
 // table. (`dark` was typed four times, the "Light at night" lift five, the lamps' thresholds lived in one painter.)
 //   Light.now() -> {tint, wash, dark: 0 day .. 1 the night's deepest, lift: the setting's, lit: tint lifted, lamps: the fires are lit (from LAMPS of dark on: they glow from the sunset), k: how much (0..1),
 //     open: your lantern under the sky, 0..1: none by day (the clock's: the owner, "remove the halo around the player, especially in daylight"), from the day's last dark (DUSK, read off the
-//     row above at the hour the night begins) up to the night's deepest, one line. (It was from .45 of dark: a pool of light round you in the day's last minutes; and a third number, .35, for
-//     "a fire casts the shadows", that nothing hung on: the sun's shadow fades with dark by itself, sunland.js)}
+//     row above at the hour the night begins) up to the night's deepest, one line. (Not from .45 of dark: a pool of light round you in the day's last minutes; and no third number, .35, for
+//     "a fire casts the shadows", that nothing hangs on: the sun's shadow fades with dark by itself, sunland.js)}
 //   Light.lamp(what, roof) -> a lamp's strength: a fire 2; a person 1, under the land 2 (roof: hd_level.js cover: your lantern is the light there); else 0
 const Light = (() => {
   const LAMPS = .2, NIGHT_AT = .75, FIRE = new Set(["^", "x", "fire"]);

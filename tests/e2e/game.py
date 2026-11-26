@@ -255,9 +255,10 @@ class Game(Waits):
             pass
 
     def start_recording(self):
-        """Record our character's on-screen position every frame, until recording() is called."""
+        """Record our character's on-screen position every frame, until recording() is called: [ms, x, y, tiles ahead of
+        the world (walk.js leadOf: the walk waits past LEAD[0], catches up under -1; 0 when not walking)]."""
         self.js("""() => { window.__rec = []; const t0 = performance.now(); window.__recOn = true;
-          function f(n) { const p = ents.get('agent' + myId); if (p) __rec.push([n - t0, p.x, p.y]);
+          function f(n) { const p = ents.get('agent' + myId); if (p) __rec.push([n - t0, p.x, p.y, walking && p.walking ? leadOf(p, n) : 0]);
             if (__recOn) requestAnimationFrame(f); } requestAnimationFrame(f); }""")
 
     def recording(self):

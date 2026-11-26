@@ -39,7 +39,7 @@ function jumpKey() {
   const s = stepAhead(), now = performance.now();
   if (jumpGoing || Leap.on()) return;            // (a jump on its way: J pressed again does not cut it short, as a new action would)
   if (Leap.gliding()) { BodyPlace.state(p).jumpNext = true; return; }   // (just down off a tile's middle, going to it: the jump once there, leap.js after)
-  const low = s && !walking;                     // (standing, facing a step: up onto it, as before: a tunnel or a shaft has no room for a jump through the air)
+  const low = s && !walking;                     // (standing, facing a step: up onto it with a hop: a tunnel or a shaft has no room for a jump through the air)
   if (Leap.can(p) && !low) { Leap.start(p, now, null); return; }   // a real jump (leap.js)
   if (!s) { const st = BodyPlace.state(p); if (now - st.hop < HOP.ms) return; st.hop = now; rpc("act", {tool: "jump", args: {}}); return; }      // (nothing to jump onto: a hop on the spot; in the air, Space again does not start it over)
   for (const [k, t] of spring) if (t < now) spring.delete(k);
@@ -93,11 +93,11 @@ function syncWalk() {
   rpc("act", {tool: "walk", args}).then((r) => {
     const wall = r.ok && r.result.stopped === "blocked";
     // replaced by a newer walk: that one says. By letting go (a stop): a tap at a wall that was let go before the server
-    // answered (a slow link, a short tap) was still a turn to the wall (it was dropped: the way out stayed, nothing aimed)
+    // answered (a slow link, a short tap) is still a turn to the wall (else the way out stays shown and nothing is aimed)
     if (walking !== mine && !(walking === null && wall && n === walkN)) return;
     if (walking === mine) { walking = null; if (p) p.walking = false; }    // it ended (a wall, a fall that hurt): the next tick says where you are
     if (wall) { const q = ents.get("agent" + myId); if (q) { BodyPlace.face(q, dx, dy); if (q.tx + "," + q.ty === from) WayShow.mine(); } }
-    // (you turned to a wall where you stand: you are at work on it: the shown way out is put away, as at a key of your own. It stayed, and while it is shown nothing you face is offered: standing two seconds in a cave you can walk out of, then facing a wall: no bracket, no key, for good)
+    // (you turned to a wall where you stand: you are at work on it: the shown way out is put away, as at a key of your own: while it is shown nothing you face is offered (standing two seconds in a cave you can walk out of, then facing a wall: no bracket, no key, for good)
   });
 }
 

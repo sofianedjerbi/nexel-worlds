@@ -106,7 +106,7 @@ const Target = (() => {
         for (let k = 0; k < q.length; k++) { const A = q[k], B = q[(k + 1) % q.length]; if ((A[1] <= yc) === (B[1] <= yc)) continue; const xi = A[0] + (B[0] - A[0]) * (yc - A[1]) / (B[1] - A[1]); l = Math.min(l, xi); r = Math.max(r, xi); }
         for (let i = Math.ceil(l / u - .5); (i + .5) * u < r; i++) { const o = (j - j0) * n + i - i0; if (o >= 0 && o < n * m) { out.f[o] = v; out.hid[o] = hd; } } } };
     // (behind land: looked at on a 4 x 4 grid of each face, its middles: what of it is behind the land in front is that land's)
-    // (the grid's corners put through the camera once each, (S + 1)^2 of them: it was four a square, each a few small arrays, every frame the eye moved)
+    // (the grid's corners put through the camera once each, (S + 1)^2 of them: not four a square, each a few small arrays, every frame the eye moves)
     const on = (w, s, t, k) => { const l1 = w[0][k] + (w[1][k] - w[0][k]) * s, l2 = w[3][k] + (w[2][k] - w[3][k]) * s; return l1 + (l2 - l1) * t; };
     for (const [v, w] of fs) { const G = [];
       for (let t = 0; t <= S; t++) for (let s = 0; s <= S; s++) G.push(P.at(on(w, s / S, t / S, 0), on(w, s / S, t / S, 1), on(w, s / S, t / S, 2)));
@@ -127,7 +127,7 @@ const Target = (() => {
   // inside them, its faces its own paint with the colour faintly over them. Behind land: not drawn there; all of it behind land: all of it, seen through.
   // far (out of reach yet): its silhouette one px in two, nothing inside: the one meaning of a dotted box (the owner: "dotted only for unreachable blocks")
   function outline(P, M, col, tint, far) {
-    const g = P.g, u = P.u; let L = M.ol;   // (its px lists, kept on M (kept itself while nothing it is made from changes, `kept`): they were worked out again each frame)
+    const g = P.g, u = P.u; let L = M.ol;   // (its px lists, kept on M (kept itself while nothing it is made from changes, `kept`): not worked out again each frame)
     if (!L || L.far !== far || L.u !== u) { const {i0, j0, n, m, f} = M, F = (i, j) => (i < 0 || j < 0 || i >= n || j >= m ? 0 : f[j * n + i]), line = [], ink = [], face = [], dots = [];
       const hid = M.hid.every((v, o) => v || !f[o]) ? new Uint8Array(n * m) : M.hid;   // (all of it behind land: seen through, whole)
       const edge = (i, j) => { const v = F(i, j); return !!v && (!F(i - 1, j) || !F(i + 1, j) || !F(i, j - 1) || !F(i, j + 1) || (v === 1 && F(i, j + 1) === 2)); };
@@ -141,7 +141,7 @@ const Target = (() => {
     put(face, col, tint); put(ink, col, tint); put(ink, INK, .45); put(line, col, 1); put(dots, col, 1); g.globalAlpha = 1;
     return {line: line.length / 2, dots: dots.length / 2};
   }
-  // One cell, as the box it is. -> what was drawn of it (tests)
+  // One cell, as the box it is. -> what is drawn of it (tests)
   function box(P, c, K) {
     const {x, y, z} = c, h = c.h || 1, z0 = z - h, col = c.ok === false && !c.far ? RED : c.kind === "break" ? TAKE : CREAM;   // (far: can't, not wrong: cream dotted)
     const full = (dx, dy, dz) => { for (let k = dz > 0 ? z + 1 : dz < 0 ? z0 : z0 + 1; k <= (dz > 0 ? z + 1 : dz < 0 ? z0 : z); k++) if (!solidAt(x + dx, y + dy, k)) return false; return true; };
@@ -166,7 +166,7 @@ const Target = (() => {
   const boxRect = (Q, c) => { const q = [0, 1].flatMap((i) => [0, 1].flatMap((j) => [0, 1].map((k) => Q.at(c.x + i, c.y + j, c.z - k)))).filter((v) => v), xs = q.map((v) => v[0]), ys = q.map((v) => v[1]);
     return q.length ? {x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys)} : null; };
   // WHAT IS KEPT OF A CELL's box from frame to frame (its px, its outline's px, its place and box on the screen), while nothing it is made from changes: where the land is drawn (view: HdLook.art, the
-  // camera's numbers), the land and what is built (landVer, Floors.ver), behind-land on or off, the cell itself. It was all worked out again each frame: 5 MB in 3 s standing still for the collector
+  // camera's numbers), the land and what is built (landVer, Floors.ver), behind-land on or off, the cell itself. Worked out again each frame, it would make 5 MB in 3 s standing still for the collector
   const keep = new Map();
   function kept(view, behind, c) {
     const k = view + "|" + landVer + "|" + Floors.ver + "|" + (behind ? 1 : 0) + "|" + c.kind + "|" + c.x + "," + c.y + "," + c.z + "," + (c.h || 1) + (c.flat ? "f" : "") + (c.ok === false ? "n" : "") + (c.far ? "d" : "");
@@ -199,7 +199,7 @@ const Target = (() => {
       const r = K ? (K.r === undefined ? (K.r = boxRect(Q, c)) : K.r) : boxRect(Q, c);
       if (c.mine) { api.drew.push({x: c.x, y: c.y, z: c.z, kind: c.kind, key: c.key, mine: true, px, u: P.u}); continue; }
       if (c.way) { api.drew.push({x: c.x, y: c.y, z: c.z, kind: c.kind, key: c.key, way: true, px, u: P.u}); continue; }   // (wayshow.js draws that block)
-      // (a block to put where you stand, your body's cell or your head's: it cannot go, you are in it. Not an error: cream dotted, "can't" (it was red, the
+      // (a block to put where you stand, your body's cell or your head's: it cannot go, you are in it. Not an error: cream dotted, "can't" (not red, the
       // first thing seen in a shaft); red is for a place that is wrong)
       if (c === sel && !c.mine && !c.way) { const you = own && c.kind === "place" && c.ok === false && c.z - myZ(me0.x, me0.y) <= 2 ? {far: true, item: null} : {};
         if (own && api.aim !== "down") api.late = {Q, c: {...c, over: true, ...you}, K, r, px}; else after.push([Q, c, K, r, px]); continue; }   // (yours: no cut, no skip)

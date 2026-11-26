@@ -1,6 +1,6 @@
 // Loot: what a creature (or a person) drops pops out of the poof, arcs up and lands with a bounce or two, right where
 // the pile then shows. The pile at that tile waits until everything has landed, so nothing appears twice.
-// A thing on the ground is smaller than its icon (16 px across, it was far too big beside a body), and a pixel of it
+// A thing on the ground is smaller than its icon (16 px across is far too big beside a body), and a pixel of it
 // is a pixel of the land all the same: the icon is made two thirds the size by whole pixels, 11 for 16 (smallPx).
 // The HUD shows the same small picture in its slots, at the land's pixel too (slotIcon, ui.js).
 
@@ -17,7 +17,7 @@ const smallCanvas = (name) => {                // a fresh one each time (the HUD
   const cv = document.createElement("canvas"), px = smallPx(name); cv.width = cv.height = DROP;
   cv.getContext("2d").putImageData(px, (DROP - px.width) >> 1, (DROP - px.height) >> 1); return cv;
 };
-const ghostIcon = (n) => ghosts.get(n) || (ghosts.set(n, smallCanvas(n)), ghosts.get(n));     // the one the land draws from
+const ghostIcon = (n) => ghosts.get(n) || (ghosts.set(n, Object.assign(smallCanvas(n), {_v: 0})), ghosts.get(n));     // the one the land draws from (painted once: _v 0, sent to the sprites' sheet once, vox_style.js)
 function smallPx(name) {
   if (smalls11.has(name)) return smalls11.get(name);
   const cube = CubeIcon.is(name) && CubeIcon.px(name, DROP); if (cube) { smalls11.set(name, cube); return cube; }      // a block: its cube, made at this size (cube_icons.js)

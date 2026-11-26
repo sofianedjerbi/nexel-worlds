@@ -9,7 +9,7 @@
 // Stacking needs no height key: on a tile that has your block the cursor rides it (build.js `ride`), and on one you
 // only planned the next goes on top of the plan (`cell`). E and Q move the ghost one level (build.js `stops`).
 // Drawn with the cursor's keys (prompts.js `build`): the HD look's marks pass, places by HdLook.screenOf. The HD look hands what a painter of marks needs (`HdLook.art()`: an art px, a place's px, is a place behind land): a ghost
-// behind a wall keeps one px in two there, fainter (it was drawn through the wall, as if in front of it).
+// behind a wall keeps one px in two there, fainter (not drawn through the wall, as if in front of it).
 const BuildGhost = (() => {
   const paints = new Map(), RED = [232, 85, 74], MOST = 9;
   // the next free cell from z up, over the blocks planned on that tile
@@ -39,7 +39,7 @@ const BuildGhost = (() => {
     return u1 >= -.01 && u1 <= 1.01 && v1 >= -.01 && v1 <= 1.01 ? [cl(u1), cl(v1)] : [cl(s(v2)), cl(v2)];
   }
   // the block in the cell whose top is z, on g: at(x, y, z) -> its place there, u: an art px there. Every face of it the eye sees (turned to it on the screen, no block beside it): its top, its front,
-  // a side (it was its top and front alone: a block put by a block's side, off to a side of the screen, had no side)
+  // a side (not its top and front alone: a block put by a block's side, off to a side of the screen, would have no side)
   function block(g, at, u, x, y, z, item, a, red, behind) {
     const px = paintOf(item); if (!px) return false;
     // a face, px by px: an art px is the face's when its middle is in it (the land's own rule, and the box's: target.js pxOf); its paint where that px is on it
@@ -61,7 +61,7 @@ const BuildGhost = (() => {
     return true;
   }
   const api = {cell, paintOf, block, drew: null};
-  // once a frame, with the cursor's keys. api.drew: what was drawn of the cursor (tests): {x, y, z, ok} the ghost, take: X's cell
+  // once a frame, with the cursor's keys. api.drew: what is drawn of the cursor (tests): {x, y, z, ok} the ghost, take: X's cell
   api.paint = () => {
     api.drew = null;
     const p = Build.on && meObs ? Build.S.at : null, art = HdLook.on ? HdLook.art() : null, at = p && art && art.at, a0 = at && at(p.x, p.y, Build.level()), a1 = a0 && at(p.x + 1, p.y, Build.level());

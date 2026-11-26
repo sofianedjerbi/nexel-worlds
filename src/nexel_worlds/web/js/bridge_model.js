@@ -1,5 +1,5 @@
 // A bridge is a model (models.js): a deck of planks over the water, each plank a box, on posts.
-// ("blocks such as bridges should be low-poly modelized". It was planks painted flat on its tile: bridge.js lay.)
+// ("blocks such as bridges should be low-poly modelized". Not planks painted flat on its tile: bridge.js lay.)
 // Its looks are the pack's bridge sheet's: a plank's top is cut out of it (four px a plank, its seam and its two
 // nails), its front is the sheet's lit edge over its dark one, a post is the sheet's post (its light top, its
 // front under it), and where a post stands in water, the sheet's foam at its foot.

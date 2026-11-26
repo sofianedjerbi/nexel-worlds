@@ -52,7 +52,7 @@ function intent(p, brk) {
   const [c, g] = t, flower = c === "f", ent = entityAt(p);
   const res = intent0(p, brk, t, c, g, flower, ent, s);
   if (res && foot && !res.foot && !res.walk && !res.here) res.foot = foot;
-  if (res && !res.ent && res.z === undefined && !res.walk && !res.here) res.at = floorAt(p.x, p.y);   // (what is on a tile lies on its lowest ground: its height, for your reach. It was the tile's ground nearest you: "Pick flower" from a stair 24 layers over the flower)
+  if (res && !res.ent && res.z === undefined && !res.walk && !res.here) res.at = floorAt(p.x, p.y);   // (what is on a tile lies on its lowest ground: its height, for your reach. Not the tile's ground nearest you: "Pick flower" from a stair 24 layers over the flower)
   return res;
 }
 // Two verbs, as in Minecraft ("Why do I break rocks with E?"): brk (X, a left click) takes apart what it is on: mines,

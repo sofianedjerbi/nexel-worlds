@@ -137,7 +137,7 @@ def test_a_sprint_in_the_water_is_twice_as_fast_and_leaves_a_longer_wake(game):
     game.page.keyboard.up("Shift")
     frame = gaps(game.js("(() => { __frOn = false; return __fr; })()"))
     assert swum and dashed and 2 <= swum <= 3 and 4 <= dashed <= 6 and game.js("SWIM_PACE") == 2, (swum, dashed)   # 2.5 tiles a second, then five
-    assert ran is True and slow and marks and slow >= 110 and 45 <= marks <= 45 + 1.5 * frame and marks < slow, (slow, marks, frame)   # (its wake: a mark every 45 ms, not every 110: the first frame past it, a mark a frame at most. Counted in a second it was the machine's frames a second)
+    assert ran is True and slow and marks and slow >= 110 and 45 <= marks <= 45 + 1.5 * frame and (marks < slow or frame >= 100), (slow, marks, frame)   # (its wake: a mark every 45 ms, not every 110: the first frame past it, a mark a frame at most. Counted in a second it was the machine's frames a second. A mark is dropped as a frame is drawn: frames as long as the swim's own 110 ms drop both a mark a frame, 123 and 133 ms on a runner's 117 ms frames, and only the frame's own rule says anything)
     assert game.server()["swimming"] and not game.errors
 
 

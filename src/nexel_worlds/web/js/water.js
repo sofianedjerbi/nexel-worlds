@@ -123,8 +123,8 @@ function* waterSteps(b) {
     }
     if ((ly & 3) === 3) yield;                                     // (a step every four rows of tiles)
   }
-  // the water over it: a tint a tile by its depth, going from one tile's to the next's in STEPS of 4 art px (four tones across a tile, whole px each: it was
-  // one px a tile blown up smooth by the canvas, every px its own tone: the one soft ramp in a picture of whole px)
+  // the water over it: a tint a tile by its depth, going from one tile's to the next's in STEPS of 4 art px (four tones across a tile, whole px each, not
+  // one px a tile blown up smooth by the canvas, every px its own tone: a soft ramp in a picture of whole px)
   const m2 = B + 2, tn = new Float32Array(m2 * m2 * 4), img = g.createImageData(n, n), D = img.data;
   for (let j = 0; j < m2; j++) for (let i = 0; i < m2; i++) { const u = under(x0 + i - 1, y0 + j - 1), t = WATER.tint[u < 0 ? 0 : u]; tn.set([t[0], t[1], t[2], 255 * t[3]], (j * m2 + i) * 4); }
   const K = new Int16Array(n), F = new Float32Array(n); for (let v = 0; v < n; v++) { const t = (v - 8) / 16 + 1; K[v] = Math.floor(t); F[v] = Math.round((t - K[v]) * 4) / 4; }   // (an art px -> the tile whose middle is west or north of it, and how far on to the next: quarters)
@@ -137,8 +137,8 @@ function* waterSteps(b) {
 }
 // All of it is art pixels (the patterns slide by whole ones), so it is put together small, a pixel an art pixel, on a
 // canvas of its own (waterCv) the HD look lays on its water (vox_style_glsl.js): over the land that look draws (rect:
-// art px x, y, w, h; hd.js box), cut to where there is water. (It was the flat view's rectangle: the tilted eye sees
-// further north and south, and past its edge the GPU stretched the picture's last row: thin vertical lines in the water)
+// art px x, y, w, h; hd.js box), cut to where there is water. (Not the flat view's rectangle: the tilted eye sees
+// further north and south, and past its edge the GPU would stretch the picture's last row: thin vertical lines in the water)
 let waterCv = null, waterView = null;                             // (waterView: where waterCv's corner is, in art px, this frame; null: no water in view)
 function drawWater(vis, rect, t) {
   waterView = null;

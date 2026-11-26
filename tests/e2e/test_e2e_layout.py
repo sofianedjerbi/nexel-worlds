@@ -10,9 +10,9 @@ QWERTY = [("KeyQ", "q"), ("KeyW", "w"), ("KeyA", "a"), ("KeyZ", "z")]
 
 
 def tap(game, code, key, shift=False):
-    game.js(KEY, ["keydown", code, key, shift])
-    game.frames(1)
-    game.js(KEY, ["keyup", code, key, shift])
+    # (down and up at once, as a quick finger: a frame between them was a hold on a slow machine, 0.1 s of its time and
+    # 0.4 of the game's, and Tab held past 0.35 s gives the hand back, keyboard.js tabDown: "assert 0 == 1" on the runners)
+    game.js(f"(a) => {{ const k = {KEY}; k(['keydown', ...a]); k(['keyup', ...a]); }}", [code, key, shift])
     game.frames(1)
 
 

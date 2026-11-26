@@ -44,7 +44,7 @@ const WayShow = (() => {
     const k = pk + "," + landVer + "," + Floors.ver;
     if (k !== genKey) { genKey = k; const i = res && res.path ? res.path.findIndex((p) => p.x === s.x && p.y === s.y && p.z === h) : -1, rest = i >= 0 ? res.path.slice(i) : null;
       if (rest && WayOut.holds(W, rest)) { res = {...res, path: rest, sky: res.sky - i}; gen = null;      // (a step along the way shown, a block of it broken: it is the way still. Found again when you leave it or the land breaks it)
-        if (rest.some((p) => p.digs.some((c) => solidAt(c.x, c.y, c.z)))) { gen = WayOut.find(W, {x: s.x, y: s.y, z: h}, {d: heading, sky: !roof, keep: res}); api.runs++; } }      // (...unless a way on foot is there now: looked for first, it wins. The tunnel's end opened beside you, "dig the wall west" stayed until you had run off it)
+        if (rest.some((p) => p.digs.some((c) => solidAt(c.x, c.y, c.z)))) { gen = WayOut.find(W, {x: s.x, y: s.y, z: h}, {d: heading, sky: !roof, keep: res}); api.runs++; } }      // (...unless a way on foot is there now: looked for first, it wins. a tunnel's end opening beside you replaces "dig the wall west" at once, not once you have run off it)
       else { gen = WayOut.find(W, {x: s.x, y: s.y, z: h}, {d: heading, sky: !roof}); api.runs++; } }
     if (gen) { const t0 = performance.now(); let r; do r = gen.next(); while (!r.done && performance.now() - t0 < SLICE); api.ms = performance.now() - t0; if (r.done) { gen = null; res = r.value; api.n = res.n; } }
     cur = null;
@@ -95,7 +95,7 @@ const WayShow = (() => {
   // Its side is kept while it lies on nothing of you nor off the screen ("the key glitches up and down" while sprinting: over and under took turns a tile, as the keys' boxes came and went), and its place is
   // whole art px of r's (u), as a body's: it moves with the land, never a px against it.
   // You are where you are drawn THIS frame (youAt, your feet; your body there: what paint() leaves bare), your name where it sits on you (Prompts.keep: drawn after this, hd.js, and only when
-  // you are seen: it was the last frame's, or older, moved on by a frame's walk: at a sprint's start the cap sat 30 px off for 13 frames, then leapt over). Lying on your name (it lifts over
+  // you are seen: not the last frame's, or older, moved on by a frame's walk: at a sprint's start the cap would sit 30 px off for 13 frames, then leap over). Lying on your name (it lifts over
   // what you aim at, frame by frame) moves the cap only when it lasts 4 frames; on your body or off the screen, at once
   function pin(r, html, pref, not, u) {
     if (!cap) { cap = document.createElement("div"); cap.id = "waycap"; document.body.appendChild(cap); }
@@ -147,7 +147,7 @@ const WayShow = (() => {
       else if (i > far) { rect(p[0] - u + ox, p[1] - u + oy, 3, 3, INK); rect(p[0] + ox, p[1] + oy, 1, 1, on ? "#ffffff" : "#ffe08a"); }
       else if (on) { rect(p[0] - 3 * u + ox, p[1] - 3 * u + oy, 6, 6, INK); rect(p[0] - 2 * u + ox, p[1] - 2 * u + oy, 4, 4, "#ffffff"); }
       else { rect(p[0] - 2 * u + ox, p[1] - 2 * u + oy, 4, 4, INK); rect(p[0] - u + ox, p[1] - u + oy, 2, 2, "#ffe08a"); } });
-    // OUT IS HERE: where the way ends on the surface, one mark in the dots' own colours: a big dot on the ground and an arrow up over it, bobbing (it was faint rays where the sky
+    // OUT IS HERE: where the way ends on the surface, one mark in the dots' own colours: a big dot on the ground and an arrow up over it, bobbing (not faint rays where the sky
     // opens, unseen on grass, beside the wedge above); off the screen or under a button of a phone: an arrow at the edge, pointing to it
     const end = P[P.length - 1], sk = at(end.x + .5, end.y + .5, end.z); let edge = null; api.out = null;
     if (sk) { const tch = touching(), m = 16, sx = sk[0] * css, sy = (sk[1] - 9 * u) * css, cl = (v, a, b) => Math.max(a, Math.min(b, v)); let x = cl(sx, m, innerWidth - m), y = cl(sy, m + (tch ? 44 : 0), innerHeight - (tch ? 150 : 100));
@@ -170,11 +170,11 @@ const WayShow = (() => {
       box = api.block = bound([...T, ...B], css); const word = touching() ? (c.key === "up" ? "" : c.key === "use" ? "A" : "B") : capOf(c.key), turn = c.x === me0.x && c.y !== me0.y ? `<i class="${c.y < me0.y ? "N" : "S"}${word ? "" : " go"}"></i>` : "";      // (a phone: R's word is on its button, lit, and nowhere else: "Dig a step" stood twice, the cap's over the dots)
       if (c === cur.now && (word || turn)) pin(box, turn + esc(word), ft && (T[0][0] + T[1][0]) / 2 < ft[0] - u ? ["left", "over", "right", "under"] : ["right", "over", "left", "under"], null, u * css);
     }
-    if (!cur.now && P[1].d && pe) { const b = P[1], [dx, dy] = DX[b.d], lv = typeof HdLook !== "undefined" && HdLook.level[2] !== null ? HdLook.level[2] : myZ(me0.x, me0.y), ex = pe.x + dx, ey = pe.y + dy;      // (the next move is a step: the way to go, beside the tile a step ahead of YOU as you are drawn (your eased place, your level between two tiles): it was beside the next tile of the way, a tile on at each step: it ran back to you and leapt a tile on, ten times a second at a sprint)
+    if (!cur.now && P[1].d && pe) { const b = P[1], [dx, dy] = DX[b.d], lv = typeof HdLook !== "undefined" && HdLook.level[2] !== null ? HdLook.level[2] : myZ(me0.x, me0.y), ex = pe.x + dx, ey = pe.y + dy;      // (the next move is a step: the way to go, beside the tile a step ahead of YOU as you are drawn (your eased place, your level between two tiles): not beside the next tile of the way, a tile on at each step: that runs back to you and leaps a tile on, ten times a second at a sprint)
       const q = [at(ex, ey, lv), at(ex + 1, ey, lv), at(ex + 1, ey + 1, lv), at(ex, ey + 1, lv)];
       if (q.every((v) => v)) pin(bound(q, css), `<i class="${b.d}${hops() && !touching() ? "" : " go"}"></i>` + (hops() && !touching() ? esc(capOf("jump")) : ""), b.d === "E" || b.d === "W" ? ["over", "under", b.d === "E" ? "right" : "left"] : ["right", "left", "over", "under"], box, u * css); }
     g.restore(); api.hidden = nh; api.dots = pts.length;
-    if (cap && capKey && capAt !== fno) { cap.style.display = "none"; capKey = ""; }      // (drawn by nothing this frame: gone now, not left two frames where it was while you ran on)
+    if (cap && capKey && capAt !== fno) { cap.style.display = "none"; capKey = ""; }      // (drawn by nothing this frame: gone now, not left two frames behind while you run on)
     if (edge) { const [x, y, d] = edge, tri = (n, back, col) => { for (let i = 0; i < n; i++) rect(x - (i + back) * u * d[0] - (d[0] ? 0 : i * u), y - (i + back) * u * d[1] - (d[1] ? 0 : i * u), d[0] ? 1 : 2 * i + 1, d[1] ? 1 : 2 * i + 1, col); };
       tri(7, -1, INK); tri(5, 1, beat ? "#ffffff" : "#fff1a8"); }
   }

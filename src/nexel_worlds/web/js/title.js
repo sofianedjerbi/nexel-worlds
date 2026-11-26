@@ -1,7 +1,7 @@
 // The first screen: the classic menu (css/title.css). A list played with the arrows and Enter, or the mouse: who
 // you are (Left and Right change it), Wake up, Help, Sound. Your character stands in the window beside
 // the field your name is written in, in the colour that name will have in the world (a colour comes from a name).
-// The name used to float over a character standing outside the window: "player name position is awkward".
+// The name does not float over a character standing outside the window: "player name position is awkward".
 // A world that asks who you are (account.js) shows two steps before that one, one at a time: your email, then the
 // code mailed to it. Each step has its own field and its own rows; the others are not on the screen.
 

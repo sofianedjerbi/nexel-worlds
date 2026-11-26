@@ -1,5 +1,5 @@
-// The jump's own poses ("improve the jumping animation"). The sheet has no jump: it was a row of the body drawn a row
-// lower for the crouch and the run's stride in the air. Each pose is now a frame of its own, made once when the sheet
+// The jump's own poses ("improve the jumping animation"). The sheet has no jump: each pose is a frame of its own,
+// made from the standing frame once when the sheet
 // loads (assets.js, after tool_art.js), so everything built from the sheet afterwards (a person's colour, their race,
 // their clothes) has it too. ANIM.jump in sprites.js names the rows: a row per way it faces, a column per pose.
 // A pose is the standing frame (idle, first column) with whole rows of it left out or drawn twice: nothing scaled.
@@ -14,7 +14,7 @@
 // body k+2..bottom-2, the feet the last two rows.
 
 const JumpArt = (() => {
-  const CELL = 48, POSES = ["crouch", "takeoff", "rise", "apex", "fall", "land", "settle"];
+  const POSES = ["crouch", "takeoff", "rise", "apex", "fall", "land", "settle"];
   const LINE = [92, 78, 146], COLLAR = [118, 109, 170];
   const same = (d, i, c) => d[i + 3] && d[i] === c[0] && d[i + 1] === c[1] && d[i + 2] === c[2];
 
@@ -83,7 +83,7 @@ const JumpArt = (() => {
     return out;
   }
   // How many rows a row of the standing frame is moved by in each pose (SHIFT[facing][column][row]): what is held in the
-  // paw goes with the paw (held.js; it went by the frame's top, measured from the crouch: a px off in every pose, two in the fall)
+  // paw goes with the paw (held.js; by these shifts, not the frame's top measured from the crouch, a px off in every pose and two in the fall)
   const SHIFT = [];
   const shift = (facing, col, y) => { const f = SHIFT[facing], m = f && f[col]; return m ? m[Math.max(0, Math.min(CELL - 1, y))] : 0; };
   // The sheet with the jump's four rows under it (the standing frame in the last column: every frame is a body)

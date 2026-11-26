@@ -7,7 +7,7 @@
 // down on whatever is under you: a step up, the far side of a gap (two tiles across at a sprint), the foot of a
 // ledge. Your screen works it out frame by frame; the world is told when you land: the tiles you went over and the
 // height you landed at (sim/leaping.py checks them against the same arc, then makes them, a tile a stride).
-// Standing in front of a step, the key takes you up onto it as before (walk.js jumpKey: in a tunnel or a shaft there
+// Standing in front of a step, the key takes you up onto it with a hop (walk.js jumpKey: in a tunnel or a shaft there
 // is no room for a jump through the air).
 // Auto-jump is the same jump: walking towards a step a layer up, you leave the ground just early enough to clear its edge
 // (due), at the walk's speed ("it stops the velocity and does an up-block animation": the step's own hop at a third of a
@@ -25,8 +25,8 @@ const Leap = (() => {
   // May you jump from where you are? (in the water, in a boat, on a ladder, falling, building: the old ways)
   function can(p, ledge) {   // (ledge: walking off one: the fall jump.js begins on the tile before the edge does not stop it, it is taken over)
     const [x, y] = tileOf(p.x, p.y), t = tile(x, y), h = myZ(x, y);
-    // (room over your head for the jump's top: under a roof, in a tunnel or a cave's stair, the old way. A jump there
-    // hit the roof, its tiles not the world's: you were drawn on the land over it and put back where the world had you)
+    // (room over your head for the jump's top: under a roof, in a tunnel or a cave's stair, a hop instead: a jump there
+    // meets the roof, the screen's tiles not the world's, and the world puts you back where it has you)
     return !!p && !Build.on && !(p.e && p.e.sail) && !(t && wet(t[1])) && !Climb.climbOf(p) && (ledge || !BodyPlace.state(p).fall) && !eating() && (ledge || (!solidAt(x, y, h + 3) && !solidAt(x, y, h + 4)));   // (off a ledge you do not rise: no room over your head wanted)
   }
   // Off the ground, with the walk's speed
@@ -86,8 +86,8 @@ const Leap = (() => {
     return {v, vz};
   }
   // WALKING OFF A LEDGE a fall's height or more (FALL.from; a step less is walked down, jump.js STEPDOWN): you go on over it at the walk's speed and come down as a thrown thing does, the same
-  // fall as a jump's (frame, cam): it was a fall of its own (jump.js fallOf), the eye put on the ground under the edge in a frame, the body 55 px up the screen at once,
-  // "weird issues when jumping from high heights". This frame's walk (t s) takes you over the edge: -> true
+  // fall as a jump's (frame, cam), not jump.js fallOf's (the eye on the ground under the edge in a frame, the body 55 px up the screen at once,
+  // "weird issues when jumping from high heights"). This frame's walk (t s) takes you over the edge: -> true
   function dropDue(p, w, t) {
     const [dx, dy] = DIRV[w.dir], s = dx || dy, x = Math.round(p.x), y = Math.round(p.y);
     const d = ((dx ? x : y) + .5 * s - (dx ? p.x : p.y)) * s, v = RULES.pace[w.run && sprinting() ? "sprint" : "walk"];
@@ -175,7 +175,7 @@ const Leap = (() => {
     const h = held(), past = h && (p.x - p.tx) * h[0] + (p.y - p.ty) * h[1] >= 0 && Math.abs((p.x - p.tx) * h[1]) + Math.abs((p.y - p.ty) * h[0]) < .01 && fits(p.tx + h[0], p.ty + h[1], z);   // (and room on the way held: down by a wide hole's far wall, on into the wall was a step up four levels drawn as its arc, the body 20 px up and down)
     const st = BodyPlace.state(p); L = null; st.settle = now; fallWind(-1);
     // (the eye's way left to go, from this frame on: the body drawn on the ground is lifted by it (lift) from the frame
-    //  you land. It was set at the eye's next look (cam): the landing frame drew you with none, 20 px up from the arc's
+    //  you land, not at the eye's next look (cam): else the landing frame draws you with none, 20 px up from the arc's
     //  last frame, a hole's floor four down under an eye two levels behind, then down again)
     if (C !== null && air) { off = z - C; air = false; }
     // (where you came down on the tile, off its middle: you go to it, at the walk's pace, before the walk goes on. On
@@ -201,7 +201,7 @@ const Leap = (() => {
     else if (bump) { if (can(p)) start(p, now, {w: h, run}, true); else st.leapAt = {x: p.tx, y: p.ty, z}; }
   }
   // You on the tile you came down on, on your way to its middle: its height (else null; and off it, put elsewhere by the
-  // world, no longer: a teleport there left you gliding for good, the walk never started again). (jump.js jumpOf, relief.js liftOf, hd_level.js)
+  // world, null too: else a teleport there leaves you gliding for good, the walk never on again). (jump.js jumpOf, relief.js liftOf, hd_level.js)
   function landedOn(p) {
     const st = BodyPlace.peek(p), a = st && st.leapAt;
     if (!a) return null;
@@ -232,7 +232,7 @@ const Leap = (() => {
     if (C === null) { off = 0; return natural; }
     const dt = Math.min(.1, Math.max(0, (now - Ct) / 1000)), rate = (d) => Math.min(2 * CAM, Math.max(CAM, (Math.abs(d) - 1) * 10)) * dt;   // (on the ground after a jump: a px a frame for a level or less; past that it closes a tenth of the way left every 1/100 s, twice that at the most (CAM: a px a frame at the pitch's flattest; 5 px a frame zoomed in, 9 at 4 x was seen as a jolt): down off a ledge it kept a px a frame, the land scrolling a second after you were down)
     Ct = now;
-    if (L) { const g = settleAt(L.tx, L.ty, L.z + 1e-6), goal = g >= L.z0 ? g : Math.max(g, Math.min(L.z0, L.z)), step = g >= L.z0 ? CAM * dt : Math.max(CAM * dt, Math.abs(goal - C) * Math.min(1, 14 * dt));   // (in the air: up onto higher ground, a px a frame to its level; down, with your body once it is under the level you left, never under the ground (it went a px a frame to the ground under you: the land rushed under a jump's top, or lagged a second behind a fall))
+    if (L) { const g = settleAt(L.tx, L.ty, L.z + 1e-6), goal = g >= L.z0 ? g : Math.max(g, Math.min(L.z0, L.z)), step = g >= L.z0 ? CAM * dt : Math.max(CAM * dt, Math.abs(goal - C) * Math.min(1, 14 * dt));   // (in the air: up onto higher ground, a px a frame to its level; down, with your body once it is under the level you left, never under the ground (not a px a frame to the ground under you: the land would rush under a jump's top, or lag a second behind a fall))
       C += Math.max(-step, Math.min(step, goal - C)); off = 0; air = true; return C; }
     // (on the ground: what is left between the two goes, a px a frame, while the eye goes with you as it does: it
     // chased you at a px a frame, and running down a flight of steps after a jump you ran away from it, 5 px a frame
