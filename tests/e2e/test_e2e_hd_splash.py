@@ -11,7 +11,7 @@ pytestmark = pytest.mark.e2e
 # every frame drawn while you go down: the top of your body's own px on the screen, in art px (HdLook.art().body / u), how it is drawn (BodyPlace mode, up),
 # the landing's lift (levels), the body's height (art px), the leap (L: in the air, G: the eye gliding after it), the row (tiles), the frame's time (ms),
 # a fixed place of the pond's row (art px: the landing's shake moves it and you alike)
-LOG = """(() => { window.__fr = []; const f = () => { if (!window.__fr) return; const a = HdLook.art(), b = a && a.body, q = ents.get('agent' + myId); if (b && q) { const pl = BodyPlace.of(q); window.__fr.push([Math.round(b.y / a.u * 10) / 10, pl.mode, pl.up, Math.round(Leap.lift(q) * 100) / 100, Math.round(b.h / a.u), Leap.on() ? 'L' : Leap.gliding() ? 'G' : '', Math.round(q.y * 100) / 100, Math.round(performance.now()), (() => { const r = window.__ref, w = r && HdLook.screenOf(r[0], r[1], 0); return w ? Math.round(w[1] / a.u * 10) / 10 : null; })()]); } requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; })()"""
+LOG = """(() => { window.__fr = []; const f = () => { if (!window.__fr) return; const a = HdLook.art(), b = a && a.body, q = ents.get('agent' + myId); if (b && q) { const pl = BodyPlace.of(q); window.__fr.push([Math.round(b.y / a.u * 10) / 10, pl.mode, pl.up, Math.round(Leap.lift(q) * 100) / 100, Math.round(b.h / a.u), Leap.on() ? 'L' : Leap.gliding() ? 'G' : '', Math.round(q.y * 100) / 100, Math.round(performance.now()), (() => { const pl = BodyPlace.of(q), j = pl.jump; return [pl.line, Math.round((pl.z || 0) * 100) / 100, j ? Math.round(j.body * 10) / 10 : null, j ? Math.round(j.ground * 10) / 10 : null, j ? j.pose : null]; })(), (() => { const r = window.__ref, w = r && HdLook.screenOf(r[0], r[1], 0); return w ? Math.round(w[1] / a.u * 10) / 10 : null; })()]); } requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; })()"""
 LOGGED = "(() => { const l = window.__fr; window.__fr = null; return l; })()"
 
 
@@ -50,8 +50,8 @@ def test_off_a_high_ledge_into_water_your_body_does_not_jump_up_the_screen(brows
     # Against the pond (r[8]): a fall of six into water hurts (sim/movement.py fell), and the landing's shake moves the whole
     # picture, the pond and you alike, up to 10 px a frame (render.js fallShake): that is the game's own, not a jolt of yours)
     cap = lambda a, b: 6 * max(1, (b[7] - a[7]) / 16.67)
-    rel = lambda r: r[0] - r[8]
-    assert k < 2 or rel(fr[k]) - rel(fr[k - 1]) <= rel(fr[k - 1]) - rel(fr[k - 2]) + cap(fr[k - 1], fr[k]), str(fr[max(0, k - 4):k + 4])   # (into the water no faster than the fall's own last step: it sank 5 px at once, #193)
+    rel = lambda r: r[0] - r[9]
+    assert k < 2 or rel(fr[k]) - rel(fr[k - 1]) <= rel(fr[k - 1]) - rel(fr[k - 2]) + cap(fr[k - 1], fr[k]), str(fr[max(0, k - 4):k + 4]) + ' PROBE'   # (into the water no faster than the fall's own last step: it sank 5 px at once, #193)
     jolts = [(a, b) for a, b in zip(fr[k:], fr[k + 1:]) if abs(rel(b) - rel(a)) > cap(a, b)]
     assert not jolts, str(jolts[:4])
     g.rest()
