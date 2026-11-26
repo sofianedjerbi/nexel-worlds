@@ -9,9 +9,11 @@ def test_eating_takes_three_bites_and_stops_when_full(game):
     hunger0 = game.server()["hunger"]
     game.hold_item("bread")
     game.press("e", 0)
-    game.sleep(450)
-    assert game.js("myAside && myAside.tool") == "eat" and game.js("biteIcon('bread', 1) !== null")
-    game.sleep(900)
+    game.wait("myAside && myAside.tool === 'eat' && biteIcon('bread', 1) !== null", 3000)   # (asked as it begins: 450 ms on, on a runner, the 0.9 s meal was over)
+    for _ in range(50):                                        # (until the world has it: the meal's end, then its word)
+        if game.server()["hunger"] == hunger0 + 10:
+            break
+        game.sleep(100)
     assert game.server()["hunger"] == hunger0 + 10            # one bread: five pieces
     game.rpc("dev_needs", hunger=20)
     while game.server()["hunger"] < 20 and game.inv("bread"):
@@ -35,15 +37,20 @@ def test_eating_your_hands_are_full(game):
     game.face(1, 0)
     game.hold_item("bread")
     game.js("(() => { window.__asked = []; const o = rpc; rpc = function (op, d) { if (op === 'act') __asked.push(d.tool); return o(op, d); }; return 1; })()")
+    game.js("(() => { window.__keys = []; addEventListener('keydown', (e) => __keys.push([e.key, eating()]), true); return 1; })()")
     game.press("e", 0)
-    game.wait("myAside && myAside.tool === 'eat'")
-    game.js("selectItem(null)")
-    game.press("x", 150)
-    game.press("f", 150)
-    assert game.js("eating()") and game.js("__asked") == ["eat"]                     # nothing asked for but the meal
+    # X and F as the meal begins, in the page's own frame: the meal is 0.9 s, and each key sent from here, or each wait
+    # for the page, was a slow runner's frame or two (the meal was over before X, both pressed with free hands)
+    game.js("""() => new Promise((ok) => { const go = () => { if (!(myAside && myAside.tool === 'eat')) return requestAnimationFrame(go);
+      selectItem(null);
+      for (const [key, code] of [['x', 'KeyX'], ['f', 'KeyF']]) for (const type of ['keydown', 'keyup']) dispatchEvent(new KeyboardEvent(type, {key, code, bubbles: true}));
+      ok(1); }; go(); })""")
+    assert game.js("__keys.filter(([k]) => k === 'x' || k === 'f')") == [["x", True], ["f", True]]   # both pressed while eating
+    assert game.rpc("act", tool="dig", args={"dir": "E"}).get("error") == "hands_full"   # (the server's own rule, asked past the page)
+    game.frames(1)
+    assert game.js("__asked") == ["eat", "dig"]                                       # nothing asked for but the meal (and the dig asked past the page)
     assert game.js("!ents.get('agent' + myId).swing && !myAction")                   # no punch shown
     assert game.inv("stone") == 0 and game.js(f"combAt({game.pos()[0] + 1}, {game.pos()[1]})") == "T"
-    assert game.rpc("act", tool="dig", args={"dir": "E"})["error"] == "hands_full"   # (the server's own rule, asked past the page)
     game.wait("!eating()", 4000)
     assert game.server()["hunger"] == 8 + 10                                        # ...and the meal was not stopped for any of it
     game.press("f", 400)
@@ -65,9 +72,8 @@ def test_you_eat_while_you_walk(game):
     game.page.keyboard.down("d")
     game.sleep(250)
     game.press("e", 0)
-    game.sleep(450)
+    game.wait("(() => { const e = ents.get('agent' + myId).e; return e.doing === 'walk' && e.eats === 'bread'; })()", 3000)   # as others are told (when the world has said it)
     assert game.js("walking !== null") and game.js("myAside && myAside.tool") == "eat"       # walking, and the bites showing
-    assert game.js("(() => { const e = ents.get('agent' + myId).e; return [e.doing, e.eats]; })()") == ["walk", "bread"]   # as others are told
     game.sleep(900)
     game.page.keyboard.up("d")
     rec = game.recording()
@@ -76,15 +82,15 @@ def test_you_eat_while_you_walk(game):
     stops, i0 = [], 0                                                                       # ...and you never stood still for it
     for i in range(1, len(rec)):
         if abs(rec[i][1] - rec[i0][1]) > 1e-6:
-            if rec[i][0] - rec[i0][0] > 80 and rec[i0][0] > 300:
+            if i - i0 > 1 and rec[i][0] - rec[i0][0] > 80 and rec[i0][0] > 300:   # (a frame drawn where the last one was: one frame apart is a slow machine's frame, 100 to 200 ms on a runner, not a stop)
                 stops.append(round(rec[i][0] - rec[i0][0]))
             i0 = i
     assert not stops and game.pos()[0] >= x0 + 5, (stops, game.pos()[0] - x0)           # (slower while you chew: EAT_PACE)
     game.rpc("dev_needs", hunger=8)
-    game.press("e", 250)                                                                    # a meal begun standing...
+    game.press("e", 0)                                                                      # a meal begun standing...
+    game.wait("myAside && myAside.tool === 'eat'")
     game.page.keyboard.down("a")
-    game.sleep(500)
-    assert game.js("walking !== null") and game.js("myAside && myAside.tool") == "eat"       # ...goes on as you set off
+    game.wait("walking !== null && !!myAside && myAside.tool === 'eat'", 3000)               # ...goes on as you set off (asked at once: the meal is 0.9 s)
     game.sleep(700)
     game.page.keyboard.up("a")
     game.sleep(500)

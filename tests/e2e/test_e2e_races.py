@@ -102,7 +102,9 @@ SWINGS = os.environ.get("SWING_SHOTS")       # a folder to keep each frame of ea
 @pytest.mark.realtime
 def test_a_sword_cuts_across_and_a_spear_is_thrust(game):
     """An attack with a sword or a spear was the sheet's chop, which reads as breaking a block. swing_art.js draws the
-    weapon over the standing body: the sword crosses from one side of you to the other, the spear goes out and back."""
+    weapon over the standing body: the sword crosses from one side of you to the other, the spear goes out and back.
+    (Each frame of a swing is held by its start: always that long ago, read when the body is drawn. Set once, two
+    frames of a slow machine later the swing was two frames on: "[192, 0, 0] not in [[192, 1, 0]]".)"""
     game.clear_area(6)
     game.give(sword=1, spear=1)
     blade = """(kind, row, f) => { const d = SwingArt.frame(kind, row, f, [[1, 1, 1], [2, 2, 2], [3, 3, 3]]); let n = 0, sx = 0, sy = 0, far = 0;
@@ -120,9 +122,9 @@ def test_a_sword_cuts_across_and_a_spear_is_thrust(game):
             game.face(dx, dy)
             for f in range(6):
                 drawn = game.js(f"""new Promise((done) => {{ const p = ents.get('agent' + myId), P = CanvasRenderingContext2D.prototype, d0 = P.drawImage, out = [];
-                  p.fx = {dx}; p.fy = {dy}; p.swing = {{t0: performance.now() - {f * 50 + 20}, with: '{kind}'}};
+                  p.fx = {dx}; p.fy = {dy}; p.swing = {{get t0() {{ return performance.now() - {f * 50 + 45}; }}, with: '{kind}'}};
                   P.drawImage = function (img, ...r) {{ if (r.length === 8 && r[2] === 48 && r[3] === 48 && (img.height === 192 || img.height > 1000)) out.push([img.height, r[0] / 48, r[1] / 48]); return d0.call(this, img, ...r); }};
-                  requestAnimationFrame(() => requestAnimationFrame(() => {{ P.drawImage = d0; window._hold = setInterval(() => {{ p.swing.t0 = performance.now() - {f * 50 + 20}; }}, 5); done(out); }})); }})""")
+                  requestAnimationFrame(() => requestAnimationFrame(() => {{ P.drawImage = d0; done(out); }})); }})""")
                 row = {"down": 0, "up": 1, "right": 2, "left": 3}[way]
                 assert [192, f, row] in drawn, (kind, way, f, drawn)                   # the weapon's frame, for the way faced
                 assert any(h > 1000 and r == row for h, c, r in drawn), drawn          # over the standing body, not the chop
@@ -130,7 +132,7 @@ def test_a_sword_cuts_across_and_a_spear_is_thrust(game):
                     game.sleep(60)
                     v = game.page.viewport_size; x, y = v["width"] / 2, v["height"] / 2    # (you are in the middle of the screen)
                     game.page.screenshot(path=f"{SWINGS}/{kind}_{way}_{f}.png", clip={"x": x - 110, "y": y - 110, "width": 220, "height": 220})
-                game.js("clearInterval(window._hold)")
+                game.js("ents.get('agent' + myId).swing = null")
     assert not game.errors
 
 

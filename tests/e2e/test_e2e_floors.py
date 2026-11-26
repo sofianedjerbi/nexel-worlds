@@ -55,14 +55,11 @@ def test_a_second_floor_is_built_and_climbed_by_keys_alone(game):
     game.wait(f"!!Floors.get({x + 2}, {y - 4}, 2) && Build.S.plans.size === 0", 30000)
     game.press("b")
     assert game.inv("plank") == 9 and not game.errors
-    game.rpc("dev_teleport", x=x + 3, y=y - 1, z=0); game.arrive()            # before the door
-    for key, to in (("ArrowUp", (3, -2, 0)), ("ArrowUp", (3, -3, 0)), ("ArrowLeft", (2, -3, 1)), ("ArrowUp", (2, -4, 2)), ("ArrowRight", (3, -4, 3))):
-        if to[2] > game.server()["z"]:                         # (up a block: walking into it stops you, Space jumps it)
-            game.face(*{"ArrowUp": (0, -1), "ArrowDown": (0, 1), "ArrowLeft": (-1, 0), "ArrowRight": (1, 0)}[key])
-            game.press("Space", 0)
-        else:
-            game.hold([key], 90)                               # (a tap: a tile)
-        game.sleep(500)
+    game.rpc("dev_teleport", x=x + 3, y=y - 3, z=0); game.arrive(); game.rest()   # in the room, by the stairs (walking in by the door is the moving tests': a tap there went three tiles on a runner)
+    for key, to in (("ArrowLeft", (2, -3, 1)), ("ArrowUp", (2, -4, 2)), ("ArrowRight", (3, -4, 3))):
+        game.face(*{"ArrowUp": (0, -1), "ArrowDown": (0, 1), "ArrowLeft": (-1, 0), "ArrowRight": (1, 0)}[key])   # (up a block each: walking into it stops you, Space jumps it)
+        game.press("Space", 0)
+        game.settle(f"myAt && myAt.x === {x + to[0]} && myAt.y === {y + to[1]} && myAt.z === {to[2]} && !walking && !pred && ents.get('agent' + myId).e.z === {to[2]}", timeout=5000)
         s = game.server()
         assert (s["x"] - x, s["y"] - y, s["z"]) == to, (key, to, s["x"] - x, s["y"] - y, s["z"])
     assert game.js("myAt.z") == 3 and game.js("liftOf(ents.get('agent' + myId)) / zoom") == 48      # drawn where you stand: three layers up
@@ -149,9 +146,12 @@ def test_you_see_the_floor_you_are_on_and_fall_off_its_edge(game):
     assert alpha((x0 + 2, y0, 6), (x0 + 2, y0 + 3, 6)) == [1, 1]                                    # not seen through as a room is
     go(game, x0 + 3, y0 + 3, 3)                                               # upstairs again; a gap is cut in the south wall, and off you walk
     assert game.rpc("act", tool="dig", args={"x": x0 + 3, "y": y0 + 4, "z": 3, "with": "axe"})["ok"]
-    game.sleep(400)
-    game.hold(["ArrowDown"], 500)
-    game.sleep(900)
+    game.wait(f"(t => !t || t === 'none')(Floors.thingAt({x0 + 3}, {y0 + 4}, 3))", 8000)            # (the wall gone on the page, its plank left: the dig takes its time)
+    game.page.keyboard.down("ArrowDown")                                                            # (walked till you are down: half a second of walking
+    game.wait(f"myAt && myAt.y >= {y0 + 5} && myAt.z === 0", 8000)                                  # was still upstairs on a runner)
+    game.page.keyboard.up("ArrowDown")
+    game.wait("!walking && !pred", 4000)
+    game.wait("ents.get('agent' + myId).e.z === 0", 4000)                                          # (and the world has you down)
     s = game.server()
     assert (s["x"], s["z"]) == (x0 + 3, 0) and s["y"] >= y0 + 5 and s["hp"] == 20                    # down on the ground before the door, unhurt (three layers)
     assert not game.errors
