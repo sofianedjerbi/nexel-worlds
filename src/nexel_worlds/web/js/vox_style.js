@@ -32,6 +32,7 @@ const VoxStyle = (() => {
     let ub = UB[0].f, uq = 0, lastSn = 0, mver = 0; const uP = (x) => { ub[uq++] = x; }, uA = (a) => { for (let i = 0; i < a.length; i++) ub[uq++] = a[i]; };
     const dirty = [], row = new Uint32Array(AW * C), U = {}, units = {}, cnt ={main: 0, model: 0, far: 0, ghost: 0, shade: 0, shade2: 0, water: 0}, bufs = {};
     self.__cnt = cnt;
+    self.__glAt = (fx, fy) => { if (!gl || !el) return null; const b = new Uint8Array(4); gl.readPixels(Math.floor(fx * el.width), Math.floor((1 - fy) * el.height), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, b); return [...b, el.width, el.height]; };
     // the paints: A the ones the land now drawn was made with (and what is drawn each frame over it: shadows, ghosts), B the ones of a land being made (A's and its new ones; after a wipe from none); B becomes A when that land is done
     // (B is made when the land being made first asks for a paint A has not: a land made again with nothing new in it copies nothing)
     // (FULL while a land is made: the places of the paints that land does not use (used: the ones it asked for and the ones of the chunks it keeps) are given again, theirs first wiped; the chunks
