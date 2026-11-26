@@ -68,22 +68,23 @@ class Building:
                 self.set_tile(x, y, ground=under, by=a, cause="dig")
                 return {"got": {item: 1}}
             if not ground.diggable or ground.name in ("tilled", "wet_tilled"):
-                raise ActionError("cannot_dig", f"{ground.name} cannot be dug")
+                raise ActionError("cannot_dig", f"{ground.name} cannot be dug", what=ground.name)
             if self.held(a, args) != T.TILL_TOOL:
                 raise ActionError("need_tool", f"tilling needs a {T.TILL_TOOL} in hand (with: {T.TILL_TOOL})"
-                                  + ("" if a.count(T.TILL_TOOL) else "; craft one at a workbench"))
+                                  + ("" if a.count(T.TILL_TOOL) else "; craft one at a workbench"), tool=T.TILL_TOOL, have=a.count(T.TILL_TOOL) > 0)
             yield from self.wait(a, 0.6)
             if self.world.block(x, y) != "none":
                 raise ActionError("changed", "something was placed there")
             self.set_tile(x, y, ground="tilled", by=a, cause="dig")
             return {}
         if block.hardness <= 0:
-            raise ActionError("cannot_dig", f"{block.name} cannot be dug")
+            raise ActionError("cannot_dig", f"{block.name} cannot be dug", what=block.name)
         tool = self.held(a, args)
         kind = T.tool_kind(tool)                            # (any tier of an axe, of a pickaxe: tiles.py TOOLS)
         if block.needs_tool and kind != block.needs_tool:
             raise ActionError("need_tool", f"digging {block.name} needs a {block.needs_tool} in hand "
-                              f"(with: {block.needs_tool})" + ("" if T.best_tool(a.inventory, block.needs_tool) else "; you have none"))
+                              f"(with: {block.needs_tool})" + ("" if T.best_tool(a.inventory, block.needs_tool) else "; you have none"),
+                              tool=block.needs_tool, have=bool(T.best_tool(a.inventory, block.needs_tool)))
         seconds = block.hardness / 20 * (T.tool_time(tool) if kind in (block.tool, block.needs_tool) else 1)   # with the right tool in hand, by its tier
         if block.tool and kind != block.tool:
             seconds *= T.BY_HAND[block.tool]

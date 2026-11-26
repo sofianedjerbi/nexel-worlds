@@ -5,12 +5,16 @@
 const DEATH_MS = 1200;                     // the bar fills, then it waits for you: any key or a click
 let deathReadyAt = Infinity;
 let deathTimer = null;
+// WHY YOU DIED, in words, from the death's code and who did it (#6: one table for the death screen and the chat; the
+// server's `cause` is the agents' words, not read here). Who: {kind, id, name} (sim/entities.py ref)
+const WHY_DIED = {killed: (w) => `killed by ${w.name}`, bitten: (w) => `bitten by ${w.name || "a " + label(w.kind).toLowerCase()}`,
+  burnt: () => "burnt by a hob", fell: () => "fell", starvation: () => "starved", fire: () => "burnt in a fire", admin: () => "struck down", dev: () => "struck down"};
+const whyDied = (e) => (Object.hasOwn(WHY_DIED, e.code) ? WHY_DIED[e.code] : () => "fell")(e.who || {});   // (its own codes only: one from the wire such as "constructor" is not a method of Object)
 function showDeath(e) {
   const v = $("deathveil"), p = $("death");
   const skull = $("deathskull").getContext("2d"), [c, r] = EMOTE.skull;
   skull.imageSmoothingEnabled = false; skull.clearRect(0, 0, 32, 32); skull.drawImage(IMG.emoji, c * 32, r * 32, 32, 32, 0, 0, 32, 32);
-  const cause = String(e.cause || "you fell").replace(/^./, (m) => m.toUpperCase());
-  $("deathcause").textContent = cause + ".";
+  $("deathcause").textContent = whyDied(e).replace(/^./, (m) => m.toUpperCase()) + ".";
   const loot = $("deathloot"); loot.innerHTML = "";
   const items = Object.entries(e.dropped || {}).filter(([, n]) => n > 0);
   for (const [name, n] of items.slice(0, 8)) {

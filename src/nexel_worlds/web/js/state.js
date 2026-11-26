@@ -205,16 +205,16 @@ function onEvent(e) {
   if (e.type === "say" || e.type === "shout") { const em = emoteFor(e.text); if (em) setTimeout(() => emote(e.from, em), 2500); }
   if (e.type === "give") { emote(e.to, "love"); emote(e.from, "happy"); }
   if (e.type === "craft") emote(e.name, "star");
-  if (e.type === "attack") emote(e.target, "bang");
+  if (e.type === "attack" && e.whom && e.whom.kind === "agent") emote(e.whom.name, "bang");
   if (e.type === "death") emote(e.name, "skull");
   if (e.type === "say" || e.type === "shout") {
     bubbles.push({name: e.from, text: e.text, t, shout: e.type === "shout"});      // (drawn, piled and let go by bubbles.js)
   }
   if (e.type === "attack") {
     noteFight(e);
-    const who = [...ents.values()].find((q) => q.e && q.e.kind === "agent" && q.e.name === e.attacker);
-    if (who && e.attacker !== me) who.swing = {t0: performance.now(), with: e.weapon !== "fists" ? e.weapon : null};
-    const tgt = [...ents.values()].find((q) => q.e && (q.e.name === e.target || `${q.e.kind}#${q.e.id}` === e.target));
+    const who = e.who && e.who.kind === "agent" ? ents.get(refKey(e.who)) : null;
+    if (who && !refIsMe(e.who)) who.swing = {t0: performance.now(), with: e.weapon !== "fists" ? e.weapon : null};
+    const tgt = ents.get(refKey(e.whom));
     const tx = tgt ? tgt.x : e.x, ty = tgt ? tgt.y : e.y;
     if (tgt) flashes.set(tgt.e.kind === "agent" ? "agent" + tgt.e.id : tgt.e.kind + tgt.e.id, performance.now());
     if (tgt && ANIMALS[tgt.e.kind]) {             // a hit animal: a startled "!" and a few feathers or tufts of its own colour
@@ -224,7 +224,7 @@ function onEvent(e) {
       sfx(tgt.e.kind === "chicken" || tgt.e.kind === "chick" ? "squawk" : animalVoice(tgt.e.kind), tx, ty);
     }
     wildBlow(e, tgt, tx, ty);                                                               // (whose sound: world_decor.js CRY)
-    burst(tx, ty, "hit", 6, {dy: -.4}); if (e.target === me) sfx("hurt"); floats.push({x: tx, y: ty, text: "-" + hearts(e.damage), heart: true, color: "#ff8a7a", t});      // (in hearts, whoever is hit)
+    burst(tx, ty, "hit", 6, {dy: -.4}); if (refIsMe(e.whom)) sfx("hurt"); floats.push({x: tx, y: ty, text: "-" + hearts(e.damage), heart: true, color: "#ff8a7a", t});      // (in hearts, whoever is hit)
   }
   if (e.type === "jump" && e.name !== me && !e.step) {   // somebody hops (on the level: jump.js HOP; up a step, its own arc shows as it goes: a hop where it stood first, then the step's, was one jump drawn as two)
     const q = [...ents.values()].find((q) => q.e && q.e.kind === "agent" && q.e.name === e.name);
@@ -286,7 +286,7 @@ function onEvent(e) {
   switch (e.type) {
     case "say": text = e.text; break;
     case "shout": text = e.text; break;
-    case "death": text = `**${e.name}** died (${e.cause})`; break;
+    case "death": text = `**${e.name}** died (${whyDied(e)})`; break;
     case "give": if (e.from !== me && e.to !== me) return; text = `**${e.from}** gave **${e.to}** ${fmt(e.items)}`; break;
     case "join": text = `**${e.name}** ${e.new ? "washed ashore" : "woke up"}`; break;
     case "leave": text = `**${e.name}** fell asleep`; break;

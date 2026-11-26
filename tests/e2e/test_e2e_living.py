@@ -39,14 +39,17 @@ def test_eating_your_hands_are_full(game):
     game.js("(() => { window.__asked = []; const o = rpc; rpc = function (op, d) { if (op === 'act') __asked.push(d.tool); return o(op, d); }; return 1; })()")
     game.js("(() => { window.__keys = []; addEventListener('keydown', (e) => __keys.push([e.key, eating()]), true); return 1; })()")
     game.press("e", 0)
-    # X and F as the meal begins, in the page's own frame: the meal is 0.9 s, and each key sent from here, or each wait
-    # for the page, was a slow runner's frame or two (the meal was over before X, both pressed with free hands)
+    # X and F (and a dig asked past the page) as the meal begins, in the page's own frame: the meal is 0.9 s, and each key
+    # sent from here, or each wait for the page, was a slow runner's frame or two (the meal was over before X, both pressed with free hands)
     game.js("""() => new Promise((ok) => { const go = () => { if (!(myAside && myAside.tool === 'eat')) return requestAnimationFrame(go);
       selectItem(null);
       for (const [key, code] of [['x', 'KeyX'], ['f', 'KeyF']]) for (const type of ['keydown', 'keyup']) dispatchEvent(new KeyboardEvent(type, {key, code, bubbles: true}));
+      window.__dig = rpc('act', {tool: 'dig', args: {dir: 'E'}});
       ok(1); }; go(); })""")
     assert game.js("__keys.filter(([k]) => k === 'x' || k === 'f')") == [["x", True], ["f", True]]   # both pressed while eating
-    assert game.rpc("act", tool="dig", args={"dir": "E"}).get("error") == "hands_full"   # (the server's own rule, asked past the page)
+    # (the server's own rule, asked past the page, in that frame too: asked from here, a busy runner's two calls later, the
+    # meal was over and the tree was chopped)
+    assert game.js("() => __dig").get("error") == "hands_full"
     game.frames(1)
     assert game.js("__asked") == ["eat", "dig"]                                       # nothing asked for but the meal (and the dig asked past the page)
     assert game.js("!ents.get('agent' + myId).swing && !myAction")                   # no punch shown
