@@ -134,7 +134,6 @@ const Leap = (() => {
   // the most, the step the jump is planned in (hits, stairArc: 1/120 s a step): the body rises over the step it clears at the
   // place planned, a frame every 100 ms as at 60 a second
   function frame(p, dt, now) {
-    if (C !== null) cam(null, now);   // (C moved first: read alike)
     const n = Math.max(1, Math.ceil(dt * 60 - .01));
     let i = 0;
     for (; i < n && L; i++) step(p, dt / n, now);
