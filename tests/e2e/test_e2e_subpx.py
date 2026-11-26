@@ -10,6 +10,7 @@ fractions of a px: its letters drawn another way every other step (two rasters o
 import pytest
 from conftest import open_game
 from game import Game, new_name
+from waits import FRAMES
 
 pytestmark = pytest.mark.realtime                 # (every frame of a walk is looked at: on the tests' clock there are four times fewer)
 
@@ -130,6 +131,7 @@ def test_a_bubble_looks_the_same_on_every_step_of_a_walk(browser, server, dpr):
             for _ in range(6):
                 g.wait(f"[...ents.values()].some((p) => p.e && p.e.name === {other.name!r} && p.x > {x + 2} + {len(shots) * .5})", 10000)
                 g.js(FREEZE)
+                g.js(FRAMES, 2)                                                        # (frame() asks for the next one first: that one still draws, the bubble a step on)
                 at = g.js(BUBBLE_AT, other.name)
                 assert at, "no bubble drawn"
                 X, Y, W, H = (round(v * dpr) / dpr for v in at)                    # (on whole px of the screen)
