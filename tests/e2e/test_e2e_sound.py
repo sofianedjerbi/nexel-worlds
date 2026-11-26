@@ -21,7 +21,7 @@ def played(game) -> set:
 
 def test_every_file_loads_and_each_action_plays_its_own_sound(game):
     game.wait(ALL_LOADED, 60000)                      # joining was the first gesture: the cache warms in the background
-    game.clear_area(4)                                # (flat grass: where you woke had a ledge and a bush east of it on main: a fall and a rustle, no step)
+    game.clear_area(4)                                # (flat grass, you on it: where you woke had a ledge and a bush east of it, or a hill under you: a fall and a rustle, no step)
     game.hold(["d"], 700)
     assert "step" in played(game)                     # walking on grass
 
