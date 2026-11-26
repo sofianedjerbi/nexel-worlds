@@ -148,6 +148,7 @@ def test_a_shadow_keeps_its_px_while_the_land_is_made_again(browser, server, run
         #  it reads 0 px on one frame one run in twenty on a machine loaded past 15, never in 70 runs under that: the state is said so that the next one tells)
         k = min(range(len(got)), key=lambda q: got[q])
         st = g.js("window.__st"); print("PROBE #106 frames:"); [print(r[:13]) for r in st]            # (PROBE #106: not for merge)
+        print("PROBE #106 bad at:", g.js("(self.__badAt || []).length"), g.js("(self.__badAt || []).slice(0, 5)"))
         raise AssertionError("probe: see the frames printed above")
         assert got[0] > 60 and max(got) - min(got) <= 4, (got[0], min(got), max(got), k, g.js("window.__st")[max(0, k - 3):k + 4], g.js("[window.__busy, HdLook.builds, window.__b0]"))   # (all of it: which frame lost it)
     finally:
