@@ -62,6 +62,7 @@ ore_paint.js
 vox_land_water.js
 vox_land_model.js
 vox_land_far.js
+vox_land_space.js
 vox_style_land.js
 vox_style_sprites.js
 vox_style_glow.js
