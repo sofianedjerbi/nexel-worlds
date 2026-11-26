@@ -34,8 +34,8 @@ def test_a_jump_that_comes_down_against_a_step_goes_on_up_it(game, run):
         game.wait(f"myAt && myAt.z === 1 && myPos().x > {x + 6}", 5000)
         for k in reversed(keys):
             game.page.keyboard.up(k)
-    # (every landing and what it decided, leap.js land: past, bump, can, up, to, room. Its last alone was shown, cut by
-    #  pytest: "{'x': -1.749, 'tx': -2, ...}", and which of them sent you back to the tile's middle was not known, #162)
+    # (every landing and what it decided, leap.js land: past, bump, can, up, to, room; shown whole, as JSON, when you
+    #  are sent back: which of them sends you to the tile's middle, #162)
     game.js("""() => { window.__lands = []; let last = null; const f = () => { const l = Leap.landed;
       if (l && l !== last) { last = l; __lands.push({...l, t: Math.round(lastT)}); } if (window.__lands) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }""")
     rec = frames(game, act)
