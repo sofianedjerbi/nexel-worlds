@@ -44,9 +44,9 @@ class Combat:
     def _tool_attack(self, a, args):
         t = self._find_target(args.get("target"))
         if t is a:
-            raise ActionError("bad_target", "you cannot attack yourself")
+            raise ActionError("bad_target", "you cannot attack yourself", why="self")
         if isinstance(t, Creature) and CREATURES[t.kind].get("untouchable"):
-            raise ActionError("bad_target", "your hand goes through it")
+            raise ActionError("bad_target", "your hand goes through it", why="untouchable")
         weapon = self.held(a, args)
         reaches = lambda: self.within(a, "melee", t.x, t.y, self.height(t), weapon, getattr(t, "kind", None))
         if not reaches():

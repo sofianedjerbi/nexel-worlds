@@ -125,15 +125,16 @@ def test_letting_go_and_pressing_another_key_never_stalls(game):
     assert corner > 7.5 and back > 6.5, (corner, back, still[:30])        # (sprinting is 10 a second; it was 5.4 and 3)
 
 
-def stops(rec, ms=60):
+def stops(rec, ms=60, wait=None):
     """The pauses in a recorded walk, its ends left out: frames drawn with you where the frame before had you, two or
     more in a row and more than `ms` of the game's time (ms). (It was any gap of more than 60 ms between two frames that
     moved you: on the runners a frame alone is 70 to 180 ms, and every frame was a stop. At 60 frames a second the two
-    frames are under the 60 ms: as it was)"""
+    frames are under the 60 ms: as it was). `wait`: walk.js LEAD[1], the tiles ahead of the world where the walk waits
+    for it, as it should: a frame standing there is no stop)"""
     mid = [r for r in rec if rec[0][0] + 400 < r[0] < rec[-1][0] - 400]
     out, still, n = [], 0.0, 0
     for a, b in [*zip(mid, mid[1:]), (None, None)]:
-        if b is not None and abs(b[1] - a[1]) + abs(b[2] - a[2]) <= 1e-6:
+        if b is not None and abs(b[1] - a[1]) + abs(b[2] - a[2]) <= 1e-6 and (wait is None or b[3] < wait):
             still, n = still + game_s(a, b) * 1000, n + 1
             continue
         if n >= 2 and still > ms:
@@ -186,7 +187,10 @@ def test_late_ticks_do_not_stop_you(game):
     # should, 6.8. Stopped at a tile ahead of the server's last word, as it was, the free frames would stand still)
     pace = speed(rec, 0)
     game.sleep(900)
-    assert not stops(rec), stops(rec)
+    # (a runner's own late ticks on top of the 220 ms lumps put you LEAD[1] ahead, and the walk waited there for the world,
+    # as it should: "[117]", 133 ms frames. A stop short of it is the fault: one tile ahead, as it was)
+    wait = game.js("LEAD[1]")
+    assert not stops(rec, wait=wait), (stops(rec, wait=wait), [(round(b[0]), round(b[3], 2)) for a, b in zip(rec, rec[1:]) if abs(b[1] - a[1]) + abs(b[2] - a[2]) <= 1e-6])
     assert pace > 8.5, (pace, slow(rec, 10))
     assert game.pos() == (game.server()["x"], game.server()["y"])
 

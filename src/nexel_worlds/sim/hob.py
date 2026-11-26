@@ -43,7 +43,7 @@ class Hob:
     def _place_hob(self, a, x, y):
         """Set a hob down on open ground beside you: it is lit, and it is yours."""
         if self.world.block(x, y) not in ("none", "flower") or not self.stand(x, y) or self.entity_at(x, y) is not None:
-            raise ActionError("occupied", "a hob needs a clear spot of open ground")
+            raise ActionError("occupied", "a hob needs a clear spot of open ground", on="thing")
         yield from self.wait(a, 0.5)
         if self.entity_at(x, y) is not None or not a.count("hob"):
             raise ActionError("changed", "the spot is taken")

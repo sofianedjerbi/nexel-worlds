@@ -65,9 +65,9 @@ class Climbing:
             raise ActionError("missing_item", "you have no ladder", item="ladder", have=0)
         for again in (False, True):
             if h != self.world.level(x, y) or GROUNDS[self.world.get(x, y)[0]].liquid:
-                raise ActionError("bad_target", "a ladder's foot needs the tile's own ground")
+                raise ActionError("bad_target", "a ladder's foot needs the tile's own ground", why="ladder_ground")
             if self.world.block(x, y) not in ("none", "flower"):
-                raise ActionError("occupied", f"there is a {self.world.block(x, y).replace('_', ' ')} where you stand")
+                raise ActionError("occupied", f"there is a {self.world.block(x, y).replace('_', ' ')} where you stand", on=self.world.block(x, y))
             if (a.x, a.y, self.height(a)) != (x, y, h) or not self.leans(x, y, h):
                 raise ActionError("changed", "something changed there")
             if not again:
@@ -99,7 +99,7 @@ class Climbing:
                             return steps
                         why = why or steps
                     break
-        raise ActionError("bad_target", why or "stairs lead up to something beside them: a floor, a terrace, a ledge, 2 to 7 layers up")
+        raise ActionError("bad_target", why or "stairs lead up to something beside them: a floor, a terrace, a ledge, 2 to 7 layers up", why="no_room" if why else "no_higher")
 
     def _steps(self, x, y, dx, dy, top):
         """Down from `top`, a step a tile in (dx, dy): the steps, or why they can't be."""
@@ -128,7 +128,7 @@ class Climbing:
         if a.count(STAIRS) < len(steps):
             raise ActionError("missing_item", f"the flight takes {len(steps)} stairs: you have {a.count(STAIRS)}", item=STAIRS, have=a.count(STAIRS), need=len(steps))
         if any(self.bodies_on(sx, sy) for sx, sy, _, _ in steps):
-            raise ActionError("occupied", "someone is standing where the stairs go")
+            raise ActionError("occupied", "someone is standing where the stairs go", on="body")
         yield from self.wait(a, 0.3 * len(steps))
         if self.flight(a, x, y) != steps or a.count(STAIRS) < len(steps):
             raise ActionError("changed", "something changed there")
@@ -148,7 +148,7 @@ class Climbing:
         while self.floors.get(x, y, top + 1) and self.floors.get(x, y, top + 1)[0] == STAIRS:
             top += 1
         if self.world.solid(x, y, top + 1):
-            raise ActionError("bad_target", "take the block on top of it first")
+            raise ActionError("bad_target", "take the block on top of it first", why="block_on_top")
         yield from self.wait(a, 0.3)
         while (cell := self.floors.get(x, y, top)) is not None and cell[0] == STAIRS:
             self.set_block(x, y, top, None, by=a, cause="dig")
