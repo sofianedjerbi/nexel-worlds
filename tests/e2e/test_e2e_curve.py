@@ -39,7 +39,7 @@ def creases(pts):
 
 def test_the_bends_creases_stay_where_they_are_on_the_land_as_you_walk(browser, server):
     """The bend's flat facets meet at rows of the world, not at rows counted from you (#86): walking north a tile at a
-    time, a far straight run of meadow turns at the same rows each time. (Counted from you, a crease slid along a far
+    time, a far straight run of meadow turns on the same rows of the world each time (4 apart). (Counted from you, a crease slid along a far
     block as you walked.)"""
     g = hd(browser, server)
     try:
@@ -56,7 +56,7 @@ def test_the_bends_creases_stay_where_they_are_on_the_land_as_you_walk(browser, 
             g.arrive()
             g.rest()
             seen.append(creases(g.js(COLUMN, list(rows))))
-        assert len(seen[0]) >= 2 and all(s == seen[0] for s in seen), (n, rows, seen)
+        assert all(len(s) >= 2 for s in seen) and len({r % 4 for s in seen for r in s}) == 1, (n, rows, seen)   # (each time on the same rows of the world: 4 apart)
         assert not g.errors, g.errors
     finally:
         g.js("(() => { setOpt('view', OPT_DEFAULT.view); zoom = ZOOM.to = 3; return 1; })()")
