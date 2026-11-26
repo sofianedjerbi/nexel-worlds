@@ -9,22 +9,35 @@ def game_s(a, b):
     return min(b[0] - a[0], 100) / 1000
 
 
+def gone(a, b):
+    """Tiles a recorded frame moved you."""
+    return abs(b[1] - a[1]) + abs(b[2] - a[2])
+
+
 def free(rec):
-    """The frames the walk went at its own pace: not cut (0.1 s at the most), and neither waiting for the world nor
-    catching up with it (walk.js walkOn: past LEAD[0], 2 tiles ahead, it slows for a world that comes late, as it
-    should; under -1 it goes a quarter faster). On the runners the world comes late: the sprint by the page's clock
-    was 8 for 10, a turn's pace 6.6, and by the cut frames alone 21."""
-    return [(a, b) for a, b in zip(rec, rec[1:]) if 0 < b[0] - a[0] <= 100 and all(-1 <= r[3] <= 2 for r in (a, b))]
+    """The frames the walk went at its own pace, neither waiting for the world nor catching up with it (walk.js walkOn:
+    past LEAD[0], 2 tiles ahead, it slows for a world that comes late, as it should; under -1 it goes a quarter faster).
+    The lead that paced a frame is the one it began with: the one recorded after its move, less the move (a frame of
+    0.625 tiles at 5 a second, catching up, was recorded at -0.42). On the runners the world comes late: the sprint by
+    the page's clock was 8 for 10, a turn's pace 6.6."""
+    return [(a, b) for a, b in zip(rec, rec[1:]) if b[0] > a[0] and -1 <= b[3] - gone(a, b) <= 2]
 
 
 def speed(rec, skip_ms=300):
-    """Tiles per second of the walk's own pace over a recording (free frames), ignoring the start and what follows the
-    walk: its last frame that moved you (it ends on a tile, short of a frame's walk), and you standing after it (hold()
-    waits for the server's answer once the key is up: 0.6 s of standing on a runner read the walk at 3.8)."""
-    moved = [k for k in range(1, len(rec)) if abs(rec[k][1] - rec[k - 1][1]) + abs(rec[k][2] - rec[k - 1][2]) > 1e-6]
+    """Tiles per second of the game's time the walk went at its own pace (free frames; a frame cut at 0.1 s counts 0.1 s:
+    game_s. A runner's frames are 67 to 280 ms, and by the page's clock a walk read 2 tiles a second), ignoring the start
+    and what follows the walk: its last frame that moved you (it ends on a tile, short of a frame's walk), and you
+    standing after it (hold() waits for the server's answer once the key is up: 0.6 s of standing read 3.8)."""
+    moved = [k for k in range(1, len(rec)) if gone(rec[k - 1], rec[k]) > 1e-6]
     pairs = free([r for r in rec[: moved[-1] if moved else 0] if r[0] > skip_ms])
     assert len(pairs) >= 3, ("too few frames at the walk's own pace", rec[:6])
-    return sum(abs(b[1] - a[1]) + abs(b[2] - a[2]) for a, b in pairs) / sum((b[0] - a[0]) / 1000 for a, b in pairs)
+    return sum(gone(a, b) for a, b in pairs) / sum(game_s(a, b) for a, b in pairs)
+
+
+def slow(rec, pace):
+    """The free frames of a walk under 0.8 of `pace`: [ms, frame ms, tiles, lead it began with]."""
+    return [(round(a[0]), round(b[0] - a[0]), round(gone(a, b), 3), round(b[3] - gone(a, b), 2))
+            for a, b in free([r for r in rec if r[0] > 300]) if gone(a, b) < .8 * pace * game_s(a, b)]
 
 
 def backward_jumps(rec, axis, sign):
@@ -43,10 +56,8 @@ def test_walk_and_sprint_speeds(game):
     game.start_recording()
     game.hold(["Shift", "a"], 1500)
     sprint = game.recording()
-    slow = lambda rec: [(round(a[0]), round(b[0] - a[0]), round(abs(b[1] - a[1]) + abs(b[2] - a[2]), 3), round(a[3], 2)) for a, b in free([r for r in rec if r[0] > 300])
-                        if abs(b[1] - a[1]) + abs(b[2] - a[2]) < .8 * 5 * (b[0] - a[0]) / 1000]    # (the frames under 4 a second: [ms, frame, tiles, lead])
-    assert 4.3 < speed(walk) < 5.7, (speed(walk), slow(walk))
-    assert 8.5 < speed(sprint) < 11.5, (speed(sprint), slow(sprint))
+    assert 4.3 < speed(walk) < 5.7, (speed(walk), slow(walk, 5))
+    assert 8.5 < speed(sprint) < 11.5, (speed(sprint), slow(sprint, 10))
     game.sleep(500)
     assert game.pos() == (game.server()["x"], game.server()["y"])
 
