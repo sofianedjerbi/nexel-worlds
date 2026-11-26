@@ -27,6 +27,6 @@ def test_probe_a_far_plateaus_rim(browser, server):
                     g.rest()
                     g.page.screenshot(path=str(out / f"v{v}_h{hr}_z{z}.png"))
                 g.js("(() => { zoom = ZOOM.to = 3; return 1; })()")
-        assert False, "probe: pictures in the shots artifact"
+        raise AssertionError("probe: pictures in the shots artifact")
     finally:
         g.page.close()
