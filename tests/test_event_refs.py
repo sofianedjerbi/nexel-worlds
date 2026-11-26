@@ -1,7 +1,7 @@
-"""Events name who did what as data, a death's cause as a code (#6): {kind, id, name} and `code`, read by kind and code,
-never by the words written for people. (A wild one was told from a person by its "a ": `attacker` "a tusker", the page
-sliced it off: a player named a_tusker struck with a tusker's sound.) The words stay in `cause` for the agents till
-they read the codes (nexel-agent), as they were, made from the code in one place (combat.py CAUSES)."""
+"""Events name who did what as data, a death's cause as a code (#6, #171): {kind, id, name} and `code`, read by kind and
+code, never by words. (A wild one was told from a person by its "a ": `attacker` "a tusker", the page sliced it off: a
+player named a_tusker struck with a tusker's sound.) No event carries words: each reader writes its own from the codes
+(the page's death.js WHY_DIED, the agents' nexel-agent rl/facts.py told)."""
 
 import re
 from pathlib import Path
@@ -25,7 +25,7 @@ def test_a_player_named_like_a_creature_is_a_player(world):
     assert run(sim, bob, "attack", {"target": ash.id})["ok"]
     e = last(ash, "attack")
     assert e["who"] == {"kind": "agent", "id": bob.id, "name": "a_tusker"} and e["whom"] == {"kind": "agent", "id": ash.id, "name": "Ash"}
-    assert (e["attacker"], e["target"]) == ("a_tusker", "Ash")       # (the agents' words, as they were)
+    assert "attacker" not in e and "target" not in e                    # (no words to tell it by)
 
 
 def test_a_wild_ones_bite_and_the_death_it_brings_are_told_by_kind_and_code(world):
@@ -34,8 +34,8 @@ def test_a_wild_ones_bite_and_the_death_it_brings_are_told_by_kind_and_code(worl
     ash.hp = 1
     sim.bite(boar, ash, 2)
     hit, died = last(ash, "attack"), last(ash, "death")
-    assert hit["who"] == {"kind": "tusker", "id": boar.id, "name": None} and hit["attacker"] == "a tusker"
-    assert (died["code"], died["who"], died["cause"]) == ("bitten", hit["who"], "tusker")
+    assert hit["who"] == {"kind": "tusker", "id": boar.id, "name": None} and "attacker" not in hit
+    assert (died["code"], died["who"]) == ("bitten", hit["who"]) and "cause" not in died
 
 
 def test_a_kill_by_a_person_is_its_code_and_its_killer(world):
@@ -44,18 +44,18 @@ def test_a_kill_by_a_person_is_its_code_and_its_killer(world):
     ash.hp = 1
     sim.damage(ash, 2, "killed", by=bob)
     died = last(ash, "death")
-    assert (died["code"], died["who"]["id"], died["by"], died["cause"]) == ("killed", bob.id, "Bob", "killed by Bob")
+    assert (died["code"], died["who"]["id"], died["by"]) == ("killed", bob.id, "Bob") and "cause" not in died
     assert last(ash, "respawn")["code"] == "killed"
 
 
-def test_rewording_a_cause_changes_nothing_but_its_words(world, monkeypatch):
+def test_a_death_s_code_is_one_of_a_closed_set(world):
+    """A cause is a code of CAUSES, whose words are its readers' own: a code that is not one is a bug, not a new sentence."""
+    import pytest
     sim, ash = world
-    monkeypatch.setitem(combat.CAUSES, "fell", "came down too hard")
-    ash.hp, deaths = 1, ash.deaths
-    sim.damage(ash, 2, "fell")
-    died = last(ash, "death")
-    assert ash.deaths == deaths + 1 and ash.hp > 0 and died["code"] == "fell" and died["who"] is None
-    assert died["cause"] == "came down too hard"
+    ash.hp = 1
+    with pytest.raises(ValueError):
+        sim.damage(ash, 2, "came down too hard")
+    assert set(combat.CAUSES) >= {"killed", "bitten", "burnt", "fell", "starvation", "fire"}
 
 
 def test_the_page_reads_who_and_the_code_never_the_words():
