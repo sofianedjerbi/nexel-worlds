@@ -28,7 +28,7 @@ const AimArt = (() => {
     rows.forEach((r, i) => { if (y0 + i >= 0) out.set(r, (y0 + i) * CELL * 4); });
     return out;
   }
-  // the head's px (over the collar) in columns c0..c1 moved dy rows: up, its last row stays as it was under it; down, over the collar's top
+  // the head's px (over the collar) in columns c0..c1 moved dy rows: up, its last row is kept under it; down, over the collar's top
   function head(d, M, dy, c0 = 0, c1 = CELL - 1) {
     const out = d.slice();
     for (let x = c0; x <= c1; x++) {

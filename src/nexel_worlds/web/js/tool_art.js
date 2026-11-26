@@ -87,7 +87,7 @@ const ToolArt = (() => {
   // The sheet with the new rows under it: a canvas that stands in for the image (same width, taller).
   function extend(img) { const g = steps(img); let r; do r = g.next(); while (!r.done); return r.value; }
   // The same, a few frames at a time (assets.js, as the page loads): 8 ms of it, then the page's other work and a frame of the
-  // wait (index.html #boot). It was one task of 0.7 s on a phone's CPU (x4): the bar stood still, the page did not answer.
+  // wait (index.html #boot): as one task, 0.7 s on a phone's CPU (x4), the bar would stand still, the page not answer.
   // (the next piece as the next task, by a message: a chain of setTimeout(0) waits 4 ms each from the fifth on, idle)
   const soon = (img) => new Promise((ok) => { const g = steps(img), ch = new MessageChannel(), run = () => { const t = performance.now(); for (;;) { const r = g.next(); if (r.done) { ch.port1.close(); return ok(r.value); } if (performance.now() - t > 12) return ch.port2.postMessage(0); } };
     ch.port1.onmessage = run; run(); });
@@ -96,7 +96,7 @@ const ToolArt = (() => {
     c.width = W; c.height = H + KINDS.length * 4 * CELL;
     const g = c.getContext("2d"); g.drawImage(img, 0, 0);
     // The axe's four rows are read once, from a small canvas made for reading, and each frame is cut out of that in
-    // memory. (They were read a frame at a time from the sheet's own canvas, 96 times: the browser warned of it, and
+    // memory, not a frame at a time from the sheet's own canvas (96 reads: the browser warns of it, and
     // a canvas that is read back like that is moved off the GPU, where everything drawn from the sheet comes from.)
     const axe = document.createElement("canvas"); axe.width = W; axe.height = 4 * CELL;
     const ag = axe.getContext("2d", {willReadFrequently: true}); ag.drawImage(img, 0, AXE_ROW * CELL, W, 4 * CELL, 0, 0, W, 4 * CELL);
