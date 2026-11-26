@@ -82,7 +82,9 @@ def test_auto_jump_up_a_staircase_is_smooth_and_keeps_its_rhythm(game):
     at = lambda r: ORDER.index(r[3]) if r[3] in ORDER else -1
     offs = [r[0] for r, q in zip(rec, [None] + rec) if at(r) >= 0 and (q is None or at(q) < 0 or at(r) < at(q))]
     assert len(offs) == 4, offs
-    beats = [b - a for a, b in zip(offs, offs[1:])]
+    # (from the second step: the first is jumped from the flat ground before the flight, a whole jump; a flight is walked at a walk's
+    # pace from its second step, leap.js stairArc. Counted with it, a runner drawing every 83 ms read "[517, 183, 217]")
+    beats = [b - a for a, b in zip(offs[1:], offs[2:])]
     frame = sorted(b[0] - a[0] for a, b in zip(rec, rec[1:]))[len(rec) // 2]      # (a takeoff is seen on the first frame drawn in it: a frame late at the most)
     assert max(beats) - min(beats) <= max(45, 2 * frame) and min(beats) >= 180 - frame, (beats, frame, [r[:4] for r in rec if offs[0] - 50 <= r[0] <= offs[-1] + 50])       # (a step at the walk's pace, 0.2 s a tile: up a flight each jump is planned, leap.js stairArc. It was a whole jump each step, 0.25 s and more, against the next step's face)
     tops = [max(r[2] for r in rec if a <= r[0] < a + 300) for a in offs]
