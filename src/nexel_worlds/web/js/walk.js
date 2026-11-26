@@ -151,7 +151,7 @@ function walkOn(p, dt, now) {
     if (Leap.dropDue(p, walking, t)) { Leap.start(p, now, null, false, 0); Leap.frame(p, t, now); return; }   // over a ledge: falling at the walk's speed (leap.js)
     if (!walkable(nx, ny, fx, fy)) { p[along] -= s * Math.min((p[along] - a0) * s, 10 * t); p.tx = fx; p.ty = fy; break; }   // a wall: you stay
     const v = Climb.pace(fx, fy, myZ(fx, fy), nx, ny) || speedAt(fx, fy, p);      // (up or down a ladder: rung by rung, climbing.js)
-    const go = Math.min((a0 + s - p[along]) * s, v * t);
+    const go = Math.min((a0 + s - p[along]) * s, v * t, autoJump() ? Math.max(0, Leap.room(p, walking)) + v / 60 + 1e-6 : Infinity);   // (no further past where the auto-jump is due than a 60th of a second's walk, as at 60 fps: leap.js room)
     p[along] += s * go; t -= go / v; p.tx = nx; p.ty = ny; p.moved = now;
   }
 }
