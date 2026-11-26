@@ -12,7 +12,7 @@ def dev_op(sim, agent, op: str, msg: dict) -> dict:
         t = sim.tick // DAY_TICKS * DAY_TICKS + int(float(msg.get("phase", 0.8)) * DAY_TICKS)
         sim.tick = t if t >= sim.tick else t + DAY_TICKS
         return {"tick": sim.tick}
-    if op == "dev_pace":                         # the world's clock runs `pace` times as fast (ticks a second: server.py tick_loop): the
+    if op == "dev_pace":                         # the world's clock runs `pace` times as fast (ticks a second: ticking.py tick_loop): the
         sim.clock_rate = max(.05, min(16.0, float(msg.get("pace", 1))))   # browser tests' clock (tests/e2e/clock.py), whose pages run theirs as fast
         return {"pace": sim.clock_rate}
     if op == "dev_skip":                         # fast-forward the simulation

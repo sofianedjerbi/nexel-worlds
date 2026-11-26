@@ -11,7 +11,6 @@ import time
 import warnings
 
 import clock
-from nexel_worlds.sim import TICK_HZ
 from playwright.sync_api import TimeoutError as NotYet
 from waits import ANSWERED, MADE, QUIET, Waits
 
@@ -90,10 +89,7 @@ class Game(Waits):
         test = os.environ.get("PYTEST_CURRENT_TEST", "").split(" ")[0]
         if test not in HOURED:
             HOURED.add(test)
-            self.rpc("dev_time", phase=.3)
-            if clock.step and clock.LOCKSTEP:                # (the test's first page drives the world's ticks; a second follows it as any player: #276)
-                r = self.rpc("dev_lockstep", on=True)
-                self.js(f"__lockstep({int(r['tick'])}, {TICK_HZ})")
+            self.rpc("dev_time", phase=.3); clock.drive(self)   # noqa: E702 - (and drives its ticks, a stepped test's: a second page follows them, #276)
         # (awake: the land there and drawn; and the picture all there, not still coming in over the first screen's: that
         # takes 0.7 s, and a test that looked at the canvas's animations meanwhile counted it with its own)
         self.js("(() => { for (const a of cv.getAnimations()) a.finish(); return 1; })()")

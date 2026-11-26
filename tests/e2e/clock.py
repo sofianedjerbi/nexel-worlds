@@ -27,8 +27,8 @@ FRAME_BUDGET = 70
 AHEAD = os.environ.get("E2E_AHEAD", "1") != "0"     # the next test's page loads while this one plays (pages.py)
 now = 1.0           # the pace of the test that is running (conftest.py: the `pace` fixture)
 # LOCKSTEP (#276): every test is stepped (STEP) and its world ticks when its page asks (server.py dev_step), unless it
-# is `realtime`: it measures the machine's own time, or has a clock that is not the page's. E2E_LOCKSTEP=0: as before,
-# only the tests marked `stepped` are, on the world's own clock, and the others run on the fast clock (PACE)
+# is `realtime`: it measures the machine's own time, or has a clock that is not the page's. E2E_LOCKSTEP=0: only the
+# tests marked `stepped` are, their world on its own clock, and the others run on the fast clock (PACE)
 LOCKSTEP = os.environ.get("E2E_LOCKSTEP", "1") != "0"
 step = False        # the test that is running is `stepped`: its pages' time goes 1/60 s a frame, whatever the machine (STEP)
 coming = None       # the pace of the test after it, if it plays on the `game` fixture's page; None: it does not, or there is none (conftest.py)
@@ -144,6 +144,14 @@ def paced(page, pace=None):
         page.wait_for_timeout = lambda ms: nap(real(ms))
         page.nap = nap
     return page
+
+
+def drive(game):
+    """The test's first page (game.py join) drives its world's ticks, in a stepped test (LOCKSTEP; STEP: __lockstep)."""
+    if step and LOCKSTEP:
+        from nexel_worlds.sim import TICK_HZ
+        r = game.rpc("dev_lockstep", on=True)
+        game.js(f"__lockstep({int(r['tick'])}, {TICK_HZ})")
 
 
 def let_go(url: str):
