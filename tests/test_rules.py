@@ -96,7 +96,7 @@ KEPT = {
     "effects.js PCOL": "art: the colours of the bits a tile breaks into",
     "effects.js KICK": "art: the dust a step kicks up, by ground",
     "goals.js GOALS": "words: the player's first goals and their icons (kept on the page, localStorage)",
-    "hd_things.js CARD": "art: the things drawn as an upright card",
+    "hd_cards.js CARD": "art: the things drawn as an upright card",
     "hold_art.js ROW": "art: a tool's row in the held sheet",
     "hold_art.js LOW": "art: what is held low",
     "hold_art.js SHAPES": "art: the shapes of the held tools",
