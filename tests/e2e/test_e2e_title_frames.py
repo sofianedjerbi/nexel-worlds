@@ -13,10 +13,11 @@ from playwright.sync_api import TimeoutError as NotYet
 
 OPEN = "typeof TitleScene !== 'undefined' && TitleScene.on && document.body.classList.contains('scene') && HdLook.live && !HdLook.busy"
 STILL = "(() => { TitleScene.stop(); document.getElementById('joinbox').style.display = ''; TitleScene.start(5); clearInterval(TitleScene.S.timer); })()"
-# the water tiles on the screen whose place is not in the water's picture: [x, y] (the land the HD look makes round its eye: 24 tiles north and
-# south, 22 east and west on this screen, hd.js R and rx; past it the far land is drawn without the picture)
-UNCOVERED = """() => { const out = [], cx = Math.round(cam.x), cy = Math.round(cam.y), v = waterView, c = waterCv;
-  for (let y = cy - 23; y <= cy + 23; y++) for (let x = cx - 21; x <= cx + 21; x++) {
+# the water tiles on the screen whose place is not in the water's picture: [x, y]. Those of the land the HD look makes round its eye (hd.js
+# box, the one the picture is laid over: voxels.js still); past it the far land is drawn without the picture. (It read a window of 23 rows
+# round the camera, not the box, which is round the eye's own tile: on a loaded runner 62 tiles of its north rows were counted, #89's run)
+UNCOVERED = """() => { const out = [], v = waterView, c = waterCv, [x0, y0, x1, y1] = HdLook.box || [0, 0, -1, -1];
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
     const b = blockOf(x, y); if (!b || !Voxels.made(b) || !b.water.any || !Voxels.host.water(x, y)) continue;
     const s = HdLook.screenOf(x + .5, y + .5, topAt(x, y)); if (!s || s[0] < 0 || s[1] < 0 || s[0] >= innerWidth || s[1] >= innerHeight) continue;
     if (!v || x * 16 < v.x || y * 16 < v.y || (x + 1) * 16 > v.x + c.width || (y + 1) * 16 > v.y + c.height) out.push([x, y]); }
@@ -51,9 +52,10 @@ def test_the_water_picture_lies_on_all_the_water_the_island_shows(browser, serve
             page.wait_for_function(f"!({UNCOVERED})().length", timeout=8000)
         except NotYet:
             pass
+        assert page.evaluate("!!HdLook.box")                 # (the land the look makes, read: else nothing was looked at)
         left = page.evaluate(UNCOVERED)
         if left:
-            off[(x, y)] = (len(left), left[:4])
+            off[(x, y)] = (len(left), left[:4], page.evaluate("[HdLook.box, Math.round(cam.x), Math.round(cam.y), waterView, waterCv && [waterCv.width, waterCv.height]]"))
     page.close()
     assert not off, off                                   # each of them was drawn with the picture's stretched edge: lines
     assert not errors, errors
