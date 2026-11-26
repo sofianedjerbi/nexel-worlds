@@ -3,10 +3,7 @@ the window is your WHOLE space, a cave's every branch as far as the screen goes 
 in whole art px, no checker (HdLook.edge "B": the kept land's last 3 px over your space in solid steps of opacity); under the open sky no dark arc at its top (a gorge's far cliff); a pit's floor shaded by its own walls, no
 flat squares of corner shade; down a passage a level floor has no band across it, a step up shows its riser, a step down its lip."""
 
-import base64
-import os
-from pathlib import Path
-
+import pages
 from test_e2e_hd_sun import LIGHT, hd
 from test_e2e_hd_window import PX
 
@@ -31,17 +28,6 @@ PICS = """async () => { const frame = () => new Promise(requestAnimationFrame), 
     const d = HdLook.read(0, 0, W, H).data, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'), im = x.createImageData(W, H);
     im.data.set(d); for (let i = 3; i < d.length; i += 4) im.data[i] = 255; x.putImageData(im, 0, 0); out.push(c.toDataURL('image/png')); }
   HdLook.nowin = false; return out; }"""
-
-
-def keep(g, name, info):
-    """The pictures with the window and without, and what was seen, into the run's shots (E2E_SHOTS) for the artifact."""
-    if not os.environ.get("E2E_SHOTS"):
-        return
-    out = Path(os.environ["E2E_SHOTS"]) / name
-    out.mkdir(parents=True, exist_ok=True)
-    for view, url in zip(("window", "no_window"), g.js(PICS), strict=True):
-        (out / f"{view}.png").write_bytes(base64.b64decode(url.split(",", 1)[1]))
-    (out / "info.txt").write_text(repr(info))
 
 
 calm = lambda g: [g.hour(.3, still=True)] + [g.js(f"setOpt('{o}', 0)") for o in ("clouds", "rays", "shimmer")]
@@ -134,7 +120,7 @@ def test_in_a_gorge_the_window_has_no_dark_arc_at_its_top(browser, server):
     brown = [c for c in px if c[0] > c[2] + 25 and c[0] > c[1] and lum(c) < 110]
     black = [c for c in px if lum(c) < 40]
     if not (len(brown) < 20 and len(black) < 40):
-        keep(g, "gorge_arc", {"box": [a, b], "k": k, "brown": len(brown), "black": len(black), "rows_changed": sum(r.count("1") for r in ch),
+        pages.keep("gorge_arc", dict(zip(("window", "no_window"), g.js(PICS), strict=True)), {"box": [a, b], "k": k, "brown": len(brown), "black": len(black), "rows_changed": sum(r.count("1") for r in ch),
                               "state": g.js("[HdLook.win, HdLook.busy, HdLook.why, clock.phase]")})
     assert len(brown) < 20 and len(black) < 40, (len(brown), len(black), brown[:5], black[:5])
 

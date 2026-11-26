@@ -12,6 +12,7 @@ test's page loading while this one plays.
   a test before it is in it. What it is not is new-born: the first screen has been up for as long as the test before
   took. A test about the first screen itself opens its own page."""
 
+import base64
 import os
 import re
 from pathlib import Path
@@ -140,3 +141,15 @@ class Context:
         for q in self._inner.pages if not quiet else []:
             shoot(q)
         return self._inner.close(*a, **kw)
+
+
+def keep(name, pictures, info):
+    """Pictures a test chose to keep (name -> a PNG data URL) and what it saw, in SHOTS/<name>/ (for the run's artifact,
+    as a failing test's last picture is): a picture of what went wrong, not only of the page at its end. Unset: none."""
+    if SHOTS is None:
+        return
+    out = SHOTS / name
+    out.mkdir(parents=True, exist_ok=True)
+    for view, url in pictures.items():
+        (out / f"{view}.png").write_bytes(base64.b64decode(url.split(",", 1)[1]))
+    (out / "info.txt").write_text(repr(info))
