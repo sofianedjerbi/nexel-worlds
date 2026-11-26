@@ -27,7 +27,8 @@
 // button takes. The whole of it by keys alone. A piece bigger than a tile (a well, a coop) is still put by hand.
 const Build = (() => {
   const REACH = 10, FIRST_MS = 230, STEP_MS = 75, BAD_MS = 2600;   // how far from you the cursor goes; a held arrow: its wait, then its pace; how long a failed plan shows
-  const SWAP = {door: "W%", gate: "#"};                      // a piece that goes in the place of another: a door in a wall, a gate in a fence
+  const SWAP = {door: ["wood_wall", "stone_wall"], gate: ["fence"]};   // a piece that goes in the place of another: a door in a wall, a gate in a fence
+  const swaps = (it, c) => !!SWAP[it] && SWAP[it].some((n) => CHAR[n] === c);
   const S = {on: false, at: null, plane: null, deep: null, plans: new Map(), hold: null, working: false, dir: null, timer: 0, pan: {x: 0, y: 0}};
   const now = () => performance.now(), UPMOST = 9, DEEPEST = 12, LOWEST = LOW;   // (how far over your own height the cursor goes: three floors; under it, layers; the deepest ground there is: the top of the bottom cell, sim/underground.py)
   // The cursor's height: the plane it was lifted to, or the ground at its tile nearest your own height
@@ -75,7 +76,7 @@ const Build = (() => {
     }
     if (S.plans.has(key(p, L))) return {text: "Planned", ok: false, ghost: it};
     if (!on) return {text: solidAt(p.x, p.y, L) ? "Nothing can go there" : "No floor there: lay one", ok: false, ghost: it, z: L};
-    if (SWAP[it] && SWAP[it].includes(what)) return {text: `Place ${label(it)} in its place`, ok: true, ghost: it, swap: true, ...(c ? {z: L} : {})};
+    if (swaps(it, what)) return {text: `Place ${label(it)} in its place`, ok: true, ghost: it, swap: true, ...(c ? {z: L} : {})};
     if (c) return what ? {text: "Something is there", ok: false, ghost: it, z: L} : tileOf(PLACEABLE_BLOCK[it]).upstairs ? {text: `Place ${label(it)}`, ok: true, ghost: it, z: L} : {text: "It needs the ground", ok: false, ghost: it, z: L};
     const say = intent(p, false) || {text: "Nothing can go there", ok: false};
     return {...say, text: say.ok === false ? say.text.replace(/^Can't place .* here$/, "Can't go there") : say.text};
@@ -184,7 +185,7 @@ const Build = (() => {
     const tool = j.dig ? bestTool("pickaxe") : (j.take || j.swap) && TOOL_FOR[was] ? bestTool(TOOL_FOR[was]) || (inv[TOOL_FOR[was]] ? TOOL_FOR[was] : null) : null;   // (a hole: your best pickaxe if you have one; a thing: your best tool of its kind, vocab.js)
     const went = (r) => (r && r.ok ? null : (r && (r.detail || r.error)) || "It could not be done");
     const z = FLOORS || j.dig ? {z: j.z} : {}, dig = () => { actTarget = {x: j.x, y: j.y}; return act(FLOORS || !j.up ? "dig" : "unroof", {dir: "N", ...z, ...(tool ? {with: tool} : {})}, true); };
-    if (j.swap && SWAP[j.item].includes(was)) {        // what is in its place comes down first (and back into your pack)
+    if (j.swap && swaps(j.item, was)) {        // what is in its place comes down first (and back into your pack)
       const why = went(await dig());
       if (why) return why;
     }
