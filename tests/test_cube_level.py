@@ -14,7 +14,7 @@ def test_a_level_is_drawn_as_tall_as_a_tile_everywhere():
     glsl = (JS / "vox_style_glsl.js").read_text()
     h, lv = re.search(r"const AW = .*?2048, H = ([\d.]+),.*?LV = (\d+),", glsl, re.S).groups()   # (AW: the sheet's px, by the screen's size)
     assert step == 16 and float(h) * 16 == step and int(lv) == step
-    for f in ("vox_style.js", "vox_style_land.js", "vox_style_win.js"):
+    for f in ("vox_style.js", "vox_style_land.js", "vox_style_win.js", "vox_land_water.js", "vox_land_model.js"):
         assert re.search(r"const H = VoxStyleGLSL\.H\b", (JS / f).read_text()), f          # (one H, not a .5 of its own)
     assert "8. + whole(" not in glsl and "/ .5" not in glsl                                 # (no 8-row level left in the shader)
 
