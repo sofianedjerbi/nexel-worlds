@@ -22,6 +22,8 @@ concurrency:
 env:
   RUFF: ruff@0.17.6
   PRETTIER: prettier@3.10.1
+  ESLINT: eslint@9.39.5
+  GLOBALS: globals@16.5.0
 
 jobs:
   lint:
@@ -51,6 +53,9 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
+      # every name the web client reads is defined somewhere: a split that leaves one behind fails here (#174, #158)
+      - name: no undefined names (tools/undef_check.mjs, ESLint no-undef over the page's scripts)
+        run: npm install --no-save --no-package-lock "$ESLINT" "$GLOBALS" && node tools/undef_check.mjs
       - name: prettier --check (not blocking until the format pass)
         continue-on-error: true
         run: |
@@ -117,9 +122,9 @@ jobs:
     timeout-minutes: 45
     strategy:
       fail-fast: false
-      # a pull request takes 4 of the 20 runners at most, main its 16: with every pull request's jobs at once, main's
-      # full run waited behind ~110 jobs (#47)
-      max-parallel: ${{ github.event_name == 'pull_request' && 4 || 16 }}
+      # a pull request takes 2 of the 20 runners at most, main its 16: with every pull request's jobs at once, main's
+      # full run waited behind ~110 jobs (#47); at 4 a pull request, still an hour behind ~14 of them
+      max-parallel: ${{ github.event_name == 'pull_request' && 2 || 16 }}
       matrix:
         files: ${{ fromJSON(needs.e2e-plan.outputs.shards) }}
     steps:
