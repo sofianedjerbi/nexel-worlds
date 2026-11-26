@@ -10,10 +10,6 @@ const BUBBLE = {q: 2, life: 7, after: 3.5, most: 3, wide: 400, lines: 7, pitch: 
   ink: "#5b3f36", paper: "#fff6e2", shout: "#ffe3a3", foot: "#ecd7b0", footShout: "#f2c877", shade: "rgba(60,40,30,.25)", edge: 16};
 // THE BUBBLE'S PIXEL (q, its letters' own: the 18 px font's is 2 CSS px) is a whole number of the screen's px: 2 x density, rounded (a density of 1.25: 3 px, the letters 21.6 CSS px).
 // Everything of a bubble is a number of them (pitch, padX, padY, gap: in q). At 1.25 its 2 CSS px were 2.5 px of the screen: its edges and letters soft, and another raster each place it was drawn at
-// WHERE LETTERS START: an eighth of a screen px past a whole one. Chrome places a letter in quarters of a px; at 1.25 a whole
-// px worked out in CSS px came back as 615.9999 one step and 616 the next, a quarter apart: the letters drawn another way
-// at every other step of a walk (#61, screenshots in test_e2e_subpx.py). An eighth in is never near a quarter's edge.
-const onScreenPx = (v) => (Math.round(v * DPR) + .125) / DPR;
 const bubbleQ = () => { const d = window.devicePixelRatio || 1; return Math.max(1, Math.round(BUBBLE.q * d)) / d; };
 
 // The line as the rows it is written in (at most BUBBLE.lines, the last ending in … if there was more), and its size.
@@ -62,7 +58,7 @@ function bubbleTab(name, x, y, mine, q, bw) {
   const w = Math.ceil(ctx.measureText(name).width / q) * q + 6 * q, h = 11 * q;
   if (w + 6 * q > bw) x += Math.round((bw - w - 6 * q) / 2 / q) * q;     // (wider than a short bubble: centred over it)
   ctx.fillStyle = BUBBLE.ink; ctx.fillRect(x + 3 * q, y - h, w, h); ctx.fillRect(x + 2 * q, y - h + q, w + 2 * q, h - q);
-  ctx.fillStyle = mine ? "#fff1a8" : BUBBLE.paper; ctx.fillText(name, onScreenPx(x + 6 * q), onScreenPx(y - 2 * q));
+  ctx.fillStyle = mine ? "#fff1a8" : BUBBLE.paper; ctx.fillText(name, x + 6 * q, y - 2 * q);
 }
 const speaking = (name) => bubbles.some((b) => b.name === name && b.at);     // (their name is on their bubbles)
 let bubbleT = 0, bubbleBoxes = [];
@@ -121,7 +117,7 @@ function drawBubbles(sx, sy, S, t) {
       let left = written(b.text, since).length;              // written out as it is said (babble.js), row after row
       // (the letters in the middle of the paper: 4 px over a capital, 4 under it to the foot's shade, where a g or a y
       // comes down to. They were a font pixel higher: 2 px over, 6 under, and a line of capitals looked hung from the top)
-      b.rows.forEach((row, i) => { if (left > 0) ctx.fillText(row.slice(0, left), onScreenPx(x + BUBBLE.padX * q), onScreenPx(y + (BUBBLE.padY + 7 + i * BUBBLE.pitch) * q)); left -= row.length + 1; });
+      b.rows.forEach((row, i) => { if (left > 0) ctx.fillText(row.slice(0, left), x + BUBBLE.padX * q, y + (BUBBLE.padY + 7 + i * BUBBLE.pitch) * q); left -= row.length + 1; });
       b.at = [x, y];                                          // (where it was drawn: for the tests)
       if (n === pile.mine.length - 1) { ctx.globalAlpha = pile.mine.length > 1 ? 1 : ctx.globalAlpha; bubbleTab(pile.name, x, y, me && pile.name === me, q, b.w); }
     });

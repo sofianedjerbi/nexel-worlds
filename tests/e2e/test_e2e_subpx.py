@@ -144,7 +144,9 @@ def test_a_bubble_looks_the_same_on_every_step_of_a_walk(browser, server, dpr):
         assert len({tuple(p) for p in places}) > 1, places                         # (it went somewhere: the steps of a walk)
         n = round(at[2] * dpr) * round(at[3] * dpr)
         off = g.js(DIFFS, shots)
-        assert max(off) < n / 100, (dpr, n, off, places)                           # the same letters at every step
+        k = dpr / g.js("DPR")                                                          # (a slow page draws the words with fewer px: by a whole number only)
+        assert abs(k - round(k)) < 1e-9, (dpr, k)
+        assert max(off) < n / 100, (dpr, n, off, places, k)                        # the same letters at every step
         assert not g.errors and not other.errors
     finally:
         if other:
