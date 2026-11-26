@@ -1,5 +1,7 @@
 """Ladders and stairs, by keys (web/js/climbing.js; the server: sim/climbing.py)."""
 
+from tap import step
+
 SLOT = "(n) => String((slots.indexOf(n) + 1) % 10)"           # the key of the bar's slot that holds it
 
 
@@ -20,7 +22,7 @@ def test_stairs_are_laid_with_one_press_and_walked_up(game):
     assert game.js(f"[surfacesAt({x}, {y - 3}), surfacesAt({x - 1}, {y - 3})]") == [[2], [1]] and game.inv("stairs") == 2
     game.rpc("dev_teleport", x=x - 1, y=y - 2, z=0); game.arrive()
     for key, want in (("ArrowUp", (x - 1, y - 3, 1)), ("ArrowRight", (x, y - 3, 2)), ("ArrowUp", (x, y - 4, 3))):
-        assert game.step(key) == want
+        assert step(game, key) == want
     assert game.js("myAt.z") == 3 and not game.errors
     # in build mode: a flight down from the floor's other end, planned with Space and laid by your character
     game.rpc("dev_teleport", x=x + 3, y=y - 1, z=0); game.arrive()
@@ -48,7 +50,7 @@ def test_a_ladder_is_climbed_and_come_down_without_a_fall(game):
     game.press("e", 700)
     assert game.js(f"combAt({x}, {y - 2})") == "l" and game.inv("ladder") == 1
     hp = game.server()["hp"]
-    assert game.step("ArrowUp") == (x, y - 2, 0)              # onto the ladder
+    assert step(game, "ArrowUp") == (x, y - 2, 0)              # onto the ladder
     # up it: rung by rung on the ladder's own tile, facing it, for about a second (six layers), and only then over the
     # edge (it was a slide from foot to top in a fifth of a second, the ladder drawn over the body)
     game.js("""() => { window.__seen = []; const t0 = performance.now();
@@ -67,7 +69,7 @@ def test_a_ladder_is_climbed_and_come_down_without_a_fall(game):
     s = game.server()
     assert (s["x"], s["y"], s["z"]) == (x, y - 3, 6)           # up it, onto the cliff
     assert game.js("myAt.z") == 6
-    assert game.step("ArrowDown") == (x, y - 2, 0)            # and down it
+    assert step(game, "ArrowDown") == (x, y - 2, 0)            # and down it
     game.sleep(400)
     assert game.server()["hp"] == hp and game.js("BodyPlace.state(ents.get('agent' + myId)).fall") in (None, False) and not game.errors
     # up a ladder at the cliff's side
