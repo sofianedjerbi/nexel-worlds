@@ -260,9 +260,11 @@ def test_space_in_a_boat_moves_neither_the_boat_nor_your_name(game):
     game.js(NAMED)
     game.frames(3)
     game.page.keyboard.press("Space")
-    game.sleep(600)
+    # (over the whole of a hop's time, by the frames' own clock: it was 600 ms slept and more than 10 frames asked, 6 to 9 on a
+    # runner drawing every 67 to 100 ms: "10 samples")
+    game.wait("__nm.length >= 3 && __nm[__nm.length - 1][3] - __nm[0][3] >= HOP.ms + 100", 5000)
     r = game.js("(() => { __nmOn = false; return __nm; })()")
-    assert len(r) > 10 and len({v[0] for v in r}) == 1 and sum(v[2] for v in r) == 0, (sorted({v[0] for v in r}), sum(v[2] for v in r))
+    assert len(r) >= 3 and len({v[0] for v in r}) == 1 and sum(v[2] for v in r) == 0, (sorted({v[0] for v in r}), sum(v[2] for v in r))
     assert not game.errors, game.errors
 
 
