@@ -124,7 +124,9 @@ def test_sprint_jumping_down_off_a_high_step_you_go_on_south_never_put_back(game
     turned north by the step back. Sprinting south off the edge with Space: never facing north, never a step back, and
     the world has you where the screen does."""
     game.clear_area(12)
-    game.stamp(-2, 0, ["." * 5] * 10, levels=["99999"] * 2 + ["00000"] * 8)
+    # (and flat for 20 tiles south of the step: the sprint runs 14 on, past the cleared 12, and there the world's own land
+    #  rose a level: the auto-jump went up it and came down against the next rise, sent to its tile's middle, main 45892182471)
+    game.stamp(-2, 0, ["." * 5] * 22, levels=["99999"] * 2 + ["00000"] * 20)
     x, y = game.pos()
     game.rpc("dev_teleport", x=x, y=y, z=9); game.arrive(); game.face(0, 1); game.rest()
     game.js(FACE)
