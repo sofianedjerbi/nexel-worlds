@@ -106,11 +106,11 @@ def test_on_the_lower_step_behind_a_higher_one_your_legs_are_behind_it(game):
 FACE = """() => { window.__fc = []; window.__fcOn = true; const f = () => { const p = ents.get('agent' + myId); __fc.push([p.y, p.fy, Leap.on()]); if (__fcOn) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""
 
 
-# (every frame made 95 ms long by a busy wait, as on a loaded runner: there, once in a few runs, you were put back
-# 0.27 of a tile as you came down. And what the page told the world, with where you were and what it said)
-SLOW = """() => { const raf = requestAnimationFrame; window.__slow = true; window.__told = [];
-  const spin = () => { const t = performance.now(); while (performance.now() - t < 95); if (__slow) raf(spin); }; raf(spin);
-  const f = window.rpc, me = () => { const p = ents.get("agent" + myId); return p && [+p.y.toFixed(2), p.ty, Leap.on(), myAt && myAt.z]; };
+# (slow: every frame made 95 ms long by a busy wait, as on a loaded runner. Either way, what the page told the world,
+# with where you were (y, its tile, x, its tile, in the air, your height, the keys held) and what it said)
+SLOW = """(slow) => { const raf = requestAnimationFrame; window.__slow = slow; window.__told = [];
+  const spin = () => { const t = performance.now(); while (performance.now() - t < 95); if (__slow) raf(spin); }; if (slow) raf(spin);
+  const f = window.rpc, me = () => { const p = ents.get("agent" + myId); return p && [+p.y.toFixed(2), p.ty, +p.x.toFixed(3), p.tx, Leap.on(), myAt && myAt.z, [...keys].join("")]; };
   window.rpc = (op, extra) => { const e = op === "act" && extra && ["walk", "stop", "jump", "leap"].includes(extra.tool) && [extra.tool, JSON.stringify(extra.args), me()];
     if (e) __told.push(e); return f(op, extra).then((r) => { if (e) e.push(r && (r.ok === false ? r.error : r.result && r.result.z)); return r; }); }; return 1; }"""
 
@@ -128,8 +128,7 @@ def test_sprint_jumping_down_off_a_high_step_you_go_on_south_never_put_back(game
     x, y = game.pos()
     game.rpc("dev_teleport", x=x, y=y, z=9); game.arrive(); game.face(0, 1); game.rest()
     game.js(FACE)
-    if slow:
-        game.js(SLOW)
+    game.js(SLOW, slow)
     game.page.keyboard.down("Shift"); game.page.keyboard.down("s")
     game.wait(f"ents.get('agent' + myId).y >= {y + .8}", 4000)
     game.page.keyboard.press("Space")
@@ -139,9 +138,8 @@ def test_sprint_jumping_down_off_a_high_step_you_go_on_south_never_put_back(game
     game.page.keyboard.up("s"); game.page.keyboard.up("Shift")
     game.sleep(500)
     r = game.js("(() => { __fcOn = false; return __fc; })()")
-    if slow:
-        game.js("__slow = false")
-        print("frames", r, "told", game.js("__told"), "world", game.server())     # (shown when it fails)
+    game.js("__slow = false")
+    print("frames", r, "told", game.js("__told"), "world", game.server())         # (shown when it fails)
     assert not [i for i, v in enumerate(r) if v[1] == -1], [v for v in r if v[1] == -1][:4]
     assert not [(a[0], b[0]) for a, b in zip(r, r[1:]) if b[0] < a[0] - .05], [(a[0], b[0]) for a, b in zip(r, r[1:]) if b[0] < a[0] - .05][:4]
     game.wait("myPos().x === meObs.self.x && myPos().y === meObs.self.y", 4000)
