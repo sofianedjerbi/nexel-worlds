@@ -35,6 +35,7 @@ def test_probe_the_night_light_frame_by_frame(browser, server):
         g.sleep(2500)
         rec = g.js("__pr")
         print("light", g.js("JSON.stringify(Light.now())"))
+        print("errors", g.errors)
         for r in rec:
             print(r)
         assert False, "probe: see the frames printed above"
