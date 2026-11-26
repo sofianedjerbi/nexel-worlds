@@ -69,3 +69,18 @@ def test_ash_grows_back_into_grass(world):
     for _ in range(sec(244)):
         sim.step()
     assert sim.world.ground(a.x + 1, a.y) == "grass"
+
+
+def test_a_harvest_gives_the_seed_back_and_leaves_the_soil_tilled(world):
+    """The world's half of tests/e2e/test_e2e_building.py::test_farming_hoe_seed_water_harvest: till, sow your one
+    seed, water it, 230 s later it is ripe; picked with empty hands it gives seeds back and the soil stays tilled."""
+    sim, a = world
+    from nexel_worlds.devtools import dev_op
+    a.add("hoe", 1); a.add("seed", 1); a.add("watering_can", 1)
+    assert run(sim, a, "dig", {"dir": "E", "with": "hoe"})["ok"] and sim.world.ground(a.x + 1, a.y) == "tilled"
+    assert run(sim, a, "place", {"dir": "E", "item": "seed"})["ok"] and sim.world.block(a.x + 1, a.y) == "sprout"
+    assert run(sim, a, "water", {"dir": "E", "with": "watering_can"})["ok"] and sim.world.ground(a.x + 1, a.y) == "wet_tilled"
+    dev_op(sim, a, "dev_skip", {"seconds": 230})
+    assert sim.world.block(a.x + 1, a.y) == "ripe_crop"
+    assert run(sim, a, "dig", {"dir": "E"})["ok"]                    # empty hands: harvest
+    assert sim.world.ground(a.x + 1, a.y) == "tilled" and sim.world.block(a.x + 1, a.y) == "none" and a.count("seed") >= 2
