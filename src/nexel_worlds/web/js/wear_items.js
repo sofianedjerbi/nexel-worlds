@@ -1,8 +1,8 @@
 // Clothes and armor as items and effects: each piece's icon in a bag (16 x 16, drawn here, not on a sheet), the
 // special effects around a player wearing a charm, and the small parts of the HUD that wearing needs.
 
-const WearItems = (() => {
-  const {TOPS, PANTS, SHOES, HEADS, rgb} = WearParts;
+// THE CHARMS' EFFECTS: what each draws round a player wearing it, behind them (back) or over them (front)
+const WearEffects = (() => {
   const beside = (a, r) => (Math.cos(a) < 0 ? -1 : 1) * (9 + Math.abs(Math.cos(a)) * r);      // an orbit that stays off the face
   const hash = (i, k) => { const s = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return s - Math.floor(s); };
   const EFFECTS = [
@@ -34,13 +34,14 @@ const WearItems = (() => {
   ];
   function dot(g, x, y, c, alpha = 1, big = false) { g.globalAlpha = alpha; g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), 1, 1);
     if (big) { g.fillRect(Math.round(x) - 1, Math.round(y), 3, 1); g.fillRect(Math.round(x), Math.round(y) - 1, 1, 3); } g.globalAlpha = 1; }
+  return EFFECTS;
+})();
+// A PIECE'S ICON IN A BAG: 16 x 16, drawn here, not on a sheet
+const WearIcon = (() => {
+  const {rgb} = WearParts;
   const mix = (h, k, to = [70, 48, 66]) => "#" + rgb(h).map((v, i) => Math.round(v * (1 - k) + to[i] * k).toString(16).padStart(2, "0")).join("");
   const GEM = {sparkle: "#ffe07a", fireflies: "#b8e86a", leaves: "#6fbb62", hearts: "#f2788a", flame: "#f59a4a", frost: "#9ad4f2", halo: "#fff3b8", spores: "#d9d77a", flowers: "#f29aa8"};
   const ARMOR = ["iron", "gold", "moss"], LOW = ["red", "blue", "moss"], SKIRT = ["robe", "moss"];
-  HEADS.find((h) => h.id === "flowers").icon = (put) => { for (let i = 0; i < 14; i++) { const a = i * Math.PI / 7;
-    put(Math.round(Math.cos(a) * 5), Math.round(Math.sin(a) * 3.4), ["#f29aa8", "#6fbb62", "#ffe07a", "#6fbb62", "#fff6de", "#6fbb62", "#c9a8f2"][i % 7]); } };
-  HEADS.find((h) => h.id === "bandana").icon = (put) => { for (let y = 0; y < 5; y++) for (let x = -5 + y; x <= 5 - y; x++) put(x, y, y === 0 ? "#f39a86" : "#e0635a");
-    put(6, 0, "#c94f4a"); put(7, 1, "#c94f4a"); put(6, -1, "#c94f4a"); };
   function itemIcon(part, o) {                    // -> Map of pixel (y * 16 + x) -> colour, outlined; null for nothing
     if (o.id === "none") return null;
     const raw = [], put = (x, y, c) => { const i = raw.findIndex((p) => p[0] === x && p[1] === y); if (i >= 0) raw.splice(i, 1); if (c) raw.push([x, y, c]); };
@@ -93,6 +94,14 @@ const WearItems = (() => {
     for (const [key, c] of L) if (c === null) L.set(key, line);
     return L;
   }
+  return itemIcon;
+})();
+const WearItems = (() => {
+  const {TOPS, PANTS, SHOES, HEADS} = WearParts, EFFECTS = WearEffects, itemIcon = WearIcon;   // (the charms' effects, a piece's icon: above)
+  HEADS.find((h) => h.id === "flowers").icon = (put) => { for (let i = 0; i < 14; i++) { const a = i * Math.PI / 7;
+    put(Math.round(Math.cos(a) * 5), Math.round(Math.sin(a) * 3.4), ["#f29aa8", "#6fbb62", "#ffe07a", "#6fbb62", "#fff6de", "#6fbb62", "#c9a8f2"][i % 7]); } };
+  HEADS.find((h) => h.id === "bandana").icon = (put) => { for (let y = 0; y < 5; y++) for (let x = -5 + y; x <= 5 - y; x++) put(x, y, y === 0 ? "#f39a86" : "#e0635a");
+    put(6, 0, "#c94f4a"); put(7, 1, "#c94f4a"); put(6, -1, "#c94f4a"); };
   const LISTS = {head: HEADS, top: TOPS, pants: PANTS, shoes: SHOES, effect: EFFECTS};
   const look = (name) => LISTS[RULES.wear[name]].find((o) => o.id === LOOK[name]);
   const icons = new Map();
