@@ -113,9 +113,12 @@ def test_the_jump_is_a_crouch_an_arc_over_the_step_and_a_landing(game):
     # (in the air, a good way up: up, a top, down, three frames at the least. It was five: on the runners a frame is 70
     # to 130 ms, a third of a second's jump four of them)
     air = [body for px, body, sq, pose in rec if pose in ("takeoff", "rise", "apex", "fall", "touch")]
-    assert len(air) >= 3 and max(air) > 6, air
-    top = air.index(max(air))
-    assert 0 < top < len(air) - 1 and air[-1] < max(air), air
+    assert air and max(air) > 6, air                                    # (off the ground, a good way up)
+    # (its shape, up, a top and down, where three frames of it were drawn: on a runner drawing every 117 ms a third of a
+    # second's jump is two, "[12.34, 11.34]"; the arc itself, off jumpOf at 50 points, is test_a_hop_is_one_arc's)
+    if len(air) >= 3:
+        top = air.index(max(air))
+        assert 0 < top < len(air) - 1 and air[-1] < max(air), air
     poses = [pose for px, _, _, pose in rec]
     seen = [a for a, b in zip(poses, [None] + poses) if a != b and a]          # each pose once, in the order shown
     # (its first pose the takeoff, or the rise where the takeoff fell between two frames; never the step's crouch)

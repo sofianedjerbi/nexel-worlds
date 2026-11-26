@@ -53,6 +53,7 @@ class GameServer(Views):
         self.sim.listeners.append(self._broadcast)
         self.sim.screens = lambda: [r for r in self.spectators.values() if r]   # (nothing comes or goes on a screen: spawning.py)
         self.tick_ms = collections.deque(maxlen=250)
+        self.tick_parts = collections.deque(maxlen=250)      # (each tick's parts: its step's ms, whether it flushed the world to disk)
         self.started = time.time()
         self.stopping = asyncio.Event()
         self.admin = Admins(self, world_dir, admins)      # (an operator, out of the world: the server's /commands, admin.py)
@@ -76,6 +77,7 @@ class GameServer(Views):
                 self.sim.maintain()
             dt = (time.perf_counter() - t0) * 1000
             self.tick_ms.append(dt)
+            self.tick_parts.append((self.sim.tick, round(dt, 1), round((t1 - t0) * 1000, 1), self.sim.tick % FLUSH_EVERY == 0))
             if dt > 50:
                 log.warning("slow tick %d: %.0f ms (step %.0f ms, chunks %d -> %d)", self.sim.tick, dt,
                             (t1 - t0) * 1000, chunks0, len(self.sim.world.chunks))
@@ -104,6 +106,7 @@ class GameServer(Views):
             "chunks_loaded": len(self.sim.world.chunks),
             "tick_ms_p50": round(ms[len(ms) // 2], 2),
             "tick_ms_max": round(ms[-1], 2),
+            "tick_worst": dict(zip(("tick", "ms", "step_ms", "flushed"), max(self.tick_parts, key=lambda t: t[1], default=(0, 0, 0, False)))),   # (the slowest of them, and what it was)
             "rss_peak_mb": round(rss_mb(), 1),
             **self.sim.stats,
         }

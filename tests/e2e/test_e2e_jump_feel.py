@@ -82,11 +82,19 @@ def test_auto_jump_up_a_staircase_is_smooth_and_keeps_its_rhythm(game):
     at = lambda r: ORDER.index(r[3]) if r[3] in ORDER else -1
     offs = [r[0] for r, q in zip(rec, [None] + rec) if at(r) >= 0 and (q is None or at(q) < 0 or at(r) < at(q))]
     assert len(offs) == 4, offs
-    # (from the second step: the first is jumped from the flat ground before the flight, a whole jump; a flight is walked at a walk's
-    # pace from its second step, leap.js stairArc. Counted with it, a runner drawing every 83 ms read "[517, 183, 217]")
-    beats = [b - a for a, b in zip(offs[1:], offs[2:])]
-    frame = sorted(b[0] - a[0] for a, b in zip(rec, rec[1:]))[len(rec) // 2]      # (a takeoff is seen on the first frame drawn in it: a frame late at the most)
-    assert max(beats) - min(beats) <= max(45, 2 * frame) and min(beats) >= 180 - frame, (beats, frame, [r[:4] for r in rec if offs[0] - 50 <= r[0] <= offs[-1] + 50])       # (a step at the walk's pace, 0.2 s a tile: up a flight each jump is planned, leap.js stairArc. It was a whole jump each step, 0.25 s and more, against the next step's face)
+    # THE BEAT: when the body goes over each step's edge, from the second step (the first is jumped from the flat ground
+    # before the flight, a whole jump; a flight is walked at a walk's pace from its second step, leap.js stairArc), read
+    # off its x between the two frames either side of the edge. (It was when each jump's pose began, seen a frame or two
+    # late where a pose fell between frames: on an 83 ms runner two even beats read "[350, 150]", then "[517, 183, 217]")
+    def over(edge):
+        for a, b in zip(rec, rec[1:]):
+            if a[1] < edge <= b[1]:
+                return a[0] + (b[0] - a[0]) * (edge - a[1]) / (b[1] - a[1])
+        return None
+    edges = [over(x + 2.5 + i) for i in range(3)]
+    assert None not in edges, (edges, [r[:2] for r in rec][::4])
+    beats = [round(b - a) for a, b in zip(edges, edges[1:])]
+    assert max(beats) - min(beats) <= 45 and min(beats) >= 150, (beats, [r[:4] for r in rec if edges[0] - 120 <= r[0] <= edges[-1] + 120])       # (a step at the walk's pace, 0.2 s a tile: up a flight each jump is planned, leap.js stairArc. It was a whole jump each step, 0.25 s and more, against the next step's face)
     tops = [max(r[2] for r in rec if a <= r[0] < a + 300) for a in offs]
     assert min(tops) >= 8, tops                                             # (over the line the eye follows: 20 over the floor it left, the line 8 up half way)
     assert not game.errors, game.errors
@@ -252,9 +260,11 @@ def test_space_in_a_boat_moves_neither_the_boat_nor_your_name(game):
     game.js(NAMED)
     game.frames(3)
     game.page.keyboard.press("Space")
-    game.sleep(600)
+    # (over the whole of a hop's time, by the frames' own clock: it was 600 ms slept and more than 10 frames asked, 6 to 9 on a
+    # runner drawing every 67 to 100 ms: "10 samples")
+    game.wait("__nm.length >= 3 && __nm[__nm.length - 1][3] - __nm[0][3] >= HOP.ms + 100", 5000)
     r = game.js("(() => { __nmOn = false; return __nm; })()")
-    assert len(r) > 10 and len({v[0] for v in r}) == 1 and sum(v[2] for v in r) == 0, (sorted({v[0] for v in r}), sum(v[2] for v in r))
+    assert len(r) >= 3 and len({v[0] for v in r}) == 1 and sum(v[2] for v in r) == 0, (sorted({v[0] for v in r}), sum(v[2] for v in r))
     assert not game.errors, game.errors
 
 
