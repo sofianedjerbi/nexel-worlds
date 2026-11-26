@@ -76,11 +76,11 @@ const NyxRift = (K) => {
     else if (open > 0) tear(b, u, rx, ry, u >= 32 ? 1 - seg(u, 32, 32.8) : 0);
     if (open > .5 && u > 14 && u < 23 && !(u > 18 && u < 18.35)) for (const d of [-7, 7]) for (let j = 0; j < (u > WIDE ? 3 : 1); j++) for (let i = -2; i < 2; i++) b[(CY - 11 + j) * CW + CX + d + i] = PALE;   // its eyes
     body(b, u, act); rings(b, u);
-    g.putImageData(im, 0, 0);
+    g.putImageData(im, 0, 0); rc._v = (rc._v || 0) + 1;                      // (a new picture each frame: the sprite sheet takes it again, vox_style_sprites.js)
     const gc = picture(s, "riftG", GW, GH), h = gc.getContext("2d"), gm = h.createImageData(GW, GH), gb = new Uint32Array(gm.data.buffer);
     if (u < 37) lines(gb, GW, GH, ground, seg(u, 6, 14), hot);
     const k = seg(u, 32, 34); if (k > 0 && k < 1) { const R = 10 + k * 140; for (let t = 0; t < Math.PI * 2; t += 1 / R) { const x = Math.round(GW / 2 + Math.cos(t) * R), y = Math.round(GH / 2 + Math.sin(t) * R * .3); if (x >= 0 && y >= 0 && x < GW && y < GH) gb[y * GW + x] = PALE; } }   // the shockwave
-    h.putImageData(gm, 0, 0);
+    h.putImageData(gm, 0, 0); gc._v = (gc._v || 0) + 1;
     return [rc, gc];
   }
   function pour(cx, y, u, rx, ry) {                                             // stars and sparks pouring out of it, more and more as the drop comes; a burst as it shuts
