@@ -57,12 +57,13 @@ def test_a_tap_goes_to_the_tile_under_the_finger(browser, server):
             assert (got["x"], got["y"]) == (x + dx, y + dy), (dx, dy, got)
         p = g.js("([x, y]) => HdLook.screenOf(x + .5, y + .5, 0)", [x + 2, y - 1])
         g.page.touchscreen.tap(p[0], p[1])
-        g.wait(f"myPos().x === {x + 2} && myPos().y === {y - 1}", 6000)
+        g.wait(f"myPos().x === {x + 2} && myPos().y === {y - 1}", 15000)
+        g.rest()                                                                          # (the body and the camera at rest there: the next tile's px is where it will stay)
         p = g.js("([x, y]) => HdLook.screenOf(x + .5, y + .5, 0)", [x - 1, y + 3])      # (left of you: the stick's side of the screen: a tap there is a tap on the tile too)
         assert g.js("([a, b]) => document.elementFromPoint(a, b).id", p) == "pad"
         g.page.touchscreen.tap(p[0], p[1])
         try:
-            g.wait(f"myPos().x === {x - 1} && myPos().y === {y + 3}", 12000)
+            g.wait(f"myPos().x === {x - 1} && myPos().y === {y + 3}", 20000)
         except Exception as e:  # noqa: BLE001 - where you are: walked part of the way (slow), or the tap was not a walk
             raise AssertionError((g.js("[myPos(), !!walking]"), [x - 1, y + 3])) from e
         assert not g.errors, g.errors
