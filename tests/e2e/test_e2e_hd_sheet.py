@@ -5,6 +5,10 @@ tuft. The land asked for more than the sheet's paints: the sheet was emptied and
 (spills), a paint was put in a place the land shown still named (overs), and faces were drawn with other paints. None
 of that, on any sheet: and the land made again from none is the land as it was, px for px."""
 
+import base64
+import os
+from pathlib import Path
+
 import pytest
 
 from conftest import Game, new_name
@@ -19,6 +23,13 @@ DIFF = """(() => { const a = window.__was, b = HdLook.read(0, 0, cv.width, cv.he
 WHERE = """(() => { const a = window.__was, b = HdLook.read(0, 0, cv.width, cv.height).data, W = cv.width, H = cv.height, band = new Array(8).fill(0); let blue = 0, n = 0;
   for (let i = 0; i < a.length; i += 4) if (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 24) { n++; band[Math.min(7, Math.floor((i / 4 / W) / H * 8))]++; if (a[i + 2] > a[i] + 20) blue++; }
   return {bands: band.map((v) => +(v / (W * H / 8)).toFixed(4)), blue: n ? +(blue / n).toFixed(2) : 0}; })()"""
+
+# the pictures, before, after and where they differ (red), saved to E2E_SHOTS when the bound is broken: what changed shows in the run's artifact (#111)
+PNG = """(which) => { const W = cv.width, H = cv.height, now = HdLook.read(0, 0, W, H).data, was = window.__was, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d'), im = x.createImageData(W, H), d = im.data;
+  for (let i = 0; i < d.length; i += 4) { const diff = Math.abs(was[i] - now[i]) + Math.abs(was[i + 1] - now[i + 1]) + Math.abs(was[i + 2] - now[i + 2]) > 24;
+    const s = which === 'was' ? was : now; if (which === 'diff') { d[i] = diff ? 255 : s[i] / 3; d[i + 1] = diff ? 0 : s[i + 1] / 3; d[i + 2] = diff ? 0 : s[i + 2] / 3; } else { d[i] = s[i]; d[i + 1] = s[i + 1]; d[i + 2] = s[i + 2]; } d[i + 3] = 255; }
+  x.putImageData(im, 0, 0); return c.toDataURL('image/png'); }"""
 
 DESK, SMALL = {"viewport": {"width": 1920, "height": 1080}}, {"viewport": {"width": 960, "height": 540}}
 PHONE = {"viewport": {"width": 390, "height": 844}, "device_scale_factor": 3, "is_mobile": True, "has_touch": True}
@@ -61,5 +72,11 @@ def test_sprinting_about_every_face_keeps_its_own_paint(browser, server, screen)
     g.wait("!HdLook.busy && HdLook.bare() === 0", 15000)
     g.frames(3)
     d = g.js(DIFF)
+    if d >= .01 and os.environ.get("E2E_SHOTS"):
+        out = Path(os.environ["E2E_SHOTS"]) / f"sheet_{screen}"
+        out.mkdir(parents=True, exist_ok=True)
+        for which in ("was", "now", "diff"):
+            (out / f"{which}.png").write_bytes(base64.b64decode(g.js(PNG, which).split(",", 1)[1]))
+        (out / "info.txt").write_text(repr((d, g.js(WHERE), box0, g.js("[HdLook.box, HdLook.work, myPos(), HdLook.hid, HdLook.why]"))))
     assert d < .01, (d, g.js(WHERE), box0, g.js("[HdLook.box, HdLook.work]"))                                             # the same land, px for px (a face drawn with another paint: a tile's worth of px each)
     assert not g.errors
