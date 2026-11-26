@@ -3,7 +3,8 @@
 It never lands. Three tiles wide, like Old Mossback (Simulation.entity_at knows), it flies over anything at a tile
 every FLY seconds, circling whoever it hunts between attacks. Everything is counted in beats of its song (156 BPM), so
 that what the client plays lands with the music: a warning is a beat and a half, every strike falls on a beat.
-  arrive  its entrance: it comes down out of the night sky and lands on the music's drop, 32 beats on; nothing touches it
+  arrive  its entrance: a rift tears open beside you and it comes through, stepping out on the music's drop, 32 beats
+          on (the picture: web/js/nyxwing_sky.js NyxRift); nothing touches it
   breath  dark light at its jaws, then a cone of dark fire four tiles long, the way it faces
   storm   it climbs and spins: a ring of stars on each of three beats; a star a tile wide, the gaps between them safe
   sweep   its tail coils, then whips round: everyone within four tiles is hurt and thrown back
@@ -40,7 +41,7 @@ class Nyxwing:
     `awake` is 1 once it has raged (rush), `born` the tick it last saw someone."""
 
     def untouchable(self, c) -> bool:
-        """Coming down out of the night, or up in the sky: no blow reaches it (combat.py, through Boss.shell)."""
+        """Coming through its rift, or up in the sky: no blow reaches it (combat.py, through Boss.shell)."""
         return c.kind == "nyxwing" and c.mode in ("arrive", "sky")
 
     def _step_nyxwing(self, c, online):

@@ -208,7 +208,8 @@ def test_an_ai_player_talks_in_the_chip_voice_a_person_babbles(game, friend):
     game.rpc("dev_teleport", x=x + 1, y=y)
     friend.rpc("dev_teleport", x=x + 2, y=y)
     game.wait("[...ents.values()].some((q) => q.e && q.e.name === 'Rusty')", timeout=8000)
-    game.press("ArrowLeft", 60)                                         # (a key: the page's sound is awake)
+    game.press("ArrowLeft", 60)                                         # (a key: the page's sound wakes)
+    game.wait("awake()", 5000)                                          # (and is running: it resumes after the key, in its own time; a line said before that is silent, babble's 0)
     game.js("""(() => { window.__talk = []; const b = babble, r = robotSay;
       babble = function (name, text, x, y, shout, robot) { const n = b.apply(this, arguments); window.__talk.push(["babble", name, !!robot, shout, n]); return n; };
       robotSay = function (a, d, bufs, name, text, shout, kind) { window.__talk.push(["robot", name, kind, shout]); return r.apply(this, arguments); };

@@ -177,3 +177,48 @@ def test_an_agent_sees_the_roof_it_laid(world):
             assert run(sim, a, "place", {"item": "roof", "x": x + dx, "y": y + dy})["ok"]
     roofs = sim.observe(a)["roofs"]
     assert roofs[VIEW_R][VIEW_R] == "1" and roofs[VIEW_R - 4][VIEW_R] == "0"
+
+
+def two_storeys(s, a, x0, y0, W=5, H=5):
+    """tests/e2e/test_e2e_floors.py's house, by the same `place`s: walls and a door, a floor on them with a stairwell
+    by the west wall, two steps, walls upstairs, a bed, a roof over it all."""
+    from nexel_worlds.devtools import dev_op
+    dev_op(s, a, "dev_stamp", {"x": x0, "y": y0, "rows": ["".join("+" if (i, j) == (W // 2, H - 1) else "W" if i in (0, W - 1) or j in (0, H - 1) else "n" for i in range(W)) for j in range(H)]})
+    for k, n in {"plank": 60, "roof": 40, "wood_wall": 30, "bed": 1}.items():
+        a.add(k, n)
+    room = [(x0 + i, y0 + j, 0) for j in range(1, H - 1) for i in range(1, W - 1)]
+    well = [(x0 + 1, y0 + 1), (x0 + 1, y0 + 2)]
+    up = [(x0 + i, y0 + j, 3) for j in range(1, H - 1) for i in range(2, W - 1)] + [(x0 + 1, y0 + 3, 3), (x0 + 1, y0 + 1, 2)]
+    for part, stand in (([(x0 + i, y0 + j, 3, "plank") for j in range(H) for i in range(W) if (x0 + i, y0 + j) not in well], room),
+                        ([(x0 + 1, y0 + 2, 1, "plank"), (x0 + 1, y0 + 1, 1, "plank"), (x0 + 1, y0 + 1, 2, "plank")], room),
+                        ([(x0 + i, y0 + j, 3, "wood_wall") for j in range(H) for i in range(W) if i in (0, W - 1) or j in (0, H - 1)], up),
+                        ([(x0 + 3, y0 + 1, 3, "bed")], up),
+                        ([(x0 + i, y0 + j, 6, "roof") for j in range(H - 1, -1, -1) for i in range(W)], up)):
+        for x, y, z, item in part:
+            q = next(q for q in stand if (q[0] - x) ** 2 + (q[1] - y) ** 2 + ((z - q[2]) * .5) ** 2 <= 6 and (q[0], q[1]) != (x, y))
+            dev_op(s, a, "dev_teleport", {"x": q[0], "y": q[1], "z": q[2]})
+            r = run(s, a, "place", {"x": x, "y": y, "z": z, "item": item})
+            assert r["ok"], (x, y, z, item, r)
+
+
+def test_a_bed_upstairs_wakes_you_upstairs_and_off_a_floors_edge_you_come_down_unhurt(world):
+    """The world's half of tests/e2e/test_e2e_floors.py::test_you_see_the_floor_you_are_on_and_fall_off_its_edge: a
+    bed upstairs is slept in and you wake up there, at its height; a gap cut in the wall upstairs and off you walk,
+    three layers down to the ground before the door, unhurt."""
+    from nexel_worlds.devtools import dev_op
+    s, a = world
+    clear(s, a, r=10)
+    x, y = a.x, a.y
+    x0, y0 = x + 2, y - 7
+    two_storeys(s, a, x0, y0)
+    dev_op(s, a, "dev_teleport", {"x": x0 + 2, "y": y0 + 1, "z": 3})              # upstairs, a tile north of the middle: the bed to the east
+    assert run(s, a, "sleep", {"dir": "E"})["ok"]
+    assert a.spawn == [x0 + 3, y0 + 1, 3]                                         # slept in: you wake upstairs
+    dev_op(s, a, "dev_teleport", {"x": x0 + 3, "y": y0 + 3, "z": 3})              # upstairs again; a gap is cut in the south wall, and off you walk
+    a.add("axe", 1)
+    assert run(s, a, "dig", {"x": x0 + 3, "y": y0 + 4, "z": 3, "with": "axe"})["ok"]
+    for _ in range(4):
+        if a.y >= y0 + 5 and s.height(a) == 0:
+            break
+        run(s, a, "step", {"dir": "S"})
+    assert (a.x, s.height(a)) == (x0 + 3, 0) and a.y >= y0 + 5 and a.hp == 20     # down on the ground before the door, unhurt (three layers)

@@ -81,7 +81,10 @@ def test_what_stands_in_a_deep_room_is_as_dim_as_its_floor_and_you_are_not(brows
 SHOWN = "HdLook.live && !!HdView.el && HdView.el.style.display === 'block'"
 # what a px read was taken from: the screen point, the canvases, the look's state
 WHERE = """([x, y, z]) => { const a = HdLook.screenOf(x, y, z), el = HdView.el, cv = document.getElementById('c');
-  return {at: a && a.map((v) => Math.round(v * devicePixelRatio)), el: el && [el.width, el.height, el.style.display], cv: cv && [cv.width, cv.height], live: HdLook.live, lost: HdLook.lost, drew: HdLook.drew}; }"""
+  const p = myPos(), m = p && HdLook.screenOf(p.x + .5, p.y + .5, myZ(p.x, p.y));
+  return {at: a && a.map((v) => Math.round(v * devicePixelRatio)), me: p && [p.x, p.y], meAt: m && m.map((v) => Math.round(v * devicePixelRatio)), el: el && [el.width, el.height, el.style.display], cv: cv && [cv.width, cv.height], live: HdLook.live, lost: HdLook.lost, drew: HdLook.drew}; }"""
+# the eye on you: your screen point across the middle of the screen (CSS px)
+ON_YOU = "(() => { const p = myPos(), m = p && HdLook.screenOf(p.x + .5, p.y + .5, myZ(p.x, p.y)); return !!m && Math.abs(m[0] - innerWidth / 2) < innerWidth * .15; })()"
 
 def test_no_px_is_drawn_from_a_paint_that_is_not_there_on_ten_walks_down_the_stair_and_back(browser, server):
     g = hd(browser, server)
@@ -105,8 +108,12 @@ def test_no_px_is_drawn_from_a_paint_that_is_not_there_on_ten_walks_down_the_sta
     # runner's had 1: a blended edge of what is drawn over the land, not a face)
     assert n > 300 and raw < 16, (n, raw, g.js("HdLook.work"))
     # and were the shown land's paints lost (they cannot be now: a full sheet no longer wipes them): the counter sees it, and the land is its mean colour, not one earth brown
+    # (back at the stair's top where the walk began, the walk ended: one read on main was 10 tiles off the screen's left
+    # edge, [-211, 192] of 960 px: run 45895689042. And the eye on you there, else the view is not where you are: a bug of its own)
+    g.wait(f"myPos().x <= {x} && !walking && !myAction", timeout=8000)
     g.rest()
     spot = [x - 4.5, y + 2.5, 0]
+    assert g.js(ON_YOU), ("the view is not on you", g.js(WHERE, spot))
     # (each px read off a frame the look drew and shows: one read on main gave [0, 0, 0] twice, no picture at all, the land
     # shown and drawn in the screenshot: run 45870743293. What the screen was then is said if it happens again)
     g.wait(SHOWN, timeout=8000)
