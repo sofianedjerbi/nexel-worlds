@@ -29,7 +29,7 @@ def go(g, key, done, jump=False):
     g.wait(done, timeout=8000)
     g.page.keyboard.up(key)
     g.wait("!walking && !pred && !HdLook.busy", timeout=6000)
-    g.frames(5)
+    g.sleep(500); g.frames(5)                                # (settled: half a second and five frames. Five frames alone read the window open at the top)
 
 
 @pytest.mark.realtime
@@ -45,13 +45,13 @@ def test_up_and_down_a_ladder_in_the_open_nothing_of_the_light_or_the_window_cha
     tiles = [[x + 2, y - 2, 0], [x + 2, y - 4, 6]]
     for phase in (.3, .9):
         g.hour(phase, still=True)
-        g.rpc("dev_teleport", x=x, y=y - 3, z=0); g.arrive(); g.rest(); g.frames(5)
-        g.js(REC, tiles); g.wait("__r.length >= 5", 8000)   # (five frames standing at the foot, not 0.3 s)
+        g.rpc("dev_teleport", x=x, y=y - 3, z=0); g.arrive(); g.rest(); g.sleep(400); g.frames(5)
+        g.js(REC, tiles); g.sleep(300); g.wait("__r.length >= 5", 8000)   # (0.3 s standing at the foot, and five frames of it)
         foot = g.js(STOP)
         g.js(REC, tiles)
         go(g, "ArrowUp", "myAt.z === 6 && !Climb.climbOf(ents.get('agent' + myId))")
         up = g.js(STOP)
-        g.js(REC, tiles); g.wait("__r.length >= 5", 8000)
+        g.js(REC, tiles); g.sleep(300); g.wait("__r.length >= 5", 8000)
         stood = g.js(STOP)
         g.js(REC, tiles)
         go(g, "ArrowDown", "myAt.z === 0 && !Climb.climbOf(ents.get('agent' + myId))")
