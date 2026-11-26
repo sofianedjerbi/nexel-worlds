@@ -28,8 +28,8 @@
 // Where the code still breaks it (to route through the rule, then strike from this list): the cut's section takes stone or earth from the
 // surface's top cell and your height, not from each cell it shows (vox_style.js sectAt, flag 8388608); its first line is the land's own
 // top px, grass on a meadow (vox_style_glsl.js wn 11);
-// a model face wider or deeper than a tile is
-// its 16 px stretched (model).
+// a fence's 12 rows of paint over a whole level's height (hd_fences.js, 4/3); a roof's rows over its pitched face, longer than
+// they are (hd_blocks.js: flat roofs, or roof art with a row for each px of the slope).
 const VoxStyleLand = (() => {
   const H = VoxStyleGLSL.H, C = 16, N = 10, CH = 8, KINDS = ["main", "model", "shade", "water"], TRI = [0, 1, 2, 0, 2, 3];   // (TRI: a quad's two triangles)
   const gp = (x, y, z) => [x, z * H, y];
