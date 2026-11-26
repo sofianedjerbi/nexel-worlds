@@ -163,7 +163,7 @@ const VoxStyleLand = (() => {
       if (!sky) { const m = (vq[5] + vq[15] + vq[25] + vq[35]) / 4; vq[5] = vq[15] = vq[25] = vq[35] = m; }   // (a face of a cave: one tone a face. Its corners' shade ran in steps across each face: rows of dark spikes, a comb, along every cut edge)
       for (const i of TRI) for (let j = i * 10; j < i * 10 + 10; j++) out.push(vq[j]);
     }
-    // YOUR SPACE AND THE WINDOW ON IT (o.win: {reach, walk: on the surface, for a cave's mouth or a hole beside you: where you can walk and drop to, not the floors you came down from}). The land is made WHOLE, always: under the land you are seen through a window, a mask the painter makes from a few boxes
+    // YOUR SPACE AND THE WINDOW ON IT (o.win: {reach: steps out, none under the land: as far as the box of land made round you goes (inBox), the whole cave however it winds (#8; it was 24: "the whole cave should show up to the player, not a small radius"), walk: on the surface, for a cave's mouth or a hole beside you: where you can walk and drop to, not the floors you came down from}). The land is made WHOLE, always: under the land you are seen through a window, a mask the painter makes from a few boxes
     // (vox_style_win.js), not through a hole cut in these faces: no chunk hangs on where you are. Here only the boxes are found: the tiles walked to from yours (reach steps), each from its floor to its ceiling.
     function* steps(cx, cy, L, o) {
       const cols = new Map(), r = o.r, deep = o.deep, pt = o.win || null, fresh = new Map(); let made = 0; farBox = [Math.floor((cx - r - 48) / CH), Math.floor((cy - r - 48) / CH), Math.floor((cx + r + 48) / CH), Math.floor((cy + r + 48) / CH)];
@@ -202,7 +202,7 @@ const VoxStyleLand = (() => {
       // a quarter of the px). Only the LIGHT tells them apart (cls -> the painter's light of the space, vox_style.js: 1 warm, 2 dimmer, 3 cold), and that eases. A tile has ONE level: a floor under the land
       // before one under the sky (the meadow over a room is of your space too, by the stair's mouth: found first it kept the room shut till you were near), else the first found; the flood goes on through its other floors (treads over a passage)
       let sky0 = false; if (pt) { let L0 = L; const c0 = real(cx, cy); if (c0 && !(host.water && host.water(cx, cy))) for (let n = 0; n < 8 && !solidC(c0, L0); n++) L0--;   // (in the air, a jump, a fall: your space is the floor's under you. From a level in mid air the flood found another space for the frames of a fall: the picture flashed)
-        sky0 = topOf(cx, cy) <= L0; const i0 = at(cx, cy), lim = pt.reach, nodes = [[cx, cy, L0, 0]], seenN = new Set([i0 * 2048 + L0 + 1024]); reachA[i0] = L0; clsA[i0] = 1; nearA[i0] = 1; reached.push(i0);
+        sky0 = topOf(cx, cy) <= L0; const i0 = at(cx, cy), lim = pt.reach ?? Infinity, nodes = [[cx, cy, L0, 0]], seenN = new Set([i0 * 2048 + L0 + 1024]); reachA[i0] = L0; clsA[i0] = 1; nearA[i0] = 1; reached.push(i0);
         for (const pass of pt.walk ? [1, 2] : [1, 2, 3]) { let fr = nodes.slice();
           for (let d = 1; d <= lim && fr.length; d++) { const nx = []; for (const [x, y, f0, o] of fr) { if (o > 4) continue; for (const [dx, dy] of DIR) { const X = x + dx, Y = y + dy, i = at(X, Y); if (i < 0) continue; const f1 = floorOf(x, y, X, Y, f0), l = pass > 2 ? upsOf(x, y, X, Y, f0) : [];   // (o: steps under the open sky since the last floor under the land: the flood stops five out on a meadow: it ran over the whole surface, 8 ms of one frame, for nothing: only what is under land is looked into)
             if (f1 !== null && (pass > 1 || f1 % 1 === 0)) l.push(Math.floor(f1));
@@ -224,8 +224,8 @@ const VoxStyleLand = (() => {
         for (let d = 0; d < 3 && fr.length; d++) { const nx = []; for (const [x, y, lo, hi] of fr) for (const [dx, dy] of DIR) { const X = x + dx, Y = y + dy, k = X + "," + Y, c = own.has(k) || !inBox(X, Y) ? null : real(X, Y); if (!c) continue;
           for (let j = 0; j + 2 < c.length; j += 2) if (c[j] >= lo - 4 && c[j] <= hi + 6) { own.add(k); const t = [X, Y, c[j], Math.min(c[j] + 6, c[j + 1])]; win.push(t); nx.push(t); break; } } fr = nx; } }
       // THE CUT (the owner's pick, the mockup page: "under the land, the real blocks round you"; "the whole cave should show up to the player, not a small
-      // radius"): covered by the land, it is not drawn over YOUR SPACE (the window's boxes: every floor you can walk or drop to, the whole cave, 24 tiles
-      // out) and the tile of land round each, at that floor's head: every wall of your cave a block of its own earth or stone, two levels high
+      // radius"): covered by the land, it is not drawn over YOUR SPACE (the window's boxes: every floor you can walk or drop to, the whole cave, as far
+      // as the land made round you: the view's) and the tile of land round each, at that floor's head: every wall of your cave a block of its own earth or stone, two levels high
       // NOTHING HIDDEN IS SHOWN (the owner: "x-ray should not allow to see ores in wall"): the cut shows the land's cells as land, earth or stone, never
       // what is in them; what stands on the land cut is not drawn (hd.js cutOff): an ore over your tunnel is not seen from under it. Ore in a wall, when the
       // land has it, is seen where a face of it opens onto your space, not on the cut
