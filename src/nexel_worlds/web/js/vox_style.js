@@ -117,6 +117,7 @@ const VoxStyle = (() => {
       const t0 = performance.now(), L = v.light, RW = v.w, RH = v.h, W = v.water, sized = el.width !== RW || el.height !== RH;
       if (sized) { el.width = RW; el.height = RH; }
       const {m, eye} = matrix(v); if (!sameN(m, 16, lastM, 16) || lastB[0] !== (v.bend || 0) || lastB[1] !== v.at[1]) mver++; lastM = m; lastB = [v.bend || 0, v.at[1]]; const lamp = gp(...v.at), hr = typeof v.hour === "function" ? v.hour() : v.hour;   // (mver: goes up when where a place is drawn (at) changes: marks drawn from it are kept till then)
+      self.__drawAt = {at: [...v.at].map((q) => +q.toFixed(2)), lamp: [...lamp].map((q) => +q.toFixed(2))};
       // what this frame is made of, before anything is sent: the ghosts and the moving shadows (view.ghosts: [[x, y, box]...], made each frame), the sprites, every number the painter takes
       const gh = GW[lastG === GW[0] ? 1 : 0], sd = DW[lastD === DW[0] ? 1 : 0]; gh.n = sd.n = 0; for (const g of v.ghosts || []) land.model(g[0], g[1], g[2], g[2].shade ? sd : gh);   // (into the writer the last frame drawn is not in: GW, DW)
       const mef = (v.sprites || []).find((s) => s.top), mf = mef && project(m, mef.x, mef.y, mef.z), mp = mf && [(mf[0] * .5 + .5) * RW, (.5 - mf[1] * .5) * RH], disc = mp ? [mp[0], RH - mp[1] + 1, 12] : [0, 0, 0];   // (the disc round you: what covers you is seen through there only)
@@ -157,6 +158,7 @@ const VoxStyle = (() => {
       gl.useProgram(pr); const u = (n) => U[n] || (U[n] = gl.getUniformLocation(pr, n)), us = (n) => U["s" + n] || (U["s" + n] = gl.getUniformLocation(sp, n));
       gl.uniformMatrix4fv(u("m"), false, m); gl.uniform1i(u("t"), 0); gl.uniform1i(u("wt"), 2); gl.uniform1i(u("gw"), 3); gl.uniform1i(u("mk"), 4); gl.uniform1f(u("xr"), wxr); gl.uniform1f(u("ct"), ct); gl.uniform3fv(u("sc"), (v.sect || SECT)[0]); gl.uniform4fv(u("sp"), sectAt); gl.uniform1f(u("rf"), cfg.rock ? cfg.rock.from : 1e9); gl.uniform3fv(u("go"), GLOW.sorg); gl.uniform3fv(u("lamp"), [lamp[0], lamp[1] + .6, lamp[2]]); gl.uniform3fv(u("eye"), eye);   // ("gw", not "st": the sprites' names are kept under "s" + name)
       gl.uniform3fv(u("em"), mean); gl.uniform3fv(u("ctr"), lamp); gl.uniform1f(u("bend"), v.bend || 0); gl.uniform2f(u("vpx"), RW, RH); gl.uniform3fv(u("fogc"), L.fogc); gl.uniform4fv(u("cl"), clip);
+      self.__drawL = {lr: L.lr, amb: L.amb, day: L.day};
       { const f1 = (n, x) => gl.uniform1f(u(n), x); f1("lr", L.lr); f1("day", L.day); f1("amb", L.amb); f1("fn", L.fog[0]); f1("ff", L.fog[1]); f1("rim", L.rim); f1("wa", L.wa ?? .62); f1("dep", v.dep || 0); f1("rd", 0); f1("sun", L.sun ?? 1); f1("shp", 0); f1("cd", GLOW.cdv); f1("rz", rimz); f1("cp", cpx); f1("bh", v.behind || 0); f1("ud", v.under || 0); }
       gl.uniform4fv(u("wtn[0]"), L.wtint || Z40); gl.uniform4fv(u("wv"), wv); gl.uniform3fv(u("mc"), disc); gl.uniform3fv(u("bd[0]"), bd); gl.uniform4fv(u("pw"), pw); gl.uniform1f(u("bp"), 0);
       gl.useProgram(sp); gl.uniform1i(us("t"), 1); gl.uniform1i(us("mk"), 4); gl.uniform2f(us("nf"), .5, 200); gl.uniform3fv(us("mc"), disc); gl.uniform4fv(us("pw"), pw); gl.useProgram(pr);
