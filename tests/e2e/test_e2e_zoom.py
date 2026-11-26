@@ -21,8 +21,12 @@ def test_a_wheel_notch_is_one_level_and_a_trackpad_swipe_is_not_a_dozen(game):
 
 def test_a_level_glides_and_the_sign_shows_where_you_are_and_where_it_stops(game):
     game.js("zoom = 3")
+    # (the glides, counted as they start: a glide is ZOOM.ms, 140 ms, a quarter of it on the tests' clock: 35 ms. Read after
+    # the key, it was seen only if no frame was drawn between the key and the read: one was, and it was over.
+    # "cv.getAnimations().length == 1" read 0: main 45878195525)
+    game.js("(() => { window.__glides = 0; const a = cv.animate.bind(cv); cv.animate = (...k) => { __glides++; return a(...k); }; return 1; })()")
     game.press("-", 0)
-    assert game.js("zoom") == 2 and game.js("cv.getAnimations().length") == 1   # drawn wide at once, the picture let down to it
+    assert game.js("zoom") == 2 and game.js("__glides") == 1   # drawn wide at once, the picture let down to it
     assert game.js("$('zoomer').classList.contains('show')") and game.js("document.querySelectorAll('#zoomer i.on').length") == 1
     game.wait("cv.getAnimations().length === 0 && getComputedStyle(cv).transform === 'none'", 2000)   # (the glide over: the picture at its size)
     game.press("-", 300)                                       # a player is never a few pixels tall: 2 is the widest
