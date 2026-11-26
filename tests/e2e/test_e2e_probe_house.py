@@ -60,10 +60,9 @@ def named(want):
             return n
 
 
-@pytest.mark.parametrize("tint", [4, 4, 4, 2, 2, 2])                          # (lilac: the trial that read 0.60; green: one that read 1)
-def test_probe_the_house(browser, server, tint, monkeypatch):
-    hour, n = None, tint
-    monkeypatch.setattr(test_e2e_hd_sun, "new_name", lambda: named(tint))
+@pytest.mark.parametrize("n", range(20))                                     # (any name: lilac and green both read 1, 3 of 3 each)
+def test_probe_the_house(browser, server, n):
+    hour = None
     g = hd(browser, server)
     try:
         if hour is not None:
@@ -83,6 +82,7 @@ def test_probe_the_house(browser, server, tint, monkeypatch):
             g.page.wait_for_timeout(400)
         rows.append(["dump", g.js(DUMP)])
         rows.append(["roof over", g.js(ROOF, [x0 + 1, y0 + 1])])
-        raise AssertionError(("PROBE", hour, n, rows))
+        if min(r[1] for r in rows if len(r) == 6) < .8:                        # (only a trial that is not seen whole prints)
+            raise AssertionError(("PROBE", hour, n, rows))
     finally:
         g.page.close()
