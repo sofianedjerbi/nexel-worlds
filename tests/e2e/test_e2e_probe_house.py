@@ -1,5 +1,5 @@
 """PROBE, not for merge (#47): why test_e2e_hd's house test reads you 0.60 seen in the room for 8 s, one run in many.
-The same house, the same steps, at the hour the suite gives it (the campfire's .9, a while on) and at noon, four times
+The same house, the same steps, at the hour every test starts at (join's .3) and at noon, four times
 each: in the room, every ~0.4 s for 4 s, the hour, the share of you seen, how much of what is seen is below your
 middle (catSeen's box: the px seen outside the box over it), the x-ray window. Fails on purpose, to print."""
 
@@ -43,9 +43,8 @@ DUMP = """() => { const P = CanvasRenderingContext2D.prototype, gi = P.getImageD
 def test_probe_the_house(browser, server, hour, n):
     g = hd(browser, server)
     try:
-        g.hour(.9 if hour is None else hour)
-        if hour is None:
-            g.sleep(4000)                                                     # (the bed test's while, after the campfire's .9)
+        if hour is not None:
+            g.hour(hour)                                                      # (None: the hour join gives every test, .3, game.py)
         x, y = g.pos()
         x0, y0 = x - 1, y - 5
         g.stamp(-1, -5, ["WWWW", "WnnW", "W+WW"])
