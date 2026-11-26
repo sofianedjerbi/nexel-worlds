@@ -54,7 +54,7 @@ class Building:
         self.reach(a, x, y, z=self.world.level(x, y))      # (anything else is on the tile's ground, its lowest: too high up, or down, is out of reach. It was the
                                                            #  ground there nearest your own height: a flower was picked from a stair 24 layers over it)
         if block.name != "none" and self.land_between(a, x, y, self.world.level(x, y)):
-            raise ActionError("out_of_range", f"the {block.name.replace('_', ' ')} at ({x},{y}) is behind the land: nothing is reached through it")
+            raise ActionError("out_of_range", f"the {block.name.replace('_', ' ')} at ({x},{y}) is behind the land: nothing is reached through it", why="behind")
         if block.name == "none" and ground.liquid:           # the bottom of the water: a layer deeper
             return (yield from self.deepen(a, x, y))
         if block.name == "none":
@@ -237,9 +237,9 @@ class Building:
         def check():
             can = T.can_craft(r, a.inventory, self.stations(a), n)
             if can["station"]:
-                raise ActionError("need_station", f"{name} must be crafted within {T.REACH['station']} tiles of a {r.station}")
+                raise ActionError("need_station", f"{name} must be crafted within {T.REACH['station']} tiles of a {r.station}", station=r.station)
             if can["missing"]:
-                raise ActionError("missing_items", f"need {can['missing']} more for {n}x {name}")
+                raise ActionError("missing_items", f"need {can['missing']} more for {n}x {name}", missing=can["missing"])
         check()
         yield from self.wait(a, r.ticks / 10 * n)
         check()                                             # (again, once the time it takes has passed)
