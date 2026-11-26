@@ -54,5 +54,6 @@ def test_off_a_high_ledge_into_water_your_body_does_not_jump_up_the_screen(brows
     assert k < 2 or rel(fr[k]) - rel(fr[k - 1]) <= rel(fr[k - 1]) - rel(fr[k - 2]) + cap(fr[k - 1], fr[k]), str(fr[max(0, k - 4):k + 4]) + ' PROBE'   # (into the water no faster than the fall's own last step: it sank 5 px at once, #193)
     jolts = [(a, b) for a, b in zip(fr[k:], fr[k + 1:]) if abs(rel(b) - rel(a)) > cap(a, b)]
     assert not jolts, str(jolts[:4])
+    raise AssertionError('PROBE ' + str(fr[max(0, k - 4):k + 6]))   # (probe: always print the switch's frames)
     g.rest()
     assert g.server()["swimming"] and not g.errors, g.errors
