@@ -57,7 +57,13 @@ def test_sprinting_down_six_steps_is_smooth_and_never_put_back(game):
     game.stamp(-1, -1, ["." * 12] * 3, levels=["665432100000"] * 3)
     game.rpc("dev_teleport", x=game.pos()[0], y=game.pos()[1], z=6); game.arrive(); game.face(1, 0)
     x, _ = game.pos()
-    rec = frames(game, lambda: game.hold(["Shift", "d"], 1300), z0=6)
+    def run_down():     # (held until at the foot and on, x + 9: not for a time, which a loaded runner's game runs behind)
+        for k in ("Shift", "d"):
+            game.page.keyboard.down(k)
+        game.wait(f"ents.get('agent' + myId).x >= {x + 9}", 6000)
+        for k in ("d", "Shift"):
+            game.page.keyboard.up(k)
+    rec = frames(game, run_down, z0=6)
     smooth(rec)
     assert game.server()["z"] == 0 and game.pos()[0] >= x + 8, game.server()
     agree(game)
@@ -183,7 +189,15 @@ def test_sprinting_over_steps_up_and_down_keeps_its_speed(game):
     game.stamp(-1, -1, ["." * 22] * 3, levels=["0001111000110000111000"] * 3)
     x, _ = game.pos()
     game.face(1, 0)
-    rec = frames(game, lambda: game.hold(["Shift", "d"], 1900))
+    # (the keys held until you are past the course's end, x + 19, not for a time: a loaded runner's game runs behind its
+    # clock, and keys let go at 1.9 s of it stopped you on the course, read as speed lost)
+    def run_over():
+        for k in ("Shift", "d"):
+            game.page.keyboard.down(k)
+        game.wait(f"ents.get('agent' + myId).x >= {x + 19}", 8000)
+        for k in ("d", "Shift"):
+            game.page.keyboard.up(k)
+    rec = frames(game, run_over)
     run = [r for r in rec if x + 1 <= r[1] <= x + 18]
     # (over three frames, a twentieth of a second: one frame of a landing went 0.132 of a tile in 16.6 ms, 7.96 tiles a
     # second against 8, one run in six: the body put back on its way as it comes down, not a speed that is lost. Where
