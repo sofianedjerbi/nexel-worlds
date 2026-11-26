@@ -25,6 +25,9 @@ def camera_over(game, keys, ms):
     game.js(CAM, [x, y])
     if keys:
         walk_up(game, keys)
+        # (and landed: up on the step's tile is half way through the leap, and the walk may wait on the world (walk.js LEAD), so the
+        #  land still came down a px in the last 130 ms one run in three, a fixed 300 ms after it: #247)
+        game.wait("!Leap.on() && !Leap.gliding()", 3000)
     else:
         game.press("Space", 0)
         game.sleep(ms)
