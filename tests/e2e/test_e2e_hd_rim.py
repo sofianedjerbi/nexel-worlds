@@ -13,7 +13,7 @@ def test_probe_a_far_plateaus_rim(browser, server):
     try:
         x, y = g.pos()
         g.stamp(-14, -34, ["." * 29] * 30)
-        for h, (a, b) in ((3, (-22, -16)), (8, (-32, -26))):
+        for h, (a, b) in ((3, (-14, -10)), (2, (-24, -19))):
             g.rpc("dev_col", tiles=[[x + i, y + j] for j in range(a, b) for i in range(-12, 13)], col=[h])
         for v in (13, 25, 37):
             for hr in (.375, .15):
