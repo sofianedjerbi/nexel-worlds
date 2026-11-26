@@ -120,3 +120,10 @@ def test_a_comment_naming_a_part_is_no_use_of_it(tmp_path):
                         "tests/e2e/test_e2e_title.py": 'def test_t(g):\n    g.wait("TitleScene.cast")\n'})
     assert A.affected(["src/nexel_worlds/web/js/errands.js"], r)[0] == ["tests/e2e/test_e2e_title.py"]
     assert A.affected(["src/nexel_worlds/web/js/cast.js"], r)[0] == ["tests/e2e/test_e2e_title.py"]
+
+
+def test_how_a_body_is_drawn_asks_for_the_tests_that_read_a_drawn_body():
+    """characters.js: the tests read what it drew (a frame, what is over a body), none name its functions (#209)."""
+    e2e, _, _ = A.affected(["src/nexel_worlds/web/js/characters.js"], ROOT)
+    assert {"tests/e2e/test_e2e_body_trace.py", "tests/e2e/test_e2e_subpx.py", "tests/e2e/test_e2e_races.py"} <= set(e2e)
+

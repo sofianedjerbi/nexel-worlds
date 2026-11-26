@@ -9,6 +9,7 @@ Printed: the e2e test files to run (and the unit test files), one a line. The ma
   test_e2e_hd*.py; and the unit tests naming the file (a vox_* file: those naming vox_, test_vox_layer.py); a part of
   another (its globals used by that one file alone: hd_cards.js's HdCards by hd_things.js, build_do.js's by build.js):
   and what that file selects (the tests name the whole: a part's change ran none of them);
+- characters.js (how a body is drawn): and the tests that read a drawn body (BODY_SET: body_trace, subpx, races, wear...);
 - a .css file: the ui, menu, title and phone tests; web/index.html: those and the e2e tests naming an id it has changed (not
   read: all of the ui set);
 - a python file of the game (src/nexel_worlds/**.py, not web/): the unit tests that name its module, all of them if
@@ -34,6 +35,11 @@ E2E = "tests/e2e/"
 UI_SET = ("test_e2e_ui.py", "test_e2e_menu.py", "test_e2e_title.py", "test_e2e_title_scene.py", "test_e2e_phone.py",
           "test_e2e_phone_taps.py", "test_e2e_hd_phone.py", "test_e2e_touch.py", "test_e2e_help.py")
 SERVER_E2E = ("test_e2e_world.py", "test_e2e_edits.py")
+# how a body is drawn (characters.js drawBody, its pose and its sheet): the tests that read a drawn body, its frame (p.fi), what is
+# written over it, its sheet dressed. They name none of its functions: they read what it drew (#209)
+BODY_JS = ("characters.js",)
+BODY_SET = ("test_e2e_body_trace.py", "test_e2e_body_place.py", "test_e2e_subpx.py", "test_e2e_races.py", "test_e2e_wear.py",
+            "test_e2e_hand.py", "test_e2e_swim.py")
 AUDIO_JS = JS + "audio.js"                       # what plays it: its globals name the tests that play sound
 SOUND_PIPELINE = ("tools/build_audio.py", ".github/workflows/ci.yml")                # (and music/**)
 TOP = re.compile(r"^(?:const|let|var)\s+([A-Za-z_$][\w$]*)|^(?:async\s+)?function\*?\s+([A-Za-z_$][\w$]*)|^class\s+([A-Za-z_$][\w$]*)"
@@ -158,6 +164,10 @@ def affected(changed, root: Path = ROOT, why=None):
             if len(whole) == 1:
                 for t in affected([JS + whole[0].name], root)[0]:
                     add(e2e, t, f"{name}: a part of {whole[0].name}")
+            if name in BODY_JS:
+                for t in E:
+                    if Path(t).name in BODY_SET:
+                        add(e2e, t, f"{name}: a drawn body")
             if name.startswith(("hd", "vox_")):
                 for t in E:
                     if Path(t).name.startswith("test_e2e_hd"):
