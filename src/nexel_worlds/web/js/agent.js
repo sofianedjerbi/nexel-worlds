@@ -26,7 +26,7 @@ function joinGame(name) {
     const d = JSON.parse(m.data);
     if (d.type === "progress") {
       if (pendingAside && pendingAside.tool === d.tool) myAside = {...pendingAside, t0: performance.now()};
-      else if (pendingAct && pendingAct.tool === d.tool) { myAction = {...pendingAct, t0: performance.now()}; const q = ents.get("agent" + myId); if (q) BodyPlace.faceAction(q, myAction.dir, myAction.tid); }
+      else if (pendingAct && pendingAct.tool === d.tool) { myAction = {...pendingAct, t0: performance.now(), was: pendingAct.at ? combAt(...pendingAct.at) : null}; const q = ents.get("agent" + myId); if (q) BodyPlace.faceAction(q, myAction.dir, myAction.tid); }
       if (d.ticks / d.tick_hz >= .35) progress = {t0: performance.now(), ms: d.ticks / d.tick_hz * 1000, tool: d.tool};
       return;
     }
@@ -117,6 +117,16 @@ const TARGET_WHY = {
   not_agent: () => "Give to someone, not a creature",
 };
 const errorText = (r) => (Object.hasOwn(ERROR_TEXT, r.error) && (r.data || !ERROR_TEXT[r.error].length) ? ERROR_TEXT[r.error](r.data) : r.detail || r.error);   // (words that need no data, as "changed"'s, need none sent)
+// A dig done with no strike heard: the strike sounds as the frame drawn at its fourth (characters.js), and a frame
+// longer than the swing's first third (a slow device; the tests' fast clock on a runner: 0.47 s of the game a frame)
+// went from before it to the action's end. The axe was silent ("chop" not heard, test_e2e_ui #47). Once, on the tile
+// as it was when the work began (a tree felled is a stump by now)
+function struckOnce(a, r) {
+  if (!a || a.tool !== "dig" || !a.at || a.was == null || !r || !r.ok) return;
+  const q = ents.get("agent" + myId);
+  if (q && q.struckAt === a.t0 && q.struck > 0) return;
+  sfx(strikeSound(a.was, a.with && SWING_ROW[toolArt(a.with)]), a.at[0], a.at[1]);
+}
 async function act(tool, args, quiet) {
   if (!me || (eating() && !RULES.meanwhile.includes(tool))) return null;
   while (pred && performance.now() < pred.until) await new Promise((ok) => setTimeout(ok, 16));   // the server is still coming to where you stopped: what you do, you do from there
@@ -132,6 +142,7 @@ async function act(tool, args, quiet) {
   const r = await rpc("act", {tool, args});
   if (aside) { pendingAside = myAside = null; if (progress && progress.tool === tool) progress = null; }
   else {
+    struckOnce(myAction, r);
     pendingAct = null; myAction = null;
     busy = false; progress = null;
     if (walking === null && [...keys].some((k) => KEYDIR[k])) syncWalk();   // still holding a direction: walk on

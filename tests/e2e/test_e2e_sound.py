@@ -40,6 +40,26 @@ def test_every_file_loads_and_each_action_plays_its_own_sound(game):
     assert cow
 
 
+def test_a_chop_with_no_frame_drawn_at_its_strike_still_sounds(game):
+    """The strike sounds on the frame drawn at a swing's fourth (characters.js). A frame longer than the swing's first
+    third went from before it to the action's end: on the tests' fast clock on a runner (0.47 s of the game a frame),
+    the axe felled the tree in silence, "chop" not in what test_e2e_ui test_actions_make_their_sounds heard (#47). No body drawn at
+    all while it chops: the strike still sounds once, as the work is done (agent.js struckOnce)."""
+    game.js("window.__snd = []; const s0 = sfx; window.sfx = (n, x, y) => { __snd.push(n); s0(n, x, y); }")
+    game.stamp(-1, 0, ["T"])
+    game.face(-1, 0)
+    game.give(axe=1)
+    game.hold_item("axe")
+    game.js("(() => { window.__db = drawBody; drawBody = () => {}; return 1; })()")   # (no frame of the swing drawn)
+    try:
+        game.press("x", 0)
+        game.wait(f"combAt({game.pos()[0] - 1}, {game.pos()[1]}) === 't'", 8000)
+        game.wait("__snd.includes('chop')", 3000)
+    finally:
+        game.js("(() => { drawBody = window.__db; return 1; })()")
+    assert game.js("__snd.filter((n) => n === 'chop').length") == 1 and not game.errors, (game.js("__snd"), game.errors)
+
+
 def test_an_unknown_sound_is_reported_once_and_does_not_break(game):
     game.wait("sounds.manifest", 20000)
     game.js("(() => { sfx('no_such_sound'); sfx('no_such_sound', 1, 1); })()")
