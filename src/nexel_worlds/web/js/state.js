@@ -16,14 +16,15 @@ function resize() {
   cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); cv.style.width = W + "px"; cv.style.height = H + "px";
 }
 addEventListener("resize", resize); resize();
-// Called each frame with its length: when frames have been long for a good while on a dense screen, draw at 1 px a
-// CSS px from then on (a quarter of the paint; the art is as sharp, only the lettering loses a little)
+// Called each frame with its length: when frames have been long for a good while on a dense screen, draw with fewer px
+// from then on (a quarter of the paint at 2), by a whole number only: 3 to 1, 2.5 to 1.25, under 2 none. At 1.25 drawn at 1,
+// the canvas was stretched by 1.25, a canvas px 1 or 2 of the screen's by where it fell: a walker's letters changed each step (#61)
 function slowFrame(dt, settled) {
-  const now = performance.now();
-  if (!settled || document.hidden || DPR <= 1) { paceFrom = now; return; }   // (loading, in the background: says nothing)
+  const now = performance.now(), d = window.devicePixelRatio || 1, low = Math.floor(d) >= 2 ? d / Math.floor(d) : d;
+  if (!settled || document.hidden || DPR <= low) { paceFrom = now; return; }   // (loading, in the background, nothing to lower: says nothing)
   frameMs += (Math.min(dt, .1) * 1000 - frameMs) * .02;
   if (frameMs < 30) paceFrom = now;
-  else if (now - paceFrom > 4000) { DPR_MAX = 1; frameMs = 16; resize(); }
+  else if (now - paceFrom > 4000) { DPR_MAX = low; frameMs = 16; resize(); }
 }
 let zoom = 3;
 const TS = () => P * zoom;
