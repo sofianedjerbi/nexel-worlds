@@ -16,9 +16,9 @@ const HdThings = (() => {
   const cast = (out, x, y, zl, r, h0, h1, built) => { if (!ghosting && (built || zl === floorAt(x, y))) HdSun.box(out, x, y, built ? floorAt(x, y) : zl, r, h0, h1, built); };   // (what is built throws the shadow of the box it is, a px wider so that a run's are one)
   const {CARD, card, foot, shade, shadow, decal} = HdCards(S, LEAN), {hid, south} = HdRoom();
   const {wall, doorsAt, doorOpen} = HdWalls(S, {UP, KF, cast, plans, ghosting: () => ghosting}), {fence, sideGate} = HdFences(S, {UP, cast, doorOpen});
-  const {pitch, block} = HdBlocks(S, {UP, PITCH, FH, cast, hid});
+  const {pitch, block} = HdBlocks(S, {UP, PITCH, FH, cast, hid}), {thicket} = HdThickets(S, {UP, cast});
   const shaded = (c) => isObject(c) && !is(c) && !"f;\"wgVl".includes(c);      // (all that stands; not what is boxes, what is flat or thin, what floats)
-  const is = (c, x, y) => "W%+#rm".includes(c) || (c === "g" && x !== undefined && gateSide(x, y));
+  const is = (c, x, y) => "W%+#rmH".includes(c) || (c === "g" && x !== undefined && gateSide(x, y));
   function stand(out, c, x, y, zl) {     // what stands at level zl of the tile
     if (!c) return;
     if (Structures.WALLS.includes(c)) {
@@ -26,7 +26,7 @@ const HdThings = (() => {
       if (cells) for (const zc of cells.keys()) if (zc > zl && zc <= zl + Floors.STOREY && (!over || zc < over)) { over = zc; cutLow = hid(x, y, zc); }   // (up to the lowest block over it: a storey, two blocks of wall)
       const p = myPos();      // (inside, the roof open: the walls south of you a low stub, you are seen over them; the others to their own height)
       const full = over ? (over - 1 - zl) * UP : UP; wall(out, c, x, y, zl, cutLow && (Build.on ? p && y > p.y : y > south()) ? 4 : full);   // (a stub: the room's south wall alone; else a block, or up to the block over it)
-    } else if (c === "#") fence(out, x, y, zl * UP); else if (c === "g") sideGate(out, x, y, zl * UP);
+    } else if (c === "#") fence(out, x, y, zl * UP); else if (c === "H") thicket(out, x, y, zl * UP); else if (c === "g") sideGate(out, x, y, zl * UP);
     else decal(out, c, x, y, zl * UP);
   }
   // (the sheet emptied while a tile's pieces were asked for: those asked before name places of the old sheet. Asked once more, all in the new one: an oval of shade read a shadow's black blades, or nothing)
