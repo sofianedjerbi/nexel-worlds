@@ -13,9 +13,10 @@ permissions:
   contents: read
 
 concurrency:
-  # a pull request: one run, the newest; main: one group a commit, so no run on main is cancelled or replaced (a run
-  # pending behind busy runners was replaced by the next merge's, and main had no full browser run for hours, #47)
-  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'push' && github.sha || 'pr' }}
+  # a pull request: only its newest run. main: a run in progress always finishes, and of those waiting only the newest
+  # starts after it (it has every commit before it). (What kept main's full run waiting was runners, not this: a pull
+  # request now takes 4 at most, #47)
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
