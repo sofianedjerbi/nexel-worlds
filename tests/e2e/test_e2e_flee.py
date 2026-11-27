@@ -7,7 +7,7 @@ import math
 def test_a_hit_cow_runs_off_without_jumping(game):
     game.clear_area(8)
     cid = game.spawn("cow", 1, 0, still=10 ** 6)
-    game.sleep(600)
+    game.until("[...ents.values()].some((q) => q.e && q.e.kind === 'cow' && q.x === q.tx && q.y === q.ty)")   # (the cow on the page, drawn where it stands)
     game.face(1, 0)
     game.js("""(() => {                                     // where the cow is drawn, and where the server has it
       window._cow = [];
@@ -15,7 +15,7 @@ def test_a_hit_cow_runs_off_without_jumping(game):
         if (c && now !== undefined) window._cow.push([c.x, c.y, c.tx, c.ty, now]);
         if (window._cow.length < 220) requestAnimationFrame(f); })(); })()""")
     game.act("attack", target=cid)                             # (fists: it lives and runs; Space would milk it)
-    game.sleep(3200)
+    game.until("window._cow.length >= 220")                   # (its 220 frames recorded, however long they take)
     rec = game.js("window._cow")
     # how fast it is drawn going, tiles a second of the frame's own time (render.js: a frame moves a body by its time,
     # 0.1 s at the most). Its steps a frame were 0.35 at most at 10 frames a second, a slow machine's: a step's size is

@@ -82,7 +82,7 @@ def test_a_pinch_with_one_finger_on_the_sticks_side_zooms_and_does_not_walk(brow
         g.touch("touchStart", pts(40))
         for i in range(1, 9):
             g.touch("touchMove", pts(40 + 10 * i)); g.sleep(40)
-        g.touch("touchEnd"); g.sleep(900)
+        g.touch("touchEnd"); g.until("zoom > 2 && !stick"); g.rest()   # (the zoom glided to the pinch's, the page settled)
         assert g.js("zoom") > 2 and g.pos() == pos and not g.js("!!stick")
         g.touch("touchStart", [(80, 600)])                            # and the stick still walks, alone
         for i in range(1, 6):

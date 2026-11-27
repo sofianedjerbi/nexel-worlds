@@ -88,11 +88,11 @@ def test_walking_up_the_owners_hill_the_cut_shuts_where_you_show(browser, seed12
         g.rest()
         g.page.keyboard.down("ArrowDown")
         try:
-            g.wait("myPos().y >= -72", timeout=15000)
+            g.until("myPos().y >= -72")
         finally:
             g.page.keyboard.up("ArrowDown")
-        g.wait("!walking && [-72, -71].includes(myPos().y)", timeout=6000)      # (let go at -72, the step under way ends there or on -71: half of you or more shows on both)
-        g.wait("!HdLook.hid && !HdLook.win.a", timeout=4000)                 # (the window's hold, 300 ms, then shut)
+        g.until("!walking && [-72, -71].includes(myPos().y)")      # (let go at -72, the step under way ends there or on -71: half of you or more shows on both)
+        g.until("!HdLook.hid && !HdLook.win.a")                 # (the window's hold, 300 ms, then shut)
         s = g.js(STATE)
         assert s["z"] in (5, 6) and not s["hid"] and not s["win"] and not s["open"], (s, g.js(WHY))
     finally:

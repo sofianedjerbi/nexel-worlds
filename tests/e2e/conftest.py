@@ -14,6 +14,7 @@ from pathlib import Path
 import clock
 import pytest
 from game import Game, new_name
+import pages
 from pages import Pages
 
 ROOT = Path(__file__).parents[2]
@@ -228,6 +229,14 @@ def machine(browser, server):
         MACHINE.extend([ms, clock.fit(ms)])
         if clock.coming == was:                           # (the first test's next page, asked for at the pace before)
             clock.coming = clock.PACE
+
+
+@pytest.fixture(autouse=True)
+def motion(request):
+    """Animations off on this test's pages (pages.py `motion`), unless it is marked `animated`: it checks one."""
+    pages.motion = "no-preference" if request.node.get_closest_marker("animated") else "reduce"
+    yield
+    pages.motion = "reduce"
 
 
 @pytest.fixture(autouse=True)

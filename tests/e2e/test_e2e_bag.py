@@ -29,12 +29,12 @@ def test_the_inventory_is_a_window_of_cells_where_everything_keeps_its_place(gam
     inside = game.js("(() => { const t = document.querySelector('#bag .btip').getBoundingClientRect(), w = $('bag').getBoundingClientRect(); return t.left >= w.left && t.right <= w.right; })()")
     assert inside                                                               # (the label of the first cell does not run out of the window)
     game.rpc("dev_give", items={"carrot": 3, bar[4].split(":")[0]: 5})           # a new thing, and more of one you have
-    game.sleep(900)
+    game.until(f"({CELLS})('bagpack').includes('carrot:3')")                      # (the bag drawn again with what came)
     assert game.js(CELLS, "bagpack")[:3] == pack[:2] + ["carrot:3"]              # the new one: the first empty cell
     after = game.js(CELLS, "bagbar")
     assert [c.split(":")[0] for c in after] == [c.split(":")[0] for c in bar] and after[4].endswith(":7")     # nothing moved; one count grew
     game.rpc("dev_give", items={bar[1].split(":")[0]: -2})                       # the last of a thing goes: its cell is empty, the others stay
-    game.sleep(900)
+    game.until(f"!({CELLS})('bagbar').some((c) => c && c.split(':')[0] === {bar[1].split(':')[0]!r})")   # (the bag drawn again without it)
     gone = game.js(CELLS, "bagbar")
     assert gone[1] is None and [c and c.split(":")[0] for c in gone[2:]] == [c.split(":")[0] for c in bar[2:]]
     assert game.js(BOX) == box                                                   # the window: where it was, the size it was

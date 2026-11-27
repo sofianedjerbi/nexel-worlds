@@ -59,7 +59,24 @@ ARRIVE = """async ([x, y]) => { const frame = () => new Promise(requestAnimation
   return {ok: false, d, n}; }"""
 
 
+# Until `e` (an expression, or a function of none) holds on the page, `n` frames at the most: looked at once a frame. The guard
+# counts frames, not ms: a slow runner's 200 ms frames give the game as many frames to get there as 16 ms ones do (#317)
+UNTIL = """([e, n]) => new Promise((ok) => { const f = new Function("return (" + e + ")"); let k = 0;
+  const look = () => { let v = false; try { v = f(); if (typeof v === "function") v = v(); } catch (x) { v = false; }
+    if (v) ok(true); else if (++k > n) ok(false); else requestAnimationFrame(look); }; look(); })"""
+
+
+def until(page, expr, frames=1200):
+    """Until `expr` holds on `page`, `frames` frames at the most (20 s of 60 a second; a guard, never the measure)."""
+    if not page.evaluate(UNTIL, [expr, frames]):
+        raise AssertionError(f"not within {frames} frames: {expr[:300]}")
+
+
 class Waits:
+    def until(self, expr, frames=1200):
+        """Until `expr` holds on the page, `frames` frames at the most (waits.until)."""
+        until(self.page, expr, frames)
+
     def frames(self, n=2):
         """Until `n` more frames are drawn (what was set on the page is in the picture of the next one)."""
         self.js(FRAMES, n)

@@ -39,7 +39,7 @@ def test_cant_place_on_things_and_says_why(game):
     assert "Can't place" in game.toast() and game.tile(1, 0) == "t"
     game.spawn("chicken", 0, -1, still=10 ** 6)
     game.face(0, -1)
-    game.sleep(300)
+    game.until("[...ents.values()].some((p) => p.e && p.e.kind === 'chicken')"); game.frames(2)   # (the chicken on the page; the hints are said again every frame, render.js)
     assert "Something is in the way" in game.actions()
 
 
@@ -71,8 +71,9 @@ def test_farming_hoe_seed_water_harvest(game):
     game.press("e", 1500)
     x, y = game.pos()
     assert game.js(f"gndAt({x + 1}, {y})") == "u"           # watered soil
+    was = game.tile(1, 0)
     game.rpc("dev_skip", seconds=230)
-    game.sleep(800)
+    game.until(f"combAt({x + 1}, {y}) !== {was!r}")          # (grown, as the tick after the skip brings it)
     assert game.tile(1, 0) == "w"                            # ripe
     game.press("0", 200)                                     # empty hands: harvest
     game.press("e", 1000)

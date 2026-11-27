@@ -41,8 +41,9 @@ def test_the_pointer_over_the_drop_is_on_the_plane_of_your_level_with_a_block_in
     game.page.mouse.move(m[0], m[1]); game.frames(3)
     q = game.js(f"(() => {{ const q = tileAtScreen({m[0]}, {m[1]}); return [q.x, q.y, clickIntent(q, 'use').it.z]; }})()")
     assert q == [x + 2, y, 6], (q, game.js(f"(() => {{ const p = HdLook.pick({m[0]}, {m[1]}), s = myPos(); return [p && [p.x, p.y, topAt(p.x, p.y)], s && myZ(s.x, s.y)]; }})()"))   # (what the pointer shows past the drop, and your level)
-    game.js("selected = null")
-    g = game.js(f"(() => {{ const q = tileAtScreen({m[0]}, {m[1]}), p = HdLook.pick({m[0]}, {m[1]}); return [q && [q.x, q.y], p && [p.x, p.y]]; }})()")
+    # (nothing in hand and the read in one task: each observation takes in hand what the hand's slot holds (ui.js handSync),
+    # so a tick between two calls put the earth back, one run in some)
+    g = game.js(f"(() => {{ selected = null; const q = tileAtScreen({m[0]}, {m[1]}), p = HdLook.pick({m[0]}, {m[1]}); return [q && [q.x, q.y], p && [p.x, p.y]]; }})()")
     # (the land the pointer shows, if any, as the picture names it: never the cell in the air. What lies there is the world's
     # own, past the meadow made for the test: "[-6, -34, 3]", a hill on a runner, where a quick machine had had the meadow)
     assert g[0] == g[1] and g[0] != [x + 2, y], g

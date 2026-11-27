@@ -74,7 +74,7 @@ def test_the_picture_and_screen_settings_do_what_they_say(game):
         at_row(game, name); game.press("Enter")
         assert game.js(f"opt('{key}')") is False
     game.js("fallQuake = {t0: performance.now(), amp: 5}; floats.push({x: 0, y: 0, text: '-1', color: '#fff', t: performance.now() / 1000})")
-    game.sleep(200)
+    game.frames(2)                                              # (what is written over heads is let go every frame when it is off, render.js)
     assert game.js("[fallShake(performance.now()), floats.length]") == [0, 0]
     game.press("Tab")                                           # Screen
     for name, key in (("Speech bubbles", "bubbles"), ("Names over heads", "names"), ("Key hints", "hints"), ("Mouse tips", "tips")):
@@ -89,7 +89,7 @@ def test_the_picture_and_screen_settings_do_what_they_say(game):
     assert game.js("[F3.on, localStorage.getItem('nexel-f3')]") == [True, "1"]
     game.press("Escape"); game.press("Escape")
     game.act("say", text="hello there")
-    game.sleep(700)
+    game.until("$('chatlog').innerText.includes('hello there')"); game.frames(2)   # (said and heard: a bubble would come with the line)
     assert game.js("bubbles.length") == 0                       # nothing over your head
     game.wait("(() => { const e = document.getElementById('f3'); return e && e.style.display !== 'none' ? e.innerText : ''; })().includes('XYZ ')")
     game.js("for (const k of Object.keys(OPT_DEFAULT)) setOpt(k, OPT_DEFAULT[k]); F3.set(false); localStorage.clear()")
@@ -129,7 +129,7 @@ def test_a_key_can_be_changed_and_the_game_follows(game):
     game.give(plank=1)
     game.act("drop", item="plank", n=1)
     game.wait("groundItems.length > 0")
-    game.sleep(300)
+    game.frames(2)                                              # (the hints are said again every frame, render.js)
     assert "K" in game.js("$('actions').textContent")           # the hint names the new key
     # (what F and K do is told by what they send, not by the bag: a plank dropped beside you comes to it by itself after
     #  1.2 s of the game's (sim/progress.py MAGNET_DELAY), and on a busy machine it had come before F was pressed)

@@ -46,6 +46,6 @@ def test_high_over_the_land_the_sky_is_behind_you(game):
     game.rpc("dev_col", tiles=[[x + 3 + i, y + j] for i in range(2) for j in range(2)], col=[200])       # a pillar two hundred high
     game.rpc("dev_teleport", x=x + 3, y=y, z=200)
     game.wait(f"myAt && myAt.x === {x + 3} && myAt.z === 200", 8000)
-    game.wait(f"{DRAWN} && away.high", 20000); game.sleep(600)
+    game.wait(f"{DRAWN} && away.high", 20000); game.rest()
     assert game.js("[!!blockOf(myAt.x, myAt.y), topAt(myAt.x, myAt.y)]") == [True, 200]
     assert not game.errors

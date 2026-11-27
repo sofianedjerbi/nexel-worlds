@@ -47,7 +47,8 @@ asyncio_default_fixture_loop_scope = "function"
 # the end-to-end suite drives real Chrome against a fresh server and takes minutes: run it with `pytest -m e2e`
 markers = ["e2e: plays the game in Chrome against a fresh server", "quick: one short e2e test a file, a minute in all (tests/e2e/README.md)",
            "realtime: an e2e test that measures the machine's own time: not on the tests' fast clock (tests/e2e/clock.py)",
-           "stepped: an e2e test of how a move looks frame by frame: its pages' time goes 1/60 s a frame, whatever the machine (tests/e2e/clock.py STEP)"]
+           "stepped: an e2e test of how a move looks frame by frame: its pages' time goes 1/60 s a frame, whatever the machine (tests/e2e/clock.py STEP)",
+           "animated: an e2e test of an animation itself (a glide, a follow, a fade): its pages do not ask for less motion (tests/e2e/pages.py motion)"]
 addopts = "-m 'not e2e' -n 6"
 
 # ---------------------------------------------------------------- lint (CI: .github/workflows/ci.yml)
@@ -62,7 +63,7 @@ extend-exclude = ["music"]
 select = ["E", "W", "F", "B", "UP", "SIM", "I", "C4", "RUF", "PIE", "ASYNC"]
 ignore = [
     "ASYNC110", "B007", "B017", "B023", "B904", "B905", "C401", "C408", "C416", "C419", "C420",
-    "E401", "E402", "E501", "E701", "E702", "E731", "E741", "F401", "F541", "F821", "F841", "I001",
+    "E401", "E402", "E501", "E701", "E702", "E731", "E741", "F401", "F541", "F841", "I001",
     "PIE808", "RUF001", "RUF002", "RUF005", "RUF006", "RUF007", "RUF012", "RUF015", "RUF017", "RUF021",
     "RUF022", "RUF023", "RUF034", "RUF046", "RUF057", "RUF059", "RUF100", "SIM105", "SIM114", "SIM115",
     "SIM300", "UP031", "UP033", "UP037", "W291",
