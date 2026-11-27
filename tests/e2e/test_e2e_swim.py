@@ -105,6 +105,7 @@ def test_swimming_sounds_like_swimming_not_like_walking(game):
     heard = set(game.js("Object.keys(sounds.lastAt)"))
     assert "swim" in heard and not heard & {"step", "wade", "water"}, sorted(heard)
     game.still()                                               # (the stroke that carries you onto the tile you were entering)
+    game.until("!ents.get('agent' + myId).stroking")           # (and a frame drawn treading water: strokes go on 300 ms after the last move, swim.js)
     game.js("sounds.lastAt = {}")
     game.sleep(1200)                                           # treading water: nothing (a window in which nothing sounds: so at any frame's length)
     assert not set(game.js("Object.keys(sounds.lastAt)")) & {"swim", "step", "wade", "water"}
