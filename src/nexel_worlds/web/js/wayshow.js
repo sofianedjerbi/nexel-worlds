@@ -18,7 +18,7 @@
 const WayShow = (() => {
   const STILL = 2000, SLICE = 1.5, DX = {N: [0, -1], E: [1, 0], S: [0, 1], W: [-1, 0]};
   let gen = null, genKey = "", res = null, posKey = "", stoodAt = 0, cur = null, fno = 0, landOf = null, landKey = "", heading = null, led = false, follow = false, off = false;
-  const api = {ms: 0, n: 0, runs: 0, get res() { return res; }, get cur() { return fresh(); }, get busy() { return !!gen; }, get led() { return led; }};
+  const api = {ms: 0, n: 0, runs: 0, get res() { return res; }, get cur() { return fresh(); }, get busy() { return !!gen; }, get led() { return led; }, get stood() { return performance.now() - stoodAt; }};   // (stood: ms you have stood where you are, as the frames count it: STILL of it shows the way)
   const W = {solid: (x, y, z) => solidAt(x, y, z), top: (x, y) => topAt(x, y), land: (x, y, z) => z > LOW + 2 && landSolid(x, y, z) && !Floors.built(x, y, z),
     step: (h, x, y, fx, fy) => landAt(h, x, y, fx, fy), ladder: (x, y, z, qx, qy, z2) => Climb.onLadder(x, y, z, qx, qy, z2),
     enter: (x, y, z) => stand(x, y, z),
