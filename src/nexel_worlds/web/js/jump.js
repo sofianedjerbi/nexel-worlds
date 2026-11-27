@@ -29,6 +29,10 @@
 const JUMP = {g: RULES.leap.g, top: RULES.leap.top, over: .25, crouch: 40, off: 30, touch: 25};   // its weight (levels/s2); a hop's top (levels); a step's, over the higher floor; ms crouched before it; ms of the push off; ms of the feet down before landing
 const SETTLE = {land: 45, ms: 100};                                       // ms from touching the ground: in the squash, then back up to standing (by the clock: the walk goes on meanwhile)
 const STEPDOWN = {from: .35, q: 1.6};                                                // down a step: on the ground until this share of the way, then falling faster and faster to the lower one at its middle
+// (and at its end no faster than one level's at a walk: sprinting down a step, or walking down two, the curve went
+// 4.7 px down the screen in a 60th of a second as it ended, a jump on the screen. Past that pace, the drop is that much
+// the straight line between the two tiles: the px of a frame are its time's, at any frame length)
+STEPDOWN.v = STEPDOWN.q / (1 - STEPDOWN.from) * RULES.pace.walk;                    // levels a second at the most
 const JPOSE = {crouch: 0, takeoff: 1, rise: 2, apex: 3, fall: 4, land: 5, settle: 6, touch: 7};   // the column of each pose in the jump's rows (ANIM.jump; 7: the standing frame)
 
 // A jump from 0 to d levels up (its top: levels over where it leaves): -> {v: levels/s up as it leaves, air: s in the air, ms: all of it, crouch first}
@@ -64,7 +68,9 @@ function jumpOf(p) {
   if (D > 0 && mineWalking(p) && (fwd ? Leap.leapable(ax, ay, la, bx, by) : Leap.leapable(bx, by, lb, ax, ay))) return null;   // (yours walking up to a step you jump: on your own level until you do, leap.js due)
   if (D <= -FALL.from && mineWalking(p) && Leap.ledge(p, ...DIRV[walking.dir])) return null;   // (yours walking to a ledge: on your own level to its edge, then the jump's fall, leap.js dropDue: not drawn as a step down: that jumps 13 px up the screen a frame, then back)
   if (D < 0) {                                                                    // down: no jump, a drop off the edge at the walk's pace
-    const k = Math.max(0, (g - STEPDOWN.from) / (1 - STEPDOWN.from)), h = D * k ** STEPDOWN.q;
+    const k = Math.max(0, (g - STEPDOWN.from) / (1 - STEPDOWN.from)), end = STEPDOWN.q / (1 - STEPDOWN.from);
+    const v = -D * RULES.pace[p.running ? "sprint" : "walk"];   // (w: the straight line's share; the curve is steepest at its end)
+    const w = Math.min(1, Math.max(0, (end * v - STEPDOWN.v) / ((end - 1) * v))), h = D * ((1 - w) * k ** STEPDOWN.q + w * g);
     return {body: h - line, ground: (g < .5 ? 0 : D) - line, squash: false, tuck: false, pose: null, d: D, key};
   }
   const J = stepPath(D), [h, pose, air] = jumpAt(J, g * J.ms, D * 1000 / J.ms);
