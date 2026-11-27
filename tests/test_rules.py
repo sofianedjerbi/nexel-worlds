@@ -98,7 +98,6 @@ KEPT = {
     "goals.js GOALS": "words: the player's first goals and their icons (kept on the page, localStorage)",
     "hd_cards.js CARD": "art: the things drawn as an upright card",
     "hold_art.js ROW": "art: a tool's row in the held sheet",
-    "hold_art.js LOW": "art: what is held low",
     "hold_art.js SHAPES": "art: the shapes of the held tools",
     "intent.js FILL_TEXT": "words: what a fill is called, by the ground it makes",
     "intent.js FILL_HELP": "words: the help line of each filler",
@@ -108,8 +107,6 @@ KEPT = {
     "sound_of.js BREAK": "sound: a break, by what a thing is made of",
     "sound_of.js STEP": "sound: a footstep, by the ground",
     "sound_of.js VOICE": "sound: an animal's voice",
-    "sprites.js ANIM": "art: the rows of the body's sheet",
-    "swing_art.js STEP": "art: the swings that lunge",
     "tiles.js MARKS": "art: what is drawn on a ground (tilled soil, ash, a floor, a path)",
     "title_cast.js HARD": "the title scene's cast: grounds its actors walk round",
     "title_errands.js WORK": "the title scene's cast: what its actors do in the field and woods",
@@ -127,9 +124,10 @@ KEPT = {
     "wear.js BASE": "a palette's letters", "wear.js BODY": "a palette's letters", "render.js WATCH": "a place: x, y, z",
     "voxpaint.js SLIM": "a shape's letters",
 }
-# the kept tables with keys of their own besides the world's (a group's title, a goal's words, a material, a pose): in
+# the kept tables with keys of their own besides the world's (a group's title, a goal's words, a material, a pose, the
+# kind a tiered tool is drawn as: vocab.js toolArt, every sword the "sword"): in
 # every other one, each key is a tile, an item or a creature the world has (a name dropped or changed there fails here)
-MIXED = {"assets.js LATE", "craft.js RECIPE_GROUPS", "effects.js PCOL", "goals.js GOALS", "sound_of.js STRIKE", "sound_of.js BREAK", "sprites.js ANIM",
+MIXED = {"assets.js LATE", "characters.js SWING_ROW", "craft.js RECIPE_GROUPS", "effects.js PCOL", "goals.js GOALS", "sound_of.js STRIKE", "sound_of.js BREAK",
          "keyboard.js BOOK_KEYS", "keyboard.js HELD", "mouse.js FACE", "target_box.js FACES", "race_list.js BASE", "wear.js BASE", "render.js WATCH", "voxpaint.js SLIM"}
 
 

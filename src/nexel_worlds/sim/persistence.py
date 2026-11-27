@@ -12,7 +12,8 @@ class Persistence:
 
     def old_items(self):
         """What an old save holds that is not so any more: eggs that will never hatch (gone), and items named otherwise
-        now (ores.py RENAMED: the generic ore and ingot are the iron ones), in every pack, pile and chest."""
+        now (ores.py RENAMED: the generic ore and ingot are the iron ones, the sword the iron sword), in every pack, pile and
+        chest."""
         for pos, pile in list(self.items.items()):
             if set(pile) == {"egg"} and self.timers.get(pos, [0, ""])[1] != "hatch":
                 del self.items[pos]

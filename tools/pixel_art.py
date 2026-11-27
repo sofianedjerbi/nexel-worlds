@@ -157,8 +157,9 @@ GEN = {
 # pickaxe (its head's greys 2 to 5), the axe and the sword (h, H, S: the head, the blade) in each tier's.
 ORE_SPECKS = {"ore": ("b07a5a", "e0b896"), "iron_ore": ("b07a5a", "e0b896"), "coal": ("2a2a30", "55555f"),
               "copper_ore": ("c4683a", "6fbf98"), "gold_ore": ("d9a441", "fff1a8"), "titanium_ore": ("7f9fc6", "e2f0ff")}
-METALS = {"copper_ingot": ("a8552e", "d9844f", "f2b27e", "7a3b20"), "titanium_ingot": ("8aa3bf", "c9dcef", "f2f8ff", "5d7690")}
-HEADS = {"wood": ("7a5236", "a0714a", "8a6040", "b88a5c"), "iron": ("8f9a9e", "dfe5e6", "b9c3c6", "cdd5d7"),
+METALS = {"copper_ingot": ("a8552e", "d9844f", "f2b27e", "7a3b20"), "gold_ingot": ("bd9230", "f2cf5c", "fff3b8", "8a6424"),
+          "titanium_ingot": ("8aa3bf", "c9dcef", "f2f8ff", "5d7690")}
+HEADS = {"wood": ("7a5236", "a0714a", "8a6040", "b88a5c"), "copper": ("93502c", "f2b27e", "d9844f", "e09a66"), "iron": ("8f9a9e", "dfe5e6", "b9c3c6", "cdd5d7"),
          "titanium": ("6f8db3", "e6f2ff", "a9c6e6", "c9def4")}
 for _n, (_a, _b) in ORE_SPECKS.items():
     GEN.setdefault(_n, GEN["ore"])
@@ -171,8 +172,17 @@ for _t, (c4, c3, c2, c5) in HEADS.items():
     PAL[f"{_t}_pickaxe"] = {"4": hexc(c4), "3": hexc(c3), "2": hexc(c2), "5": hexc(c5)}
     GEN[f"{_t}_axe"] = GEN["axe"]
     PAL[f"{_t}_axe"] = {"h": hexc(c4), "H": hexc(c3)}
-GEN["titanium_sword"] = GEN["sword"]
-PAL["titanium_sword"] = {"H": hexc(HEADS["titanium"][0]), "S": hexc(HEADS["titanium"][1])}
+# a sword of each tier (ores.py SWORDS): the iron one is the first sword's own colours; its blade's edge (H) and face (S)
+GEN["iron_sword"] = GEN.pop("sword")
+for _t, (_h, _s) in {"wood": ("7a5236", "b88a5c"), "stone": ("5d6260", "a3a8a0"), "copper": ("93502c", "f2b27e"),
+                     "titanium": HEADS["titanium"][:2]}.items():
+    GEN[f"{_t}_sword"] = GEN["iron_sword"]
+    PAL[f"{_t}_sword"] = {"H": hexc(_h), "S": hexc(_s)}
+# a hide: a pelt stretched out flat, four legs and a tail, a lighter belly (cows and tuskers leave one: leather)
+GEN["hide"] = [
+    "                ", "                ", "   cc      cc   ", "   cBccccccBc   ", "    cBBBBBBBc   ", "   cBBbbbbBBBc  ",
+    "  cBBbbBbbbBBc  ", "  cBbbbbbbBbBc  ", "  cBBbbbbbbBBc  ", "   cBBbBbbbBc   ", "   cBBBBBBBBc   ", "  cBc cccc cBc  ",
+    "  cc        cc  ", "                ", "                ", "                "]
 GEN["gold_coin"] = [
     "                ", "                ", "                ", "      nnnn      ", "    nnNNNNnn    ", "   nNNYYNNNNn   ",
     "   nNYNnnNNNn   ", "  nNNNnNNnNNNn  ", "  nNNNnnnNNNNn  ", "  nNNNNnNNnNNn  ", "   nNNnnnNNNn   ", "   nnNNNNNNnn   ",

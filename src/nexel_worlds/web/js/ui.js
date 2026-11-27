@@ -7,9 +7,10 @@ function openCraft() { $("craft").style.display = "block"; craftOpened(); }
 // item icons from the sheets: [image name, sx, sy]
 const ICONS = {   // [sheet, x, y, w, h]: the items sheet has seed packets in column 0, produce in column 1, materials in 2-3
   wood: ["items", 32, 48], plank: ["items", 32, 64], stone: ["items", 32, 80], iron_ingot: ["items", 48, 64], fiber: ["gen", "fiber"],
-  ...Object.fromEntries(["iron_ore", "coal", "copper_ore", "gold_ore", "titanium_ore", "copper_ingot", "titanium_ingot", "gold_coin", "wire",      // (the land's ores, their metals and gold's coins; the tiered tools: tools/pixel_art.py)
-    "wood_axe", "wood_pickaxe", "iron_axe", "iron_pickaxe", "titanium_axe", "titanium_pickaxe", "titanium_sword"].map((n) => [n, ["gen", n]])), path: ["cobble", 16, 16], dirt: ["hill1", 16, 32, 14, 14], stone_block: ["hill3", 16, 32, 14, 14], seed: ["items", 0, 128],
-  axe: ["items", 32, 0], pickaxe: ["gen", "pickaxe"], hoe: ["items", 48, 0], watering_can: ["items", 32, 16], spear: ["gen", "spear"], sword: ["gen", "sword"],
+  ...Object.fromEntries(["iron_ore", "coal", "copper_ore", "gold_ore", "titanium_ore", "copper_ingot", "gold_ingot", "titanium_ingot", "gold_coin", "wire", "hide",      // (the land's ores, their metals and gold's coins; the tiered tools: tools/pixel_art.py)
+    "wood_axe", "wood_pickaxe", "copper_axe", "copper_pickaxe", "iron_axe", "iron_pickaxe", "titanium_axe", "titanium_pickaxe",
+    "wood_sword", "stone_sword", "copper_sword", "iron_sword", "titanium_sword"].map((n) => [n, ["gen", n]])), path: ["cobble", 16, 16], dirt: ["hill1", 16, 32, 14, 14], stone_block: ["hill3", 16, 32, 14, 14], seed: ["items", 0, 128],
+  axe: ["items", 32, 0], pickaxe: ["gen", "pickaxe"], hoe: ["items", 48, 0], watering_can: ["items", 32, 16], spear: ["gen", "spear"],
   torch: ["gen", "torch"], rope: ["gen", "rope"], name_tag: ["gen", "name_tag"], ladder: ["gen", "ladder"], stairs: ["gen", "stairs"],
   berries: ["items", 32, 160], fruit: ["items", 32, 96], mushroom: ["nature", 16, 0], egg: ["items", 48, 176], milk: ["items", 64, 0],
   meat: ["gen", "meat"], eclipse_core: ["gen", "eclipse_core"], cooked_meat: ["gen", "cooked_meat"], bread: ["gen", "bread"],

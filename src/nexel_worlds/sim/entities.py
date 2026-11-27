@@ -148,10 +148,10 @@ class Creature:
 # same thing every time); the last is a rare one, something you would otherwise have to make. The boss's are sure.
 CREATURES = {
     "chicken": {"hp": 2, "drops": (("meat", .6, 1, 1), ("egg", .15, 1, 1), ("heart_charm", .02, 1, 1)), "char": "c"},
-    "cow": {"hp": 6, "drops": (("meat", .8, 1, 2), ("milk", .15, 1, 1), ("leather_boots", .03, 1, 1)), "char": "k"},
+    "cow": {"hp": 6, "drops": (("meat", .8, 1, 2), ("hide", .5, 1, 1), ("milk", .15, 1, 1), ("leather_boots", .03, 1, 1)), "char": "k"},
     "chick": {"hp": 1, "drops": (("meat", .3, 1, 1),), "char": "c", "grows": ("chicken", 300)},
     "calf": {"hp": 3, "drops": (("meat", .5, 1, 1),), "char": "k", "grows": ("cow", 360)},
-    "tusker": {"hp": 8, "drops": (("meat", .8, 1, 2), ("leather_vest", .05, 1, 1)), "char": "D", "damage": 3},
+    "tusker": {"hp": 8, "drops": (("meat", .8, 1, 2), ("hide", .7, 1, 2), ("leather_vest", .05, 1, 1)), "char": "D", "damage": 3},
     "pincer": {"hp": 3, "drops": (("meat", .5, 1, 1), ("shell_plate", .05, 1, 1)), "char": "I", "damage": 1},
     "strawman": {"hp": 10, "drops": (("hay", 1, 1, 2), ("straw_hat", .1, 1, 1)), "char": "S", "damage": 2},
     # untouchable: a light, a hand goes through it (sim/combat.py refuses the blow)

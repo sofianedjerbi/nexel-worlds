@@ -15,10 +15,11 @@
 
 const RECIPE_GROUPS = [
   ["Basics", "workbench", ["workbench", "campfire", "torch", "rope", "plank", "stone", "path", "boat", "mailbox"]],
-  ["Tools", "pickaxe", ["wood_axe", "wood_pickaxe", "axe", "pickaxe", "iron_axe", "iron_pickaxe", "titanium_axe", "titanium_pickaxe", "hoe", "watering_can", "spear", "sword", "titanium_sword"]],
+  ["Tools", "pickaxe", ["wood_axe", "wood_pickaxe", "wood_sword", "axe", "pickaxe", "stone_sword", "copper_axe", "copper_pickaxe", "copper_sword", "iron_axe", "iron_pickaxe", "iron_sword",
+    "titanium_axe", "titanium_pickaxe", "titanium_sword", "hoe", "watering_can", "spear"]],
   ["Build", "wood_wall", ["wood_wall", "door", "roof", "stairs", "ladder", "fence", "gate", "stone_wall", "sign", "flag", "chest"]],
   ["Home", "bed", ["bed", "chair", "table", "plant", "clock", "rug", "well", "coop", "trough", "hob", "hay", "name_tag", "picnic_blanket", "basket", "cooked_meat", "bread"]],
-  ["Metal", "iron_ingot", ["iron_ingot", "copper_ingot", "titanium_ingot", "gold_coin", "wire"]],      // (smelting at a fire, one coal each: ores.py)
+  ["Metal", "iron_ingot", ["iron_ingot", "copper_ingot", "gold_ingot", "titanium_ingot", "gold_coin", "wire"]],      // (smelting at a fire, one coal each: ores.py)
   ["Wear", "straw_hat", []],             // (clothes, armor and charms: wear_items.js)
 ];
 const CRAFT_ROWS = 5, NEED_ROWS = 4, NEED_COLS = 3;

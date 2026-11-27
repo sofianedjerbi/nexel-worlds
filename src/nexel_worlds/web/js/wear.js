@@ -4,10 +4,10 @@
 
 // item -> the look it has in the tables below (its slot is the world's: RULES.wear)
 const LOOK = {
-  straw_hat: "straw", sporecap_hat: "sporecap", wizard_hat: "wizard", gold_crown: "crown", iron_helmet: "iron", mossback_helm: "shell", wool_beanie: "beanie", flower_crown: "flowers", bandana: "bandana", sprout: "sprout",
-  linen_shirt: "linen", red_scarf: "scarf", wool_sweater: "wool", overalls: "overalls", leather_vest: "leather", wizard_robe: "robe", iron_chestplate: "iron", gold_chestplate: "gold", mossback_plate: "moss",
-  linen_shorts: "linen", denim: "denim", red_trousers: "red", leather_chaps: "leather", robe_skirt: "robe", iron_greaves: "iron", gold_greaves: "gold", moss_kilt: "moss",
-  leather_boots: "leather", red_sneakers: "red", rain_boots: "rain", blue_slippers: "blue", iron_boots: "iron", gold_boots: "gold", moss_slippers: "moss",
+  straw_hat: "straw", sporecap_hat: "sporecap", wizard_hat: "wizard", leather_cap: "leathercap", copper_helmet: "copper", gold_crown: "crown", iron_helmet: "iron", titanium_helmet: "titanium", mossback_helm: "shell", wool_beanie: "beanie", flower_crown: "flowers", bandana: "bandana", sprout: "sprout",
+  linen_shirt: "linen", red_scarf: "scarf", wool_sweater: "wool", overalls: "overalls", leather_vest: "leather", wizard_robe: "robe", copper_chestplate: "copper", titanium_chestplate: "titanium", iron_chestplate: "iron", gold_chestplate: "gold", mossback_plate: "moss",
+  linen_shorts: "linen", denim: "denim", red_trousers: "red", leather_chaps: "leather", robe_skirt: "robe", copper_greaves: "copper", titanium_greaves: "titanium", iron_greaves: "iron", gold_greaves: "gold", moss_kilt: "moss",
+  leather_boots: "leather", red_sneakers: "red", rain_boots: "rain", blue_slippers: "blue", copper_boots: "copper", titanium_boots: "titanium", iron_boots: "iron", gold_boots: "gold", moss_slippers: "moss",
   sparkle_charm: "sparkle", firefly_charm: "fireflies", leaf_charm: "leaves", heart_charm: "hearts", flame_charm: "flame", frost_charm: "frost", halo_charm: "halo", spore_charm: "spores", flower_charm: "flowers",
 };
 const WearParts = (() => {
@@ -27,8 +27,10 @@ const WearParts = (() => {
     {id: "overalls", name: "Overalls", f: "#f4efe2", g: "#e0b34f", b: "#5f86c4", d: "#4a6ba3"},
     {id: "leather", name: "Leather vest", f: "#b07a4e", g: "#e0c08a", b: "#c4905e", d: "#94623c", a: "#6b4632"},
     {id: "robe", name: "Wizard robe", f: "#8a6bc4", g: "#ffe07a", b: "#7458ad", d: "#5c4590"},
+    {id: "copper", name: "Copper chestplate", f: "#d9844f", g: "#f2b27e", b: "#c06a3a", d: "#93502c", a: "#6a3820"},
     {id: "iron", name: "Iron chestplate", f: "#b9c2cc", g: "#e9eef2", b: "#9aa5b1", d: "#7a8591", a: "#4d5663"},
     {id: "gold", name: "Gold chestplate", f: "#f2cf5c", g: "#fff3b8", b: "#e0b540", d: "#bd9230", a: "#8a6424"},
+    {id: "titanium", name: "Titanium chestplate", f: "#c9dcef", g: "#f2f8ff", b: "#a9c6e6", d: "#7f9fc6", a: "#4a5f80"},
     {id: "moss", name: "Mossback plate", f: "#6fbb62", g: "#9ada7c", b: "#d3a970", d: "#a97c55", a: "#5a4048"},
   ];
   const PANTS = [
@@ -38,8 +40,10 @@ const WearParts = (() => {
     {id: "red", name: "Red trousers", b: "#d9675c", d: "#b54f4a"},
     {id: "leather", name: "Leather chaps", b: "#b07a4e", d: "#8a5a3a", a: "#6b4632"},
     {id: "robe", name: "Robe skirt", b: "#7458ad", d: "#5c4590"},
+    {id: "copper", name: "Copper greaves", b: "#c06a3a", d: "#93502c", a: "#6a3820"},
     {id: "iron", name: "Iron greaves", b: "#9aa5b1", d: "#7a8591", a: "#4d5663"},
     {id: "gold", name: "Gold greaves", b: "#e0b540", d: "#bd9230", a: "#8a6424"},
+    {id: "titanium", name: "Titanium greaves", b: "#a9c6e6", d: "#7f9fc6", a: "#4a5f80"},
     {id: "moss", name: "Moss kilt", b: "#6fbb62", d: "#4c9556", a: "#3a7350"},
   ];
   const SHOES = [
@@ -48,8 +52,10 @@ const WearParts = (() => {
     {id: "red", name: "Red sneakers", m: "#e0635a", a: "#a8434f"},
     {id: "rain", name: "Rain boots", m: "#f2cf5c", a: "#b98f2e"},
     {id: "blue", name: "Blue slippers", m: "#7fb4c9", a: "#4f7f96"},
+    {id: "copper", name: "Copper boots", m: "#d9844f", a: "#6a3820"},
     {id: "iron", name: "Iron boots", m: "#b9c2cc", a: "#4d5663"},
     {id: "gold", name: "Gold boots", m: "#f2cf5c", a: "#8a6424"},
+    {id: "titanium", name: "Titanium boots", m: "#c9dcef", a: "#4a5f80"},
     {id: "moss", name: "Moss slippers", m: "#6fbb62", a: "#3a7350"},
   ];
   // A hat draws pixels relative to the skull: (cx, sy) is the middle of its top row. P.put(x, y, colour); the outline comes after.
@@ -80,6 +86,15 @@ const WearParts = (() => {
     {id: "iron", name: "Iron helmet", recolour: {rows: 4, b: "#b9c2cc", c: "#9aa5b1", d: "#e9eef2", e: "#9aa5b1", a: "#4d5663"}, draw(P, A) {
       for (let y = -3; y <= -1; y++) P.put(A.cx - (A.side ? -2 : 0), A.sy + y, "#e0635a"), P.put(A.cx - 1 - (A.side ? -2 : 0), A.sy + y, "#e0635a");     // the plume
     }, line: "#a8434f"},
+    {id: "leathercap", name: "Leather cap", recolour: {rows: 3, b: "#b07a4e", c: "#94623c", d: "#e0c08a", e: "#94623c", a: "#6b4632"}, line: "#6b4632", draw(P, A) {
+      for (let x = -2; x < 2; x++) P.put(A.cx + x - (A.side ? -2 : 0), A.sy - 1, "#94623c");                                          // the stitched seam over the top
+    }},
+    {id: "copper", name: "Copper helmet", recolour: {rows: 4, b: "#d9844f", c: "#c06a3a", d: "#f2b27e", e: "#c06a3a", a: "#6a3820"}, line: "#6a3820", draw(P, A) {
+      P.put(A.cx - 1 - (A.side ? -2 : 0), A.sy - 1, "#f2b27e"); P.put(A.cx - (A.side ? -2 : 0), A.sy - 1, "#f2b27e");                // a rivet on top
+    }},
+    {id: "titanium", name: "Titanium helmet", recolour: {rows: 4, b: "#c9dcef", c: "#a9c6e6", d: "#f2f8ff", e: "#a9c6e6", a: "#4a5f80"}, line: "#4a5f80", draw(P, A) {
+      for (let y = -3; y <= -1; y++) for (const dx of [-1, 0]) P.put(A.cx + dx - (A.side ? -2 : 0), A.sy + y, y === -3 ? "#f2f8ff" : "#6fd0e8");   // a blue crest
+    }},
     {id: "shell", name: "Mossback helm", line: "#5a4048", draw(P, A) {
       const rx = A.side ? 6 : 8;
       dome(P, A, rx, 4, 1, (x, y) => y === 1 ? "#a97c55" : y < -1 ? ((x * 7 + y * 13 + 99) % 5 ? "#6fbb62" : "#9ada7c") : (x + 40) % 5 ? "#d3a970" : "#a97c55");

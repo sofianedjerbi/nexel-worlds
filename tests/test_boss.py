@@ -117,5 +117,5 @@ def test_a_sporeling_dies_in_one_hit_and_the_boss_takes_many(world):
     sim.submit(a, "attack", {"target": s.id})
     run(sim, 0.3)
     assert s.id not in sim.creatures
-    sword = T.WEAPONS["sword"]                                         # (half hearts: on the shell, a blow of a sword takes half a heart)
+    sword = T.WEAPONS["iron_sword"]                                         # (half hearts: on the shell, a blow of a sword takes half a heart)
     assert sim.shell(boss, sword) == max(1, sword // SHELL) and CREATURES["mossback"]["hp"] // max(1, sword // SHELL) > 30

@@ -43,8 +43,9 @@ TOOL_SPECS = {
                     "stone (axe, pickaxe), iron (iron_axe, iron_pickaxe), titanium (titanium_axe, titanium_pickaxe); a higher tier digs faster. "
                     "The stone deep in the land holds ores in veins (observe lists the ore you can see: a cave wall, a hole's side): coal (2 to -80, any pickaxe), "
                     "copper (-2 to -100) and iron (-4 to -220) need a stone pickaxe, gold (-30 to -320) and titanium (-60 to -512) an iron one. "
-                    "Smelt at a campfire, one coal each: iron_ore -> iron_ingot (iron tools, sword, armour), copper_ore -> copper_ingot (wire), "
-                    "titanium_ore x2 -> titanium_ingot (titanium tools and sword), gold_ore -> 3 gold_coin (money). A built block in front of you (a step, "
+                    "Smelt at a campfire, one coal each: copper_ore -> copper_ingot (copper tools, sword and armour; wire), iron_ore -> iron_ingot "
+                    "(iron's), titanium_ore x2 -> titanium_ingot (titanium's, the best), gold_ore -> 3 gold_coin (money) or a gold_ingot (gold armour). "
+                    "Tools and swords go wood < stone < copper < iron < titanium; armour leather (hide) < copper < gold < iron < titanium. A built block in front of you (a step, "
                     "the floor you stand level with) comes back into your pack, what stands on it first. "
                     "Out of a hole, or up through the land, cut a step: dig dir=up (the block over your head, if there is one), dig the block in front at z = your z + 2 "
                     "(your head's height), then jump that way: you land on the block left under it. Again for each layer"},
@@ -57,7 +58,7 @@ TOOL_SPECS = {
     "pick_up": {"args": {"item": "str (optional)"}, "desc": "pick up items on your tile"},
     "drop": {"args": {"item": "str", "n": "int", "dir": "N|E|S|W (optional)"}, "desc": "drop items on your tile; with dir, on the tile that way if you could walk there"},
     "craft": {"args": {"recipe": "str", "n": "int (optional)"}, "desc": "craft from the recipe book (materials into things; and a block into its material: stone = 1 stone_block)"},
-    "attack": {"args": {"target": "entity id", "with": "weapon (optional, e.g. sword, spear, axe; default fists)"},
+    "attack": {"args": {"target": "entity id", "with": "weapon (optional, e.g. iron_sword, spear, axe; default fists)"},
                "desc": "hit an agent or creature within reach (3 tiles, 4 with a spear in hand; a circle round you, and height counts: a layer is half a tile, so not up a cliff or down one)"},
     "give": {"args": {"target": "agent id", "item": "str", "n": "int"}, "desc": "hand items to an agent within 2 tiles"},
     "eat": {"args": {"item": "str"}, "desc": "eat food (a moment: you can walk meanwhile, nothing else)"},

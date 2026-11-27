@@ -108,7 +108,7 @@ def test_a_sword_cuts_across_and_a_spear_is_thrust(game):
     (Each frame of a swing is held by its start: always that long ago, read when the body is drawn. Set once, two
     frames of a slow machine later the swing was two frames on: "[192, 0, 0] not in [[192, 1, 0]]".)"""
     game.clear_area(6)
-    game.give(sword=1, spear=1)
+    game.give(iron_sword=1, spear=1)
     blade = """(kind, row, f) => { const d = SwingArt.frame(kind, row, f, [[1, 1, 1], [2, 2, 2], [3, 3, 3]]); let n = 0, sx = 0, sy = 0, far = 0;
       for (let i = 0; i < 48 * 48; i++) if (d[i * 4 + 3] && d[i * 4] > 100 && d[i * 4] < 240) { n++; sx += i % 48; sy += Math.floor(i / 48); far = Math.max(far, i % 48); }
       return [n, sx / n, sy / n, far]; }"""                     # the weapon's own px (not the hand, not the streak)
