@@ -130,7 +130,7 @@ function drawBody(p, sx, sy, S, t, now) {
     }
     if (frame === undefined && cl && cl.on) {         // on the rungs: facing the ladder, hand over hand
       anim = "walk"; frame = Math.floor(cl.u * 24) % 8;
-      if (mine && frame % 4 === 0 && p.lastStep !== Math.floor(cl.u * 6)) { p.lastStep = Math.floor(cl.u * 6); sfx("tock"); }
+      if (mine && p.lastStep !== Math.floor(cl.u * 6)) { p.lastStep = Math.floor(cl.u * 6); sfx("tock"); }   // (a rung reached since the last frame drawn, not a frame drawn on it: below)
     }
     if (frame === undefined) {
       const moving = p.walking || (e.doing === "walk" && !mine) || now - p.moved < 220 || Math.abs(p.x - p.tx) + Math.abs(p.y - p.ty) > .05;
@@ -139,8 +139,11 @@ function drawBody(p, sx, sy, S, t, now) {
         anim = running ? "run" : "walk";
         const ms = running ? 60 : 85;                 // 8-frame cycles
         frame = Math.floor(now / ms) % 8;
-        if (frame % 4 === 0 && p.lastStep !== Math.floor(now / ms) && pl.mode !== "swim" && !j) {     // (a swimmer has no footsteps: swim.js; nor has a hop)
-          p.lastStep = Math.floor(now / ms);
+        // a step: each time the cycle has come to a foot down (its frames 0 and 4) since the last frame drawn, not only when
+        // a frame drawn falls on one: frames 100 ms apart can fall on 1, 2, 3, 5, 6, 7 all through a 0.7 s walk, a walk
+        // with no step heard, #372. (A swimmer has no footsteps: swim.js; nor has a hop)
+        if (p.lastStep !== Math.floor(now / ms / 4) && pl.mode !== "swim" && !j) {
+          p.lastStep = Math.floor(now / ms / 4);
           if (running) kickDust(p); else burst(p.x, p.y + .35 - UP, "dust", 2, {up: .6, spread: 1.2, g: 2, life: .35});   // (effects.js)
           { const P = HdLevel.place, C = HdLevel.cover; if (mine && P) sfx(P.L > C.top ? "tock" : STEP[gndAt(P.tx, P.ty)] || "step"); }      // (over the land: planks under your feet, or a ladder's rungs. Where your body is: hd_level.js place)
         }
