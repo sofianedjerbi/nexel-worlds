@@ -96,7 +96,7 @@ ARC = """() => { window.__arc = []; window.__arcOn = true; const f = (now) => { 
   if (j) __arc.push([+p.x.toFixed(3), +j.body.toFixed(2), j.squash, j.pose]); if (__arcOn) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""
 
 
-@pytest.mark.realtime
+@pytest.mark.stepped   # (the arc is read off the frames: on the page's own 1/60 s frames, a third of a second's jump is 20 of them, however long a runner's frame is)
 def test_the_jump_is_a_crouch_an_arc_over_the_step_and_a_landing(game):
     """Frame by frame up a step, walking (auto-jump): a jump through the air at the walk's speed (leap.js: "it stops
     the velocity and does an up-block animation"): the body rises and falls over the level the eye follows, the
@@ -110,12 +110,10 @@ def test_the_jump_is_a_crouch_an_arc_over_the_step_and_a_landing(game):
     rec = game.js("(() => { __arcOn = false; return __arc; })()")
     game.rest()
     assert game.server()["z"] == 1
-    # (in the air, a good way up: up, a top, down, three frames at the least. It was five: on the runners a frame is 70
-    # to 130 ms, a third of a second's jump four of them)
+    # (in the air, a good way up: up, a top, down, on the page's 1/60 s frames some 20 of them)
     air = [body for px, body, sq, pose in rec if pose in ("takeoff", "rise", "apex", "fall", "touch")]
     assert air and max(air) > 6, air                                    # (off the ground, a good way up)
-    # (its shape, up, a top and down, where three frames of it were drawn: on a runner drawing every 117 ms a third of a
-    # second's jump is two, "[12.34, 11.34]"; the arc itself, off jumpOf at 50 points, is test_a_hop_is_one_arc's)
+    # (its shape, up, a top and down; the arc itself, off jumpOf at 50 points, is test_a_hop_is_one_arc's)
     if len(air) >= 3:
         top = air.index(max(air))
         assert 0 < top < len(air) - 1 and air[-1] < max(air), air
