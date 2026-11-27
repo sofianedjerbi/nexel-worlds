@@ -66,6 +66,7 @@ def test_the_title_does_not_wait_for_the_sheets_it_never_shows(browser, server):
 
 
 @pytest.mark.animated                                  # (the wait moving by CSS alone is what it checks: not with less motion, pages.py)
+@pytest.mark.realtime                                  # (no script: no stepped clock on the page; the wait moves by the compositor's time, the machine's)
 def test_the_wait_moves_with_no_script_at_all(browser, server):
     """CSS alone: no script of the page's runs (not even its own few lines), and the wait still moves, by the compositor's
     own steps (two pictures 0.3 s apart are not the same), in the page's ink, its frame there from the first picture."""
@@ -146,6 +147,7 @@ def bundled(tmp_path_factory):
     proc.wait(10)
 
 
+@pytest.mark.realtime   # (a network and a CPU slowed in the wall's time (CDP): the bytes come on the machine's clock, not the page's)
 def test_on_a_phone_the_bar_goes_on_by_small_steps(browser, bundled):
     """A phone on 4G (9 Mbit/s, 170 ms), its CPU four times slower, the page as a phone gets it (one script, one pack:
     web_bundle.py). The script's bytes are counted as they come (it was a tag: nothing of it counted till it had run, the bar
