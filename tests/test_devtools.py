@@ -145,6 +145,44 @@ def test_in_lockstep_a_screen_with_no_view_yet_hears_every_tick(tmp_path):
     assert off == 0 and d["type"] == "tick" and d["tick"] == gs.sim.tick and d["entities"] == [] and d["items"] == []
 
 
+def test_in_lockstep_a_world_sent_on_by_a_dev_op_tells_its_screens_its_tick(tmp_path):
+    """dev_time and dev_skip move the world's tick outside its loop: no tick of theirs was sent, so a page in lockstep
+    (clock.py STEP), waiting for the tick it asked for to come, waited for ever when the world was already there
+    (#303's hung run: dev_time at every test's join). In lockstep the tick they leave is sent to the screens."""
+    import asyncio
+    import json
+
+    from nexel_worlds.server import GameServer
+
+    gs = GameServer(tmp_path / "w", seed=3, dev=True)
+    screen = asyncio.Queue()
+    gs.spectators[screen] = (0, 0, 10, 10)
+
+    class Ws:
+        request = type("R", (), {"path": "/agent", "headers": {}})()
+        remote_address = ("127.0.0.1", 0)
+
+        async def send(self, m):
+            pass
+
+        async def close(self, *a):
+            pass
+
+        def __aiter__(self):
+            async def it():
+                for i, m in enumerate(({"op": "hello", "name": "Pip", "token": "t"}, {"op": "dev_lockstep", "on": True},
+                                       {"op": "dev_skip", "seconds": 0.1})):
+                    yield json.dumps({"id": i, **m})
+                    await asyncio.sleep(0)
+            return it()
+
+    asyncio.run(gs.agent_session(Ws()))
+    ticks = [json.loads(m)["tick"] for m in iter(lambda: screen.get_nowait() if not screen.empty() else None, None)
+             if json.loads(m).get("type") == "tick"]
+    gs.sim.close()
+    assert ticks and ticks[-1] == gs.sim.tick, (ticks, gs.sim.tick)
+
+
 def test_a_seeded_worlds_chances_are_the_same_at_every_run(world):
     """dev_seed (#276): the world's chances (sim.rng) from a test's own seed: the same seed, the same draws."""
     sim, a = world

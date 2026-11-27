@@ -95,6 +95,12 @@ class Ticking:
                 await asyncio.sleep(0)
         return loop.time()
 
+    def jumped(self, t0: int):
+        """After a dev op or a /command: the world sent on outside this loop (dev_time, dev_skip, /time set) tells its
+        screens the tick it left, in lockstep: a page waits for the tick it asked for to come, and none of theirs was sent."""
+        if self.driver is not None and self.sim.tick != t0:
+            self.push_ticks()
+
     def lockstep(self, ws, msg: dict) -> dict:
         """dev_lockstep {on}: this socket drives the world's ticks (dev_step), or lets them go back to the wall's clock."""
         if msg.get("on"):

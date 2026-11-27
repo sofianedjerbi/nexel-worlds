@@ -61,7 +61,7 @@ SHIM = """(() => { const K = %s; if (K === 1 || window.__pace) return; window.__
 # A wait on the page (game.sleep, a key held) is ms of T. A busy wait on performance.now() would never end: such a test
 # (a slow frame made on purpose: test_e2e_tap_slow.py) stays `realtime`.
 STEP = """(() => { if (window.__step) return; window.__step = 1;
-  const P = performance, pn = P.now.bind(P), dn = Date.now.bind(Date), raf = window.requestAnimationFrame.bind(window), st = window.setTimeout.bind(window);
+  const P = performance, pn = P.now.bind(P), dn = Date.now.bind(Date), raf = window.requestAnimationFrame.bind(window), st = window.setTimeout.bind(window); window.__wallTimeout = st;
   const F = 1000 / 60, T0 = pn(), D0 = dn(); let T = T0, n = 0, id = 0, w0 = T0, v0 = T0;
   P.real = pn; P.now = () => T; Date.now = () => Math.round(D0 + T - T0);
   const frames = new Map(), timers = new Map(), later = (e) => st(() => { throw e; });
@@ -75,8 +75,12 @@ STEP = """(() => { if (window.__step) return; window.__step = 1;
   // and world one time, however slow the machine. An answer not come in 2 s of the wall's time is asked again (to is
   // absolute: nothing made twice), and said every fifth time
   let drive = null;
-  const ask = () => { const to = drive.asked; drive.sent = pn(); rpc("dev_step", {to}).then((r) => { if (drive && drive.asked === to && r && r.tick >= to) drive.ok = true; }); };
-  window.__lockstep = (tick0, hz) => { drive = {tick0, hz, T0: T, asked: tick0, ok: true, sent: 0, tries: 0}; return 1; };
+  // A tick is only ever waited for once the world has made it on the page's ask, so that it was sent: the world already
+  // at or past it (locked at the tick a dev_time jumped to, or sent on by dev_skip) sent nothing, and a page waiting on
+  // clock.tick for it waited for ever. It asks for the one after where the world is, counted from there
+  const ask = () => { const to = drive.asked; drive.sent = pn(); rpc("dev_step", {to}).then((r) => { if (!drive || drive.asked !== to || !r || !(r.tick >= to)) return;
+    if (r.tick > to) { Object.assign(drive, {tick0: r.tick, T0: T, asked: r.tick + 1, ok: false, tries: 0}); ask(); } else drive.ok = true; }); };
+  window.__lockstep = (tick0, hz) => { drive = {tick0, hz, T0: T, asked: tick0 + 1, ok: false, sent: 0, tries: 0}; ask(); window.__lockstepState = () => ({...drive, T, n, frames: frames.size, timers: timers.size}); return 1; };
   // A world ahead of what was asked was sent on by a dev op (dev_time, dev_skip: a day is 12000 ticks): counted from
   // there, or the page would wait out the jump in frames, the world making nothing meanwhile
   const owed = (t) => { if (!drive) return false;

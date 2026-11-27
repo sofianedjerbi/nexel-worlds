@@ -207,9 +207,13 @@ class GameServer(Views, Ticking):
                 elif op in ("dev_lockstep", "dev_step") and self.dev and not account:   # (the browser tests' one clock: ticking.py)
                     self.dev_clock(ws, op, msg, lambda r, mid=mid: reply(mid, **r))
                 elif op.startswith("dev_") and self.dev and not account:  # QA tools, only with --dev, never for who came by ticket
+                    t0 = self.sim.tick
                     reply(mid, **dev_op(self.sim, agent, op, msg))
+                    self.jumped(t0)
                 elif op in ("cmd", "cmds") and limits.allow("act"):     # the chat line's /commands (admin.py)
+                    t0 = self.sim.tick
                     reply(mid, **(self.admin.run(agent, str(msg.get("line", ""))) if op == "cmd" else self.admin.cmds(agent)))
+                    self.jumped(t0)
                 elif op == "tools":
                     reply(mid, tools=TOOL_SPECS)
                 elif op == "recipes":

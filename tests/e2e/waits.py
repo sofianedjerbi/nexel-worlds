@@ -22,6 +22,13 @@ WATCH = """(() => { if (window.__land) return 1; const L = window.__land = {fram
 # frame after its tiles change; read before, the gorge's river was the river stamped before it, west of a block's edge: #362);
 # and a tick heard from the server since (who is where, what lies on the ground, a door: they come with the tick, 0.1 s)
 # (frames, not ms: a busy machine draws fewer in a second, and the land is made a little a frame)
+# A stepped page (clock.py STEP) whose frames stopped: its own time stops with them, so REST's timeout never came and the
+# test hung to pytest's 300 s with nothing said. No frame in STALL_S s of the wall's: what its lockstep waits for
+STALL_S = 30
+STALLED = """([n, ms]) => { const P = performance, rest = (%s)([n, ms]); if (!window.__wallTimeout) return rest;
+  return Promise.race([rest, new Promise((ok) => { let T = P.now(), at = P.real(); const look = () => { if (P.now() !== T) { T = P.now(); at = P.real(); }
+    if (P.real() - at > STALL_S * 1000) ok({lockstep: window.__lockstepState ? __lockstepState() : null, tick: typeof clock === "object" ? clock.tick : null,
+      watch: lastWatch, spec: spec && spec.readyState, agent: agentWs && agentWs.readyState}); else __wallTimeout(look, 1000); }; look(); })]); }""".replace("STALL_S", str(STALL_S))
 REST = """([n, ms]) => new Promise((ok) => { const L = window.__land, f0 = L.frame, t0 = performance.now(), hd = HdLook.live, w0 = Voxels.wver, c0 = clock;
   const here = () => { const p = ents.get('agent' + myId); if (p && (p.x !== p.tx || p.y !== p.ty)) return false;      // (you, drawn where you are; and every block of land on the screen come and made)
     const [x, y, w, h] = viewRect(0); for (let by = Math.floor(y / B); by <= Math.floor((y + h) / B); by++) for (let bx = Math.floor(x / B); bx <= Math.floor((x + w) / B); bx++) { const b = blocks.get(bkey(bx, by)); if (!b || !Voxels.made(b) || b.seaAt !== b.ver) return false; }   // (and its water made for the tiles it has now: voxels.js work, a step a frame; till then its picture is the one before, a river's old bands)
@@ -116,7 +123,9 @@ class Waits:
         stamped, a setting changed what is drawn, a teleport: where a sleep of 0.6 to 1.2 s was, too short on a busy
         machine and too long on an idle one). Then the picture can be read."""
         self.js(WATCH)
-        late = self.js(REST, [frames, timeout])
+        late = self.js(STALLED % REST, [frames, timeout])
+        if isinstance(late, dict):
+            raise AssertionError(f"the page made no frame in {STALL_S} s of the wall's time: {late}")
         if late:
             warnings.warn(f"the land was not at rest after {timeout} ms: frames, frames since its last piece, tiles to draw, arriving, the eye's way to go, frames nothing faded, the land on the screen all come: {late}", stacklevel=2)
 
