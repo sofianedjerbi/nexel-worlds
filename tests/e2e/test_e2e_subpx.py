@@ -155,7 +155,7 @@ def test_a_bubble_looks_the_same_on_every_step_of_a_walk(browser, server, dpr):
                 g.js(FREEZE)
                 g.until("window.__frozen")                                        # (the last frame on the screen drew the words)
                 at = g.js(BUBBLE_AT, other.name)
-                assert at, ("no bubble drawn", g.js(NO_BUBBLE, other.name))
+                assert at, "no bubble drawn: " + str(g.js(NO_BUBBLE, other.name))   # (a string: pytest cut the dict to ...)
                 X, Y, W, H = (round(v * dpr) / dpr for v in at)                    # (on whole px of the screen)
                 shots.append(base64.b64encode(g.page.screenshot(clip={"x": X, "y": Y, "width": W, "height": H})).decode())
                 places.append(at[:2])
