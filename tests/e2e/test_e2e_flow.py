@@ -84,6 +84,7 @@ def test_a_can_poured_on_flat_ground_is_drawn_thinner_as_it_runs_out(browser, se
         meadow = g.js(TILE, [x + 2, y - 3, 0])
         g.act("water", dir="E", **{"with": "watering_can", "pour": True})
         g.wait(f"Flow.at({x + 1}, {y}, 1) === 8 && Flow.at({x + 1}, {y - 6}, 1) === 2", 15000)
+        still(g)                                                                     # (the run come to its end: its thin end is a flow step after the 2)
         g.rest()
         shot(g, "poured")
         levels = g.js(f"[0, 1, 2, 3, 4, 5, 6, 7].map((d) => Flow.at({x + 1}, {y} - d, 1))")
