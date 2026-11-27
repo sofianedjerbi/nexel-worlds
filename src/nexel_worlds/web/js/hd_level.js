@@ -45,7 +45,12 @@ const HdLevel = (() => {
     if (mineWalking(p) && (fw ? lb > la && Leap.leapable(ax, ay, la, bx, by) : la > lb && Leap.leapable(bx, by, lb, ax, ay))) return [L, Math.min(la, lb)];   // (yours, walking up to a step: your own level until you jump up it, leap.js)
     return [L, pl.line];
   }
-  function over(x, y, L, k, n = 20) { let m = 0; for (let d = 1; d <= n; d++) { const c = col(x, y + d), e = L + (d - .5) * k; if (!c || !c.length || matAt(x, y + d)) continue; for (let i = 0; i < c.length; i += 2) if (c[i] > e && (i ? c[i - 1] : -1e9) < e + k) m = Math.max(m, i && c[i - 1] > e ? 99 : c[i] - e); } return m > 0 && topAt(x, y) > L ? 99 : m; }
+  function over(x, y, L, k, n = 20, put = false) { let m = 0; for (let d = 1; d <= n; d++) { const c = col(x, y + d), e = L + (d - .5) * k; if (!c || !c.length || (!put && matAt(x, y + d))) continue; for (let i = 0; i < c.length; i += 2) if (c[i] > e && (i ? c[i - 1] : -1e9) < e + k) m = Math.max(m, i && c[i - 1] > e ? 99 : c[i] - e); } return m > 0 && topAt(x, y) > L ? 99 : m; }
+  // front(tx, ty, L, k) -> ANYTHING SOUTH OF YOU the eye's line to your feet goes behind, in your column or the two beside it (a body is a tile wide and more): land, a block put
+  // (over, put: counted), what stands as boxes (a wall, a fence). Where nothing is, your outline through what is in front (hd.js hid 3, #376) is not drawn: on open ground that pass
+  // draws no px and costs a draw a frame (#397)
+  const front = (x, y, L, k, n = 20) => { for (let dx = -1; dx <= 1; dx++) { if (over(x + dx, y, L, k, n, true) > 0) return true;
+    for (let d = 1; d <= n; d++) { const c = combAt(x + dx, y + d); if ((c && HdThings.is(c, x + dx, y + d)) || Floors.cells(x + dx, y + d)) return true; } } return false; };
   function own({tx, ty, L}, roof, cov) {
     if (!cov) { trail = []; return trail; }
     const c = col(tx, ty); let hi = L + 1; if (roof) while (hi < L + 6 && !solid(c, hi + 1)) hi++;
@@ -148,5 +153,5 @@ const HdLevel = (() => {
       if (w > 0 && h > 0 && w * h >= .25 * B.w * B.h) return true; }
     return false;
   }
-  return {track, south, foot, DRAW_AT, own, over, hides, behind, covered, veils, wall, wallAt, cut, body, drawsOf, get place() { return place; }, get cover() { return cov; }, coverOf: cover};
+  return {track, south, foot, DRAW_AT, own, over, front, hides, behind, covered, veils, wall, wallAt, cut, body, drawsOf, get place() { return place; }, get cover() { return cov; }, coverOf: cover};
 })();

@@ -80,6 +80,7 @@ function intent0(p, brk, t, c, g, flower, ent, s) {
         strawman: "A strawman: it fears firelight", wisp: "A wisp",
         wyrm: "A wyrm: stay out of its line", gustling: "A gustling: it snatches what you hold",
         grumblestump: "A grumblestump: back off when its arms go up", snapbloom: "A snapbloom: step aside when it rears",
+        skeleton: "A skeleton: step back when it rattles",
         hob: "A hob: it keeps wild things off",
         mossback: "Old Mossback: hit the neck", sporeling: "A sporeling: one hit", nyxwing: "Nyxwing: hit it between its moves"}[ent.e.kind] || who, info: true};
     }

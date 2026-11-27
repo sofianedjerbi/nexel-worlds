@@ -23,7 +23,7 @@ const MENU_PAGES = [
     slider("Footsteps", "steps"), slider("Tools and building", "work"), slider("Fights", "fights"), slider("Animals", "animals"),
     slider("The world", "world"), slider("Voices", "voices"), slider("Menus and clicks", "ui")]],
   ["Picture", [
-    slider("Zoom", null, {get: () => (ZOOM.busy ? ZOOM.to : zoom), set: (v) => zoomBy(v - (ZOOM.busy ? ZOOM.to : zoom)), min: () => zoomLeast(), max: ZOOM.max, step: 1, unit: "", def: 3, hear: null}),
+    slider("Zoom", null, {get: () => (ZOOM.busy ? ZOOM.to : zoom), set: (v) => zoomTo(v), min: () => zoomLeast(), max: ZOOM.max, step: .5, unit: "", def: 3, hear: null}),
     slider("Light at night", "night", {hear: null}),
     choice("Particles", "particles", [["all", "All"], ["fewer", "Fewer"], ["none", "None"]]),
     slider("View distance", "view", {min: VIEW_MIN, max: VIEW_MAX, step: VIEW_STEP, unit: "", hear: null}),      // (tiles to the horizon, as a render distance is chunks)

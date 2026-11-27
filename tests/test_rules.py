@@ -88,6 +88,7 @@ def test_no_rule_table_is_typed_in_the_client_again():
 KEPT = {
     "assets.js LATE": "art: the sheets of the creatures drawn later than the rest",
     "blurbs.js BLURB": "words: what the book says of each thing",
+    "bossbar.js BOSS_NAME": "words: a boss's name, written across the top on its bar",
     "build.js SWAP": "the screen's own help: build mode takes the wall down first, then puts the door (two actions)",
     "characters.js SWING_ROW": "art: a tool's row in the swing sheet",
     "characters.js AMBLE": "motion: how fast a creature's picture glides between the tiles the world gives it",
