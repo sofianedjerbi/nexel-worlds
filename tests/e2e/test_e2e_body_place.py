@@ -106,7 +106,7 @@ def test_into_a_dug_room_and_a_tunnel_mouth_the_window_opens_once_and_shuts_once
         "room": ("ArrowRight", "ArrowLeft", f"myPos().x >= {x + 6}", f"myPos().x <= {x} && myAt.z === 0", True),
         "tunnel": ("ArrowUp", "ArrowDown", f"myPos().y <= {y - 8}", f"myPos().y >= {y}", False),
     }.items():
-        g.rpc("dev_teleport", x=x, y=y, z=0); g.arrive(); g.rest(); g.sleep(400)
+        g.rpc("dev_teleport", x=x, y=y, z=0); g.arrive(); g.rest(); g.still()
         g.js(REC, [])
         go(g, k_in, done_in)
         go(g, k_out, done_out, jump)

@@ -44,6 +44,10 @@ ANSWERED = """() => typeof pending === 'undefined' || !Object.keys(pending).leng
 MADE = """() => typeof dirtyTiles === 'undefined' || !me || (dirtyTiles.length === 0 && !(HdLook.live && HdLook.busy) && (() => {
   const [x, y, w, h] = viewRect(0); for (let by = Math.floor(y / B); by <= Math.floor((y + h) / B); by++) for (let bx = Math.floor(x / B); bx <= Math.floor((x + w) / B); bx++) { const b = blocks.get(bkey(bx, by)); if (!b || !Voxels.made(b)) return false; }
   return true; })())"""
+# You have stopped: no walk and no jump going, no step guessed (pred), your body on its tile, and the world's last tick
+# has you on that same tile. What a check of where you are, here or on the server, needs: at any frame's length.
+STILL = """() => typeof walking !== 'undefined' && walking === null && !pred && !Leap.on() && (() => {
+  const p = ents.get('agent' + myId); return !!p && !!p.e && p.x === p.tx && p.y === p.ty && p.e.x === p.tx && p.e.y === p.ty; })()"""
 FRAMES = "(n) => new Promise((ok) => { const f = () => (n-- > 0 ? requestAnimationFrame(f) : ok(1)); f(); })"
 
 
@@ -76,6 +80,33 @@ class Waits:
     def frames(self, n=2):
         """Until `n` more frames are drawn (what was set on the page is in the picture of the next one)."""
         self.js(FRAMES, n)
+
+    def still(self, timeout=8000):
+        """Until you have stopped and the world has you where you are (STILL): in place of a sleep after a walk, a tap,
+        a jump, before what reads where you are."""
+        self._until(f"({STILL})()", timeout)
+
+    def until_world(self, check, frames=600):
+        """Until check(the world's word on you: game.server()) holds, asked once a frame, `frames` frames at the most:
+        for what only the world knows (what is in your pack, your hearts). -> its last word."""
+        for _ in range(frames):
+            s = self.server()
+            if check(s):
+                return s
+            self.frames(1)
+        return self.server()
+
+    def hold_until(self, keys, expr, timeout=8000):
+        """The keys held until `expr` holds on the page (you past a tile, in the air, at an edge), then let go: how far
+        a hold goes is the game's, not the frames' (a sleep with keys held went further the longer a frame was, and
+        less far on a runner whose frames are cut at 0.1 s)."""
+        for k in keys:
+            self.page.keyboard.down(k)
+        try:
+            self._until(expr, timeout)
+        finally:
+            for k in reversed(keys):
+                self.page.keyboard.up(k)
 
     def rest(self, frames=3, timeout=20000):
         """Until the land is at rest: all of it drawn and made, and `frames` frames drawn since (after land was

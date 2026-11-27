@@ -282,11 +282,11 @@ class Game(Waits):
             pass
 
     def start_recording(self):
-        """Record our character's on-screen position every frame, until recording() is called: [ms, x, y, tiles ahead of
-        the world (walk.js leadOf: the walk waits past LEAD[0], catches up under -1; 0 when not walking)]."""
-        self.js("""() => { window.__rec = []; const t0 = performance.now(); window.__recOn = true;
-          function f(n) { const p = ents.get('agent' + myId); if (p) __rec.push([n - t0, p.x, p.y, walking && p.walking ? leadOf(p, n) : 0]);
-            if (__recOn) requestAnimationFrame(f); } requestAnimationFrame(f); }""")
+        """Our character's on-screen position every frame, until recording(): [ms, x, y, tiles ahead of the world (walk.js
+        leadOf; 0 not walking)]. A loop goes on while its recording is the last asked for (else two ran into one)."""
+        self.js("""() => { window.__rec = []; const t0 = performance.now(), id = window.__recId = (window.__recId || 0) + 1; window.__recOn = true;
+          function f(n) { if (!__recOn || __recId !== id) return; const p = ents.get('agent' + myId); if (p) __rec.push([n - t0, p.x, p.y, walking && p.walking ? leadOf(p, n) : 0]);
+            requestAnimationFrame(f); } requestAnimationFrame(f); }""")
 
     def recording(self):
         return self.js("(() => { __recOn = false; return __rec; })()")

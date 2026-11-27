@@ -26,7 +26,11 @@ def test_a_fall_takes_the_time_of_a_fall_and_lands_in_dust(game):
     game.page.keyboard.up("d")
     game.wait("fallQuake !== null && flashes.has('agent' + myId)", timeout=3000)                # it hurt: the ground shakes, you flash
     assert any(f["text"] == "-2.5" for f in game.js("floats"))                                  # (8 layers: 5 over what is safe, half a heart each)
-    game.sleep(1200)                                                                             # (the world's own `fall` event in by then)
+    # (until the world's own `fall` event is in: it clears what your landing told (state.js), and must add no second hurt.
+    #  It was 1.2 s, the event later than that on a loaded runner)
+    game.wait("BodyPlace.state(ents.get('agent' + myId)).told === null", 8000)
+    game.wait("fallQuake === null && wind === null", 8000)                                       # (the shake and the wind over, by the game's own time)
+    game.still()
     rec = game.js("__f")
     down = next(r[0] for r in rec if r[1] == 0 and any(q[1] == 1 for q in rec if q[0] < r[0]))     # the frame you are down
     hurt = game.js("__hurt")

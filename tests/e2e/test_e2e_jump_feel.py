@@ -75,6 +75,7 @@ def test_auto_jump_up_a_staircase_is_smooth_and_keeps_its_rhythm(game):
         game.sleep(300)
         game.page.keyboard.up("d")
     rec = body_over(game, up)
+    game.still()                                       # (the world on the top with you before it is asked: its machine time is not the page's)
     assert game.server()["z"] == 4, game.server()
     smooth(rec)
     # (a jump begins where the poses begin again: off the ground, or back to an earlier pose. It was the takeoff's first
