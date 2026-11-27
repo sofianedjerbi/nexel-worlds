@@ -42,7 +42,7 @@ def test_a_death_s_lines_are_its_situation_s():
     assert pools(code="starvation", held="bread", dropped={"wood": 3, "bread": 2}) == {"starvation", "fed"}
     assert pools(code="dev", held="sword") == {"struck"}
     assert {i for p, _, i in fitting(code="starvation", dropped={"bread": 2}, **RULES) if p == "fed"} == {"bread"}
-    assert say("fed", 2, name="Ash", item="cooked_meat") == "Cooked meat: carried by Ash, admired, never eaten."
+    assert say("fed", 1, name="Ash", item="cooked_meat") == "Ash was saving the cooked meat for later. There was no later."
 
 
 def test_a_death_never_gets_the_last_death_s_line():
