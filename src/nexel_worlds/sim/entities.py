@@ -108,7 +108,7 @@ def ref(e) -> dict:
 @dataclass
 class Creature:
     id: int
-    kind: str  # chicken | cow | chick | calf | tusker | pincer | strawman | wisp | wyrm | gustling | grumblestump | snapbloom | mossback | sporeling | nyxwing | hob
+    kind: str  # chicken | cow | chick | calf | tusker | pincer | strawman | wisp | wyrm | gustling | grumblestump | snapbloom | mossback | sporeling | nyxwing | hob | skeleton
     x: int
     y: int
     hp: int
@@ -158,6 +158,7 @@ CREATURES = {
     "wisp": {"hp": 1, "drops": (), "char": "i", "untouchable": True},
     "gustling": {"hp": 3, "drops": (("seed", .5, 1, 2), ("leaf_charm", .05, 1, 1)), "char": "j"},   # (and what it stole: its `loot`)
     "grumblestump": {"hp": 14, "drops": (("wood", .9, 2, 4), ("spore_charm", .05, 1, 1)), "char": "N", "damage": 4},
+    "skeleton": {"hp": 12, "drops": (("bone", .9, 1, 3), ("gold_coin", .05, 1, 2)), "char": ">", "damage": 3},     # a night walker: rattles, then swipes (skeleton.py)
     "snapbloom": {"hp": 6, "drops": (("seed", .6, 1, 2), ("flower_charm", .05, 1, 1)), "char": "d", "damage": 2},
     "hob": {"hp": 20, "drops": (("stone", 1, 3, 5), ("flame_charm", .1, 1, 1)), "char": "a"},     # an ally (hob.py)
     "wyrm": {"hp": 12, "drops": (("meat", 1, 2, 4), ("frost_charm", .1, 1, 1)), "char": "E", "damage": 3.5},

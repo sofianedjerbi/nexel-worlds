@@ -45,3 +45,4 @@ titanium_sword
 gold_coin
 wire
 eclipse_core
+bone

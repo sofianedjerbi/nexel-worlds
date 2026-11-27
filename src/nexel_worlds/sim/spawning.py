@@ -6,7 +6,7 @@
 - Animals belong to the land: when a chunk is generated, a meadow may get a herd (persistent; they never despawn),
   about one chunk in twenty. Every PASSIVE_EVERY, a player with fewer than PASSIVE_CAP animals around may get one more.
 - Wild enemies (WILD_SPAWNS): a tusker now and then by day on a meadow, a pincer on a shore; one at a time per player.
-  A gustling or a snapbloom, rarely, by day on open grass; a grumblestump, rarely, at night. The strawman, the wisp, the wyrm and Old Mossback (with its sporelings)
+  A gustling or a snapbloom, rarely, by day on open grass; a grumblestump, rarely, at night; a skeleton at night on open ground (gone at dawn: skeleton.py). The strawman, the wisp, the wyrm and Old Mossback (with its sporelings)
   never spawn by themselves (for now).
 - Tuskers and pincers despawn when far from everyone (at once past DESPAWN_FAR, by chance past DESPAWN_NEAR).
 - Every spawn is out of sight (SPAWN_MIN tiles from everyone, and on no screen) and inside a ticking chunk; caps are
@@ -38,8 +38,9 @@ CHUNK_HERD = 0.05                # the chance a newly generated chunk gets a her
 WILD_SPAWNS = {"tusker": dict(every=sec(120), cap=1, day=True, tries=1), "pincer": dict(every=sec(90), cap=1, day=False, tries=40),
                "gustling": dict(every=sec(420), cap=1, day=True, tries=1),     # (one try every seven minutes: rare)
                "snapbloom": dict(every=sec(480), cap=1, day=True, tries=1),
-               "grumblestump": dict(every=sec(300), cap=1, night=True, tries=2)}     # (night: only at night)
-ROAMING = ("tusker", "pincer", "gustling", "snapbloom", "grumblestump")   # these come and go; the rest stay where they are
+               "grumblestump": dict(every=sec(300), cap=1, night=True, tries=2),     # (night: only at night)
+               "skeleton": dict(every=sec(180), cap=1, night=True, tries=2)}
+ROAMING = ("tusker", "pincer", "gustling", "snapbloom", "grumblestump", "skeleton")   # these come and go; the rest stay where they are
 RARE = ("strawman", "wisp", "wyrm", "mossback", "sporeling", "nyxwing", "hob")   # never counted, never gone (a hob is somebody's)
 LIMITS = ((PASSIVE, 6), (ROAMING, 2))   # the most of these there may be around one player (CAP_R)
 CULL_EVERY, CULL_MAX = sec(1), 20       # how often the ones over a limit go, and how many at most at a time

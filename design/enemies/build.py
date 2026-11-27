@@ -27,7 +27,7 @@ PAGES = [(SITE, "enemies.json", ORDER), (SITE, "creatures.js", CREATURES)]     #
 # The pages themselves are drafts in ~/nexel/local/design/ (index.html, creatures.html): they read these files through
 # <base href="../../nexel-worlds/design/enemies/site/">.
 DIRS = ["down", "up", "left", "right"]
-IN_GAME = ["tusker", "pincer", "strawman", "wisp", "wyrm", "gustling", "grumblestump", "snapbloom", "hob", "mossback", "sporeling", "nyxwing"]     # (their frame columns and timings are also in web/js/world_decor.js WILD)
+IN_GAME = ["tusker", "pincer", "strawman", "wisp", "wyrm", "gustling", "grumblestump", "snapbloom", "hob", "mossback", "sporeling", "nyxwing", "skeleton"]     # (their frame columns and timings are also in web/js/world_decor.js WILD)
 SHADOW = (80, 64, 134, 46)        # the cow's and chicken's shadow colour, a touch stronger for the lighter page grass
 FOOT = 2                       # empty pixels under the sprite in its cell
 
