@@ -89,6 +89,7 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
         self.listeners: list = []  # callables(event) for spectators / logs
         self.event_log = open(event_log, "a") if event_log else None
         self.rng = random.Random()
+        self.death_line = None                     # (the last death's line, [pool, i]: the next one is another: death_lines.py)
         self.luck = 1.0                                    # what a creature's chances of leaving a thing are multiplied by (a dev tool: tests)
         self.stats = {"tiles_changed": 0, "actions": 0, "deaths": 0, "chat": 0, "trades": 0, "crafts": 0}
 

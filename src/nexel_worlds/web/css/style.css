@@ -228,7 +228,8 @@
   #deathskull { width:64px; height:64px; image-rendering:pixelated; display:block; margin:-46px auto 0; animation:skullbob 1.6s steps(4) infinite; }
   @keyframes skullbob { 50% { transform:translateY(-4px); } }
   #death .dt { font-size:40px; line-height:44px; color:var(--warn); margin:2px 0 4px; text-shadow:2px 2px 0 rgba(91,63,54,.25); }
-  #deathcause { font-size:22px; color:var(--ink); margin-bottom:10px; }
+  #deathcause { font-size:22px; color:var(--ink); margin-bottom:4px; }
+  #deathquip { font-size:18px; line-height:22px; color:var(--ink2); font-style:italic; margin-bottom:10px; }
   #deathloot { display:flex; flex-wrap:wrap; justify-content:center; gap:6px; margin:6px 0 4px; }
   #deathloot .dslot { position:relative; width:calc(11 * var(--i) + 12px); height:calc(11 * var(--i) + 12px); background:#e9d3ab; border:2px solid #c9a676; border-radius:5px;
     box-shadow:inset 0 -3px 0 rgba(91,63,54,.15); animation:dslotin .4s steps(4) backwards; }
