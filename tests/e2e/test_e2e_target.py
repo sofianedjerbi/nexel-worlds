@@ -61,7 +61,7 @@ def test_build_mode_the_box_is_the_cell_space_and_x_change(browser, server, s):
     game.hold_item("dirt")
     game.press("z")
     game.wait("Build.on", 3000)
-    game.frames(3)
+    game.rest(frames=3)
     put, take = game.js("Target.target('use')"), game.js("Target.target('alt')")
     assert put["kind"] == "place" and take["kind"] == "break", (put, take)
     drew = {d["key"]: d for d in game.js("Target.drew")}
@@ -94,11 +94,11 @@ def test_playing_by_keys_the_drawn_cell_is_the_cell_that_changes(browser, server
     game.rpc("dev_teleport", x=x, y=y)
     game.arrive()
     game.face(1, 0)
-    game.frames(3)
+    game.rest(frames=3)
     put, dig = game.js("Target.target('use')"), game.js("Target.target('alt')")
     assert put and put["kind"] == "place" and dig and dig["kind"] == "break", (put, dig)
     assert changed(game, "e", x, y) == [(put["x"], put["y"], put["z"])]
-    game.frames(3)
+    game.rest(frames=3)
     dig = game.js("Target.target('alt')")                                                 # (X: the block you face, as it is now: the one just put there)
     assert changed(game, "x", x, y) == [(dig["x"], dig["y"], dig["z"])]
     assert not game.errors
@@ -115,7 +115,7 @@ def test_in_a_cave_space_r_and_build_x_take_the_cells_drawn(browser, server):
     game.press("ArrowRight", 60)
     game.face(1, 0)
     game.js("(() => { WayShow.mine && WayShow.mine(); return 1; })()")
-    game.frames(3)
+    game.rest(frames=3)
     cells = {c["key"]: c for c in game.js("Target.cells()")}
     if "alt" in cells:
         assert cells["alt"]["z"] == game.js("myZ(myPos().x, myPos().y)") + 1
@@ -144,7 +144,7 @@ def test_a_cell_in_the_air_is_dotted_with_its_shadow_on_the_ground(browser, serv
     game.wait("Build.on", 3000)
     game.press("e", 100)
     game.press("e", 100)
-    game.frames(3)
+    game.rest(frames=3)
     t = game.js("Target.target('use')")
     d = game.js("Target.drew.find((c) => c.key === 'use')")
     assert t["z"] == 3 and d["far"] and d["dots"] > 0 and d["line"] == 0, (t, d)
@@ -172,7 +172,7 @@ def test_the_first_frame_after_arriving_has_its_boxes(browser, server):
     game.give(dirt=2)
     game.hold_item("dirt")
     stage(game, "meadow")
-    game.frames(2)
+    game.rest(frames=2)
     assert drawn(game, "e")["kind"] == "place" and drawn(game, "x")["kind"] == "break"
     assert not game.errors
 
@@ -215,13 +215,13 @@ def test_earth_into_water_marks_its_new_bed_and_the_bed_rises_at_once(browser, s
     assert game.js(f"gndAt({x + 1}, {y})") == "(" and game.js(f"WaterBed.depth({x + 1}, {y})") == 2
     assert c["kind"] == "use" and (c["x"], c["y"], c["z"]) == (x + 1, y, top - 1), c      # (on the bed it will have, a level under the face)
     game.js("(() => { Target.off = true; setOpt('shimmer', false); return 1; })()")
-    game.frames(3)
+    game.rest(frames=3)
     seen = lambda: game.js(f"(() => {{ const L = {LIGHT}; return [L([{x + 1}, {y}, {top - 1}]), L([{x + 1}, {y}, {top - 2}])]; }})()")   # where the new bed's top is drawn, and under it (its south face once it is up): one frame's
     was = seen()
     game.press("e", 300)
     game.wait(f"gndAt({x + 1}, {y}) === '~'", 8000)             # (the tile drawn is the tile that changed)
     game.wait(f"WaterBed.depth({x + 1}, {y}) === 1 && !HdLook.busy", 2000)
-    game.frames(3)
+    game.rest(frames=3)
     now = seen()
     assert now[0] > was[0] and now[1] < was[1] - 40, (was, now)        # the bed a level up: its top under one level of water, lighter (by 7 to 17 of 490); its side face where the deeper bed was
     # (a level is a cube now, 16 art px: read where the bed is, not the water's face, which shows the tile north's bed from this eye)
@@ -238,7 +238,7 @@ def test_build_mode_at_a_wall_x_box_lays_nothing_on_the_next_tiles_top(browser, 
     game.hold_item("dirt")
     game.press("z")
     game.wait("Build.on", 3000)
-    game.frames(3)
+    game.rest(frames=3)
     t = game.js("Target.target('alt')")
     assert t["kind"] == "break" and game.js(f"topAt({t['x']}, {t['y'] + 1})") == t["z"], t
     # the next tile's top, all but its two first rows and its last (its north edge is the box's own front edge)
@@ -258,7 +258,7 @@ def test_build_mode_draws_no_brackets_on_you(browser, server):
     game.hold_item("dirt")
     game.press("z")
     game.wait("Build.on", 3000)
-    game.frames(2)
+    game.rest(frames=2)
     assert sorted(d["key"] for d in game.js("Target.drew")) == ["alt", "use"]
     assert not game.js("(() => { frame(performance.now()); const m = Keyhole.marks; return !!m && m.drawn; })()")
     assert not game.errors

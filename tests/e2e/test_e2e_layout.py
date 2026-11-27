@@ -3,6 +3,8 @@ cycled the hand, its z opened build mode); break is the key over A (A on an AZER
 push X while going right"); Tab takes the next thing in hand; build mode is the key under A, or B; the caps say each key
 as this keyboard types it. The events are sent as a keyboard sends them: where the key is (code), what it types (key)."""
 
+from clock import stepped_wait
+
 KEY = "([type, code, key, shift]) => { dispatchEvent(new KeyboardEvent(type, {code, key, shiftKey: !!shift, bubbles: true, cancelable: true})); }"
 SPY = "() => { window.__brk = 0; const f = useFacing; useFacing = (alt, again) => { if (alt) __brk++; return f(alt, again); }; }"
 AZERTY = [("KeyQ", "a"), ("KeyW", "z"), ("KeyA", "q"), ("KeyZ", "w")]
@@ -99,7 +101,7 @@ def test_the_corner_s_keys_are_never_under_the_bar_in_a_small_window(game):
     for w, h in ((800, 600), (1024, 700), (1440, 900)):
         game.page.set_viewport_size({"width": w, "height": h})
         game.wait("$('actions').style.display !== 'none' && $('actions').children.length > 0")
-        game.frames(3)
+        stepped_wait(game.page, 400); game.frames(2)                    # (the HUD is fitted on a page timer every fifth of a second, touch.js: two turns of it, then drawn)
         shown, crosses, bottom, top = game.js(CORNER)
         assert shown and not crosses, (w, h, bottom, top, game.js("$('actions').innerText"))
         if w == 1440:
