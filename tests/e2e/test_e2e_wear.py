@@ -1,6 +1,7 @@
 """Clothes and armor in Chrome: items have icons, E puts one on, the player is drawn dressed, a click takes it off."""
 
 from test_e2e_wild import shot
+from waits import QUIET
 
 
 def me(game):
