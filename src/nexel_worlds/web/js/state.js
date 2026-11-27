@@ -236,6 +236,7 @@ function onEvent(e) {
   }
   if (e.type === "creature_died" || e.type === "fade") {   // it flashes, lifts and fades away in a puff of smoke
     const key = e.kind + e.id, p = ents.get(key) || (recentlyGone.get(key) || {}).p;
+    bossDied(e);                                          // (its bar shatters: bossbar.js)
     if (e.kind === "nyxwing") Nyx.died(e);                // (it breaks into stars: nyxwing.js)
     else if (p && p.e) dyingPoof(p, performance.now()); else smoke(e.x, e.y, 8);
     if (e.drops) dropLoot(e.x, e.y, e.drops, performance.now());
