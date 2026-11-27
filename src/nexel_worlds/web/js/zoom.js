@@ -37,7 +37,7 @@ function zoomLeg() {
   if (ZOOM.to === zoom) { ZOOM.busy = false; return; }
   ZOOM.busy = true;
   const next = zoom + Math.sign(ZOOM.to - zoom);
-  if (!cv.animate || !opt("glide") || matchMedia("(prefers-reduced-motion: reduce)").matches) { zoom = next; return zoomLeg(); }
+  if (!cv.animate || !opt("glide") || LESS_MOTION.matches) { zoom = next; return zoomLeg(); }
   const glide = (a, b, done) => {
     const an = cv.animate([{transform: `scale(${a})`}, {transform: `scale(${b})`}], {duration: ZOOM.ms, easing: "cubic-bezier(.3, .6, .4, 1)", fill: "forwards"});
     // (the HD look's world lies under this one: it glides with it)

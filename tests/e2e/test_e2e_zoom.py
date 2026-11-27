@@ -19,6 +19,7 @@ def test_a_wheel_notch_is_one_level_and_a_trackpad_swipe_is_not_a_dozen(game):
     assert game.js("localStorage.getItem('nexel-zoom')") == str(z)      # kept for the next visit
 
 
+@pytest.mark.animated                                  # (the zoom's glide and the sign's nod: not with less motion, pages.py)
 def test_a_level_glides_and_the_sign_shows_where_you_are_and_where_it_stops(game):
     game.js("zoom = 3")
     # (the glides, counted as they start: a glide is ZOOM.ms, 140 ms, a quarter of it on the tests' clock: 35 ms. Read after

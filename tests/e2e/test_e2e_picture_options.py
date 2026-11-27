@@ -7,6 +7,8 @@ it only took the sky away, the land stayed bent. Shake on a hard fall moved a ca
 import base64
 import os
 
+import pytest
+
 from test_e2e_hd_sun import hd
 
 SHOTS = os.environ.get("PICTURE_SHOTS")      # (a folder: each setting's pictures are kept there, to be looked at)
@@ -45,6 +47,7 @@ CASES = [
 ]
 
 
+@pytest.mark.animated                                  # (the Smooth zoom setting: its glide is what changes the picture: not with less motion, pages.py)
 def test_every_picture_setting_changes_the_picture(browser, server):
     """Each setting of the Picture page (Zoom is the zoom: the other tests'), on a scene with all they act on: walls
     and stones (shadows, depth), a pond with a bed (clear water, shimmer), the land north (view distance, curved world),

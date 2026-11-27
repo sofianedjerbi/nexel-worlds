@@ -40,10 +40,12 @@ def test_a_blocks_water_is_made_again_only_when_it_changed(game):
     px -= max(0, px % 32 + 3 - 32)
     py -= max(0, py % 32 + 3 - 32)
     cx = px - 6 if px % 32 >= 6 else px + 7                      # a cobbled tile, away from the water, in its block
-    game.stamp(px - x, py - y, ["~~~", "~~~"]); game.rest()
-    game.js(f"(() => {{ const b = tileIdx({px + 1}, {py})[0]; window.__b = b; window.__w = b.water; return b.water.any; }})()")
-    assert game.js("__w.any") is True and game.js(f"tileIdx({cx}, {py})[0] === __b && tileIdx({px}, {py + 2})[0] === __b") is True
     built = "!dirtyTiles.length && Voxels.made(__b) && __b.seaAt === __b.ver"
+    game.stamp(px - x, py - y, ["~~~", "~~~"]); game.rest()
+    game.js(f"(() => {{ window.__b = tileIdx({px + 1}, {py})[0]; return 1; }})()")
+    game.wait(built)                                             # (the pond in its block: the sea is made a slice a frame (voxels.js), b.water put when it is done, b.seaAt: in as many frames as the machine takes)
+    game.js("(() => { window.__w = __b.water; return 1; })()")
+    assert game.js("__w.any") is True and game.js(f"tileIdx({cx}, {py})[0] === __b && tileIdx({px}, {py + 2})[0] === __b") is True
     game.stamp(cx - x, py - y, ["_"])                            # its block is built again
     game.sleep(500); game.wait(built)
     assert game.js("__b.water === __w") is True
