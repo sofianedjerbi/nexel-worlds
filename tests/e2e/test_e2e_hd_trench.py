@@ -115,7 +115,7 @@ def test_no_px_is_drawn_from_a_paint_that_is_not_there_on_ten_walks_down_the_sta
     # (back at the stair's top where the walk began, the walk ended: one read on main was 10 tiles off the screen's left
     # edge, [-211, 192] of 960 px: run 45895689042. And the eye on you there, else the view is not where you are: a bug of its own)
     k = g.js(UNTIL, [f"myPos().x <= {x} && !walking && !myAction", 600])   # (frames, not ms: at 200 ms frames the walk's end takes longer than at 16)
-    assert k >= 0, ("the walk back did not end at the stair's top", g.js(STATE))
+    assert k >= 0, f"the walk back did not end at the stair's top (x <= {x}): {g.js(STATE)}"
     g.rest()
     spot = [x - 4.5, y + 2.5, 0]
     assert g.js(ON_YOU), ("the view is not on you", g.js(WHERE, spot))
