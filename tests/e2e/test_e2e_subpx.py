@@ -8,9 +8,21 @@ by its own 2 px, the body by the land's 3: the bubble 1 px off the speaker's hea
 fractions of a px: its letters drawn another way every other step (two rasters of it, 2052 and 2006 soft px)."""
 
 import pytest
+
+import home
 from conftest import open_game
 from game import Game, new_name
 from waits import FRAMES
+
+
+def on_flat(g):
+    """You on the tests' flat place (home.py: dry land at level 0 or 1 for 40 tiles, the same for every test), the meadow
+    laid out round it. Where you woke, the land past the meadow was a chance: a hill rows south of the speaker hid it
+    (HdLook.hidden: the window is yours, not theirs) and its bubble was not drawn, "no bubble drawn", hid True."""
+    x, y = home.PLACE
+    g.rpc("dev_teleport", x=x, y=y); g.arrive()
+    g.clear_area(6)
+    g.rpc("dev_teleport", x=x, y=y); g.arrive()
 
 pytestmark = pytest.mark.realtime                 # (the page's DPR follows what its own frames cost, on the machine's time (state.js DPR): stepped, a frame's cost is not the game's)
 
@@ -45,7 +57,7 @@ def test_a_bubble_goes_with_its_speaker_px_for_px_and_its_letters_stay_as_they_a
     try:
         g = Game(page, server)
         g.join(new_name(), 3)                         # (zoom 3: the land's pixel and the bubble's (2) are not one in the other)
-        g.clear_area(6)
+        on_flat(g)
         g.stamp(-6, -4, ["." * 120] * 6)             # (a road east for both: long enough for the frames asked below at 200 ms a frame, half of them drawing no words, ~50 tiles)
         other = open_game(browser, server)
         x, y = g.pos()
@@ -136,7 +148,7 @@ def test_a_bubble_looks_the_same_on_every_step_of_a_walk(browser, server, dpr):
     try:
         g = Game(page, server)
         g.join(new_name(), 3)
-        g.clear_area(6)
+        on_flat(g)
         g.stamp(-6, -4, ["." * 60] * 6)
         other = open_game(browser, server)
         x, y = g.pos()
