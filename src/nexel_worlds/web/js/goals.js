@@ -72,6 +72,6 @@ function drawGoals() {
   });
   for (const [i, top] of tops) {                       // the ones that stay: from their old place to their new one
     const row = old.get(i), dy = row.isConnected ? top - row.offsetTop : 0;
-    if (dy && row.animate) row.animate([{transform: `translateY(${dy}px)`}, {transform: "none"}], {duration: 260, easing: "cubic-bezier(.2, .7, .3, 1)"});
+    if (dy && row.animate && !LESS_MOTION.matches) row.animate([{transform: `translateY(${dy}px)`}, {transform: "none"}], {duration: 260, easing: "cubic-bezier(.2, .7, .3, 1)"});
   }
 }

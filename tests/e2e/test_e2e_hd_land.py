@@ -210,14 +210,14 @@ def test_deep_in_a_room_the_eye_is_steep_land_fills_the_screen_and_others_are_at
             g.rpc("dev_teleport", x=x, y=y, z=z - 18)
             g.wait((WIN % 35) + " && HdLook.cam.pitch > HdLook.steep - .1", timeout=5000)
             g.spawn("chicken", 1, 0, still=300)
-            g.wait("HdLook.bodies().length > 0", timeout=4000)
-            g.sleep(500)
+            g.until("HdLook.bodies().length > 0")
+            g.rest()                                                                 # (the eye and the land at rest)
             assert base < 53 and g.js("HdLook.cam.pitch") == STEEP, (w, h, base)
             assert g.js("HdLook.bare()") == 0, (w, h, g.js("HdLook.bare()"))          # (no px of the backdrop under the horizon: it was a flat blue hole a quarter of a phone held sideways)
             assert [b for b in g.js("HdLook.bodies()") if b[0] != "agent"] == [["chicken", z - 18]], g.js("HdLook.bodies()")   # (not another test's player up on the land: it failed beside any test that stands near; it was drawn up on the grass)
             assert g.js("HdLook.catSeen()") > .8
-            g.wait("!HdLook.busy && HdLook.u === 1")
-            g.sleep(300)
+            g.until("!HdLook.busy && HdLook.u === 1")
+            g.rest()
             wins = g.js(f"[!!HdLook.winAt({x}, {y + 2}), !!HdLook.winAt({x}, {y + 3}), !!HdLook.winAt({x}, {y - 3}), !!HdLook.winAt({x + 4}, {y})]")
             assert wins == [True, False, False, False], (w, h, wins)   # (the window is the room, 7 x 5: no tile south, north or beside it: the land there is whole however deep you are)
         finally:

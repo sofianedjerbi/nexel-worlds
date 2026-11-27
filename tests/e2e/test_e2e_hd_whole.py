@@ -33,7 +33,7 @@ def scene(g, phase=.375):
 
 def made(g):
     g.rest()
-    g.wait("!HdLook.busy && HdLook.bare() === 0", 15000)
+    g.until("!HdLook.busy && HdLook.bare() === 0")
     g.frames(2)
 
 
@@ -90,7 +90,7 @@ def test_no_frame_shows_the_land_unpainted_after_a_teleport(browser, server):
         for tx, ty in ((x + 150, y + 120), (x - 160, y + 90)):
             g.rpc("dev_teleport", x=tx, y=ty)
             g.arrive()
-            g.wait("!HdLook.busy && !HdLook.held", 20000)
+            g.until("!HdLook.busy && !HdLook.held")
             g.frames(10)
         v = g.js("(() => { __vo = false; return __v; })()")
     finally:

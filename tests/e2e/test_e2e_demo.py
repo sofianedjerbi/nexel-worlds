@@ -31,6 +31,7 @@ def site(tmp_path_factory):
 
 
 @pytest.mark.realtime
+@pytest.mark.animated                                  # (the wait's animations running with no script: not with less motion, pages.py)
 def test_the_demo_plays_and_remembers_the_world(browser, site):
     ctx = browser.new_context(viewport={"width": 1100, "height": 750})
     page, errors = ctx.new_page(), []

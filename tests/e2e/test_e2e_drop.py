@@ -34,7 +34,7 @@ def test_y_drops_one_in_front_and_it_stays_down_until_f_takes_it_back(ground):
     game.press("y")
     game.wait(f"({FRONT})('plank') === 1 && meObs.self.inventory.plank === 2")
     assert game.js("__hops") == [[{"plank": 1}, 0, -1]]                             # it hopped from you to there (loot.js)
-    game.sleep(2400)                                                                # longer than the magnet waits (1.2 s)
+    game.tick(24)                                                                   # longer than the magnet waits (1.2 s: 12 of the world's ticks, progress.py MAGNET_DELAY)
     assert game.inv("plank") == 2 and game.js(FRONT, "plank") == 1 and game.js("selected") == "plank"     # still there; the rest in hand
     onto_it_and_f(game, {"plank": 3})
     assert not game.errors

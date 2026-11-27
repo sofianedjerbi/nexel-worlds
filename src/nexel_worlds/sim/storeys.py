@@ -237,7 +237,8 @@ class Storeys:
                 raise ActionError("occupied", "that cell is not empty", on="thing")
             if not any(w.solid(x + i, y + j, z + k) or self.floors.get(x + i, y + j, z + k) is not None for i, j, k in near):
                 raise ActionError("bad_target", "a block goes against something solid: the ground, a wall, another block", why="no_support")
-            if z == w.top(x, y) + 1 and (w.block(x, y) != "none" or w.ground(x, y) not in T.LAND):
+            if z == w.top(x, y) + 1 and z - w.level(x, y) < STOREY and (w.block(x, y) != "none" or w.ground(x, y) not in T.LAND):
+                # (what stands on the land fills the storey over it; a cell higher, on a floor or on a block, is clear of it)
                 raise ActionError("occupied", "something is on that ground (or it is water: place without z fills it)", on="thing")
             if any(self.height(b) < z <= self.height(b) + 2 for b in self.bodies_on(x, y)):
                 raise ActionError("occupied", "someone is standing there", on="body")

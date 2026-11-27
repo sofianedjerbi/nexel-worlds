@@ -168,8 +168,7 @@ def test_in_a_room_the_eye_looks_down_no_steeper_than_steep_and_what_hides_you_i
         s = go(g, x, y, -4, "!HdLook.busy && HdLook.cam.pitch === HdLook.steep && HdLook.win.a === 1")
         assert s["pitch"] == STEEP and s["seen"] > .95 and s["n"] > 0, s
         g.js("HdLook.steep = 64")
-        g.wait("HdLook.cam.pitch === 64 && !HdLook.busy", timeout=6000)
-        g.sleep(700)
+        g.until("HdLook.cam.pitch === 64 && !HdLook.busy")        # (a tilt is frames, at least 12: capped in frames)
         g.rest()
         s = g.js(STATE)
         assert s["a"] == 1 and s["n"] > 0 and s["seen"] > .95, s
@@ -189,7 +188,7 @@ def test_a_click_on_the_sky_is_no_walk(browser, server):
     g.page.mouse.move(480, 20)
     g.page.mouse.click(480, 20)
     g.page.mouse.click(480, 20, button="right")
-    g.sleep(700)
+    g.rest()                                                  # (the page settled: a walk it would start is started)
     assert g.pos() == (x, y) and g.js("!walking") and not g.errors
     q = g.js(f"(() => {{ const a = HdLook.screenOf({x + 2.5}, {y + 1.5}, 0); return tileAtScreen(a[0], a[1]); }})()")
     assert q and (q["x"], q["y"]) == (x + 2, y + 1), q             # (and the land under the pointer is that tile)

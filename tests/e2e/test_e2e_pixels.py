@@ -3,6 +3,7 @@ number of screen pixels, the same as the frame it sits in. Nothing is squeezed t
 
 
 import pytest
+from clock import stepped_wait
 from game import Game, new_name
 
 # a small icon's px against its icon's: how many are there, half there, of a colour the icon has not, near white
@@ -59,7 +60,7 @@ def test_an_item_in_the_hud_is_whole_screen_pixels_and_the_lands_own(browser, se
         g.js("toggleGoals()")                                    # (the goals' card is away unless asked for: G)
         m0 = g.js(HUD)                                           # (...measured before the book covers it)
         g.js("(() => { openCraft(); toggleBag(); return 1; })()")
-        g.sleep(900)                                             # (a phone fits its HUD every fifth of a second)
+        stepped_wait(g.page, 900)                                # (a phone fits its HUD every fifth of a second)
         m = g.js(HUD)
         whole = lambda v: abs(v - round(v)) < .02 and round(v) >= 1          # noqa: E731
         assert len(m["icons"]) >= 14 and len(m["frames"]) >= 18 and len(m["selicon"]) in (0, 2) and len(m["selframe"]) == 2 and m["lift"] < 0 and len(m["big"]) >= 30 and len(m["bag"]) > 100 and len(m0["card"]) >= 12

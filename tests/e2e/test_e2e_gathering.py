@@ -27,17 +27,26 @@ def test_flowers_around_and_under_you(game):
 
 
 def test_space_never_stops_you(game):
+    # (each step at a place, not after a time: a meadow of its own, E once the flower is in reach, X once the tree is in
+    #  reach ahead, the walk read two tiles on. Slept and polled, a busy machine's walk ran 18 tiles on past the tree before
+    #  X was pressed, into the world's own land, and stopped there: "(False, [])". A frame moves you a tile at the most, so
+    #  at any frame's length all of it is within ten tiles of where you set out, in the meadow laid)
+    game.clear_area(12)
     game.stamp(2, -1, ["f"])
-    game.stamp(4, -1, ["T"])
+    game.stamp(6, -1, ["T"])
+    x0, y0 = game.pos()
+    at = "ents.get('agent' + myId).x"
     game.page.keyboard.down("d")
-    game.sleep(150)
-    game.press("e", 250)                                     # E on the flower: picked in passing
+    game.wait(f"walking !== null && {at} >= {x0 + 1}", 4000)
+    game.press("e", 0)                                       # E on the flower: picked in passing
     moving = game.js("walking !== null")
-    game.sleep(300)
-    assert moving and game.inv("flower") == 1
+    game.wait(f"combAt({x0 + 2}, {y0 - 1}) === '.'", 4000)  # (the page has it picked: the world's tick, not a poll)
+    assert moving
+    game.wait(f"{at} >= {x0 + 4}", 4000)                     # (the tree in reach, ahead)
+    x1 = game.js(at)
     game.start_recording()
     game.page.keyboard.down("x")                             # X by the tree: chopping waits, you walk on
-    game.sleep(500)
+    game.wait(f"{at} >= {x1 + 2}", 4000)
     rec = game.recording()
     moving = game.js("walking !== null")
     game.page.keyboard.up("x")
@@ -54,7 +63,7 @@ def test_space_never_stops_you(game):
     assert moving and not stops, (moving, stops)
     # ...and the world walked on too, to where you stopped (a chop that took the place of its walk left it behind)
     game.wait("!walking && !pred && (() => { const p = ents.get('agent' + myId); return p.e.x === Math.round(p.x); })()", 8000)
-    assert game.server()["x"] == game.pos()[0] > rec[0][1] + 1
+    assert game.server()["x"] == game.pos()[0] > rec[0][1] + 1 and game.inv("flower") == 1
 
 
 def test_a_click_picks_on_the_move(game):

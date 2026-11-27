@@ -48,7 +48,7 @@ def test_a_gate_is_seen_from_the_side_in_a_fence_that_runs_north_and_south(game)
     game.stamp(1, 0, ["g"]); game.rest()                                    # and a gate beside you
     swung = lambda gx, gy: game.js("([x, y]) => doors.get(x + ',' + y) || 0", [gx, gy])
     game.settle("([x, y]) => doors.get((x + 1) + ',' + y) === 1 && [...ents.values()].some((p) => p.e && p.e.kind === 'chicken' && Math.round(p.x) === x + 5 && Math.round(p.y) === y - 4)", [x, y])      # (the hen has come with a tick, the gate beside you has swung open: it slept 0.9 s)
-    game.sleep(300)                                            # (...and a gate that swings at a hen has had the time to)
+    game.tick(3)                                               # (...and a gate that swings at a hen has had the time to)
     assert game.js("([x, y]) => [...ents.values()].some((p) => p.e && p.e.kind === 'chicken' && Math.round(p.x) === x && Math.round(p.y) === y)", [x + 5, y - 4])
     assert swung(x + 5, y - 5) == 0 and swung(x + 1, y) == 1
     game.rpc("dev_creatures", clear=40)

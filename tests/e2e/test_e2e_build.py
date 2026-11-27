@@ -27,7 +27,9 @@ def test_a_wall_is_planned_with_a_cursor_and_built_by_keys_alone(game):
     for _ in range(3):
         game.press("ArrowRight", 160)
     kb.up("Space")
-    assert game.js("Build.S.plans.size") >= 1 or game.js(WALLS, [x + 2, y + 1, 4]) == "WWWW"
+    # (planned, or all four built: as one state of the page, when it comes. A plan is let go when the world answers its
+    # build (build_work.js) and the wall is on the page with a tick after: no plan and "WWW." in between, read by two calls)
+    game.wait(f"Build.S.plans.size >= 1 || ({WALLS})([{x + 2}, {y + 1}, 4]) === 'WWWW'", 20000)
     game.wait(f"({WALLS})([{x + 2}, {y + 1}, 4]) === 'WWWW' && Build.S.plans.size === 0", 20000)      # built, one after the other
     assert game.inv("wood_wall") == 2 and game.pos() != (x, y)                                    # you walked to them
     game.press("x")                                            # on the last one built: a plan to take it down
@@ -127,12 +129,12 @@ def test_what_the_audit_of_build_mode_found_is_mended(game):
     # Some are waiting, how many is the machine's: each arrow of the drag waits for the page to be quiet, and on a runner the
     # first plans were built meanwhile, one left of four)
     assert left >= 1 and game.js("(() => { const n = Build.waiting(); return availableActions().some((r) => r[0] === 'Z' && r[1] === `Build: ${n} plans wait`); })()"), game.js("availableActions()")
-    game.sleep(1500)
+    game.tick(15)                                              # (1.5 s of the world's: its ticks, however long a frame takes)
     assert game.js("Build.S.plans.size") >= left - 1           # (nothing is built while you are out of it, but the one begun)
     game.press("b")                                            # back in: the work goes on
     game.wait(f"({WALLS})([{x + 3}, {y + 1}, 4]) === 'WWWW' && Build.S.plans.size === 0", 25000)
     game.js(f"Build.S.at = {{x: {x + 6}, y: {y + 1}}}")         # (the cursor on the last wall: coming back in, it is at the tile you face)
-    game.press(game.js(SLOT, "door")); game.sleep(150)         # (Q went to the next piece: Q and E are the floors now; the bar's numbers)
+    game.press(game.js(SLOT, "door")); game.frames(2)          # (Q went to the next piece: Q and E are the floors now; the bar's numbers)
     assert game.js("selected") == "door"                       # a door, on the last wall: planned in its place
     rows = game.js("Build.rows()")
     assert rows[1][1] == "Place door in its place" and ["X", "Break wooden wall"] in rows
@@ -151,7 +153,7 @@ def test_what_the_audit_of_build_mode_found_is_mended(game):
     game.press("b")                                            # the mouse: the cursor is where it points, and the label says what a click plans
     box = game.js("(() => { const r = cv.getBoundingClientRect(), s = myPos(), a = HdLook.screenOf(s.x + 3.5, s.y - 1.5, Build.level()); return [r.left + a[0], r.top + a[1]]; })()")      # (the middle of the tile three east and two north, as the HD look draws it at the cursor's height)
     game.page.mouse.move(box[0] - 20, box[1]); game.page.mouse.move(box[0], box[1])
-    game.sleep(200)
+    game.frames(2)                                             # (the pointer's tile read on the frames drawn after the move)
     me = game.pos()
     assert game.js("[Build.S.at.x, Build.S.at.y]") == [me[0] + 3, me[1] - 2] and game.js("$('hover').textContent") == "Place wooden wall"
     game.press("b")

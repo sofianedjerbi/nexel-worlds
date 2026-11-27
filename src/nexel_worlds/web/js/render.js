@@ -70,7 +70,7 @@ function update(now) {
       const b = a || agents.find((q) => q.name === follow);
       if (b) { camT.x = b.x; camT.y = b.y; if (!a) { cam.x = b.x; cam.y = b.y; } }
     }
-    const k = 1 - Math.pow(.002, dt); cam.x += (camT.x - cam.x) * k; cam.y += (camT.y - cam.y) * k;
+    const k = LESS_MOTION.matches ? 1 : 1 - Math.pow(.002, dt); cam.x += (camT.x - cam.x) * k; cam.y += (camT.y - cam.y) * k;
     // watching, not in the world (?follow=, the first screen gone): the HD look's eye is the camera, at the land's top there (hd.js eye)
     if (!HdLook.eye && $("joinbox").style.display === "none") HdLook.eye = Object.assign(() => Object.assign(WATCH, {x: cam.x, y: cam.y, z: topAt(Math.round(cam.x), Math.round(cam.y))}), {watch: true});
   }

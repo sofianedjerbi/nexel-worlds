@@ -228,6 +228,7 @@ def test_an_ai_player_talks_in_the_chip_voice_a_person_babbles(game, friend):
     assert pat and all(t[0] == "babble" and t[2] is False for t in pat), talk     # a person: the babble only
 
 
+@pytest.mark.animated                                  # (the goals' slide out and in: not with less motion, pages.py)
 def test_a_goal_done_goes_out_and_only_the_new_one_comes_in(game):
     """"the item sliding animation on goals... looks buggy (low fps)": every row was made again at each change, so all
     three slid in again, in four jumps. The rows that stay are the same ones, only the new goal comes in, and nothing

@@ -105,7 +105,7 @@ def test_the_land_is_the_same_px_whatever_order_its_blocks_came_in(browser, serv
 
     def made():                                                                    # (the land made with what is there: rest() waits for all of the screen's land to have come)
         g.frames(3)
-        g.wait("!HdLook.busy && dirtyTiles.length === 0", timeout=15000)
+        g.until("!HdLook.busy && dirtyTiles.length === 0")
         g.frames(3)
     others = [f"{bx},{by - 1}", f"{bx - 1},{by - 1}", f"{bx},{by}"]              # north-east, north-west, south-east of the corner (yours: south-west)
     for order in (others, others[::-1]):
@@ -114,7 +114,7 @@ def test_the_land_is_the_same_px_whatever_order_its_blocks_came_in(browser, serv
         assert g.js(OFF, "all") > 1000                                              # (without them the picture is another)
         for k in order:
             g.js("(k) => { requested.delete(k); return 1; }", k)
-            g.wait(f"blocks.get('{k}') && blocks.get('{k}').drawn", timeout=15000)
+            g.until(f"blocks.get('{k}') && blocks.get('{k}').drawn")
             made()
         g.rest()
         if SHOT:

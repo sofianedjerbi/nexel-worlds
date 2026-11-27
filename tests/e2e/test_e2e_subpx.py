@@ -46,23 +46,27 @@ def test_a_bubble_goes_with_its_speaker_px_for_px_and_its_letters_stay_as_they_a
         g = Game(page, server)
         g.join(new_name(), 3)                         # (zoom 3: the land's pixel and the bubble's (2) are not one in the other)
         g.clear_area(6)
-        g.stamp(-6, -4, ["." * 60] * 6)              # (a road east for both)
+        g.stamp(-6, -4, ["." * 120] * 6)             # (a road east for both: long enough for the frames asked below at 200 ms a frame, half of them drawing no words, ~50 tiles)
         other = open_game(browser, server)
         x, y = g.pos()
         other.rpc("dev_teleport", x=x + 2, y=y - 3)   # (its bubble not over your name)
-        g.wait(f"[...ents.values()].some((p) => p.e && p.e.name === {other.name!r} && p.x === {x + 2})", 8000)
+        g.until(f"[...ents.values()].some((p) => p.e && p.e.name === {other.name!r} && p.x === {x + 2})")
         g.rest()
         g.js(f"bubbles.push({{name: {other.name!r}, text: 'nice day for a walk, is it not', t: performance.now() / 1000 - 2}})")   # (written out already; 4 s before it fades)
-        g.frames(3)
+        g.until(f"bubbles.some((b) => b.name === {other.name!r} && b.at)")      # (drawn: a frame the look keeps its picture draws none)
         g.js(REC, other.name)
-        g.frames(10)
+        g.until("__pr.length >= 10")                                             # (ten frames that drew it, standing: frames that drew no words record nothing)
         still = g.js("__pr.splice(0)")
         assert still, still
         far = f"[...ents.values()].some((p) => p.e && p.e.name === {other.name!r} && p.x >= {x + 2} + %d)"
+        # (and on till 13 frames drew the bubble inside the screen: frames, not tiles, are what is looked at. Their number
+        # in 12 tiles is the frame's length's: 9 on a runner of long frames, some drawing no words, main 45901208215)
+        enough = "__pr.filter((f) => f.drawn && 4 < f.at[0] && f.at[0] + f.w < innerWidth - 4).length > 12"
         for k, tiles in (("d", 5), ("Shift", 12)):    # (walk 5 tiles, then sprint 7 more, both of them: as far, not as long, on a slow machine)
             other.page.keyboard.down(k)
             g.page.keyboard.down(k)
-            g.wait(far % tiles, 30000)
+            g.until(far % tiles)
+        g.until(enough)
         for k in ("Shift", "d"):
             other.page.keyboard.up(k)
             g.page.keyboard.up(k)
@@ -103,8 +107,12 @@ def test_a_bubble_goes_with_its_speaker_px_for_px_and_its_letters_stay_as_they_a
 
 # What a player sees, the game's canvas never read: frames frozen a moment during the walk (the last one drawn stays on the
 # screen), a screenshot of the bubble on whole px of the screen, then on
-FREEZE = "(() => { window.__go = frame; frame = () => {}; return 1; })()"
-THAW = "(() => { frame = window.__go; requestAnimationFrame(frame); return 1; })()"
+# (frozen on the first frame that draws the words from now: a frame the HD look keeps its last picture draws none, and
+# the bubble's b.at is a frame old there: a shot of the wrong place, 35120 px of 35168 off, main 45890314292; as #217's REC)
+FREEZE = """(() => { const go = window.__go = frame, d0 = drawBubbles; window.__frozen = false;
+  drawBubbles = (...a) => { window.__drew = true; return d0(...a); };
+  frame = (t) => { if (window.__frozen) return; window.__drew = false; go(t); if (window.__drew) { window.__frozen = true; drawBubbles = d0; } }; return 1; })()"""
+THAW = "(() => { window.__frozen = false; frame = window.__go; requestAnimationFrame(frame); return 1; })()"
 BUBBLE_AT = "(name) => { const b = bubbles.find((b) => b.name === name && b.at); return b && [b.at[0], b.at[1], b.w, b.h]; }"
 NO_BUBBLE = """(name) => { const p = [...ents.values()].find((e) => e.e && e.e.name === name); return {bubbles: bubbles.map((b) => [b.name, b.at, b.up, b.h]),
   drawn: p && View.of(p), hid: p && HdLook.hidden(p.x + .5, p.y + .5, p.e.z !== undefined ? p.e.z : floorAt(Math.round(p.x), Math.round(p.y))), at: p && [p.x, p.y],
@@ -133,19 +141,19 @@ def test_a_bubble_looks_the_same_on_every_step_of_a_walk(browser, server, dpr):
         other = open_game(browser, server)
         x, y = g.pos()
         other.rpc("dev_teleport", x=x + 2, y=y - 3)
-        g.wait(f"[...ents.values()].some((p) => p.e && p.e.name === {other.name!r} && p.x === {x + 2})", 8000)
+        g.until(f"[...ents.values()].some((p) => p.e && p.e.name === {other.name!r} && p.x === {x + 2})")
         g.rest()
         g.js(f"bubbles.push({{name: {other.name!r}, text: 'nice day for a walk, is it not', t: performance.now() / 1000 - 2}})")
-        g.frames(3)
+        g.until(f"bubbles.some((b) => b.name === {other.name!r} && b.at)")      # (drawn)
         shots, places = [], []
         other.page.keyboard.down("d")
         g.page.keyboard.down("d")
         try:
             for _ in range(6):
-                g.wait(f"[...ents.values()].some((p) => p.e && p.e.name === {other.name!r} && p.x > {x + 2} + {len(shots) * .5})", 10000)
+                g.until(f"[...ents.values()].some((p) => p.e && p.e.name === {other.name!r} && p.x > {x + 2} + {len(shots) * .5})")
                 g.js(f"(() => {{ for (const b of bubbles) if (b.name === {other.name!r}) b.t = performance.now() / 1000 - 2; return 1; }})()")   # (its age kept: a slow runner's six steps outlasted its 5 s, "no bubble drawn")
                 g.js(FREEZE)
-                g.js(FRAMES, 2)                                                        # (frame() asks for the next one first: that one still draws, the bubble a step on)
+                g.until("window.__frozen")                                        # (the last frame on the screen drew the words)
                 at = g.js(BUBBLE_AT, other.name)
                 assert at, ("no bubble drawn", g.js(NO_BUBBLE, other.name))
                 X, Y, W, H = (round(v * dpr) / dpr for v in at)                    # (on whole px of the screen)
@@ -198,7 +206,7 @@ def test_an_art_px_is_a_whole_number_of_the_screen_s_px_after_a_zoom_too(browser
             if step:
                 g.js(GO)
                 g.page.keyboard.press(step)
-                g.wait("zoom === 4 && !ZOOM.busy && !HdView.el.getAnimations().length && !cv.getAnimations().length", 4000)
+                g.until("zoom === 4 && !ZOOM.busy && !HdView.el.getAnimations().length && !cv.getAnimations().length")
                 g.frames(3)
             g.js(STOP)
             g.frames(3)
