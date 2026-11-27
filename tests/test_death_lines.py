@@ -34,6 +34,13 @@ def test_every_line_names_the_one_who_died_and_fills_in():
             assert "{" not in say(pool, lines.index(t), name="Ash", who="Rook", item="iron_axe")
 
 
+def test_every_line_is_one_short_line_in_the_chat():
+    for pool, lines in LINES.items():
+        for i in range(len(lines)):
+            said = say(pool, i, name="N" * 10, who="W" * 10, item="i" * 10)
+            assert len(said) <= 60, f"{len(said)} characters with names of 10 (the owner's cap: 60): {said}"
+
+
 def test_a_death_s_lines_are_its_situation_s():
     pools = lambda **s: {p for p, _, _ in fitting(**s, **RULES)}      # noqa: E731
     assert pools(code="bitten", kind="tusker", held="sword", water=True, night=True) == {"bitten", "tusker", "hand_weapon", "water", "night"}
@@ -42,7 +49,7 @@ def test_a_death_s_lines_are_its_situation_s():
     assert pools(code="starvation", held="bread", dropped={"wood": 3, "bread": 2}) == {"starvation", "fed"}
     assert pools(code="dev", held="sword") == {"struck"}
     assert {i for p, _, i in fitting(code="starvation", dropped={"bread": 2}, **RULES) if p == "fed"} == {"bread"}
-    assert say("fed", 1, name="Ash", item="cooked_meat") == "Ash was saving the cooked meat for later. There was no later."
+    assert say("fed", 1, name="Ash", item="cooked_meat") == "Ash saved the cooked meat for later. No later."
 
 
 def test_a_death_never_gets_the_last_death_s_line():
