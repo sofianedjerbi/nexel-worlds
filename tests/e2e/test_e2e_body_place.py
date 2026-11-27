@@ -9,10 +9,10 @@ import pytest
 from test_e2e_hd_sun import LIGHT, hd
 
 # every frame: [your y, x, how open the window is (this file's count), the painter's, behind land (hid), the record's roof, its dep, your lantern lit (night), then the light of each tile asked (null: off the picture), the frame's time]
-REC = """(tiles) => { window.__r = []; window.__on = true; const light = """ + LIGHT + """, f = (now) => { const e = ents.get('agent' + myId), P = HdLevel.cover, H = innerHeight - 20;
-  if (e && P) __r.push([+e.y.toFixed(3), +e.x.toFixed(3), +HdLook.u.toFixed(2), +HdLook.win.a.toFixed(2), HdLook.hid, P.roof ? 1 : 0, P.dep, HdLook.youLit === false ? 0 : 1,
+REC = """(tiles) => { window.__r = []; window.__on = true; const g = window.__g = (window.__g || 0) + 1, light = """ + LIGHT + """, f = (now) => { const e = ents.get('agent' + myId), P = HdLevel.cover, H = innerHeight - 20;
+  if (e && P && g === __g) __r.push([+e.y.toFixed(3), +e.x.toFixed(3), +HdLook.u.toFixed(2), +HdLook.win.a.toFixed(2), HdLook.hid, P.roof ? 1 : 0, P.dep, HdLook.youLit === false ? 0 : 1,
     ...tiles.map(([x, y, z]) => { const a = HdLook.screenOf(x + .5, y + .5, z); return a && a[1] > 20 && a[1] < H && a[0] > 20 && a[0] < innerWidth - 20 ? Math.round(light([x, y, z])) : null; }), now]);
-  if (__on) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""
+  if (__on && g === __g) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""   # (g: one record going; the last one's next frame, asked before its stop was seen, ends it there: it added each frame two to four times)
 STOP = "(() => { __on = false; return __r; })()"
 OPEN = [0, 0, 0, 0, 1]             # (no window, nothing over you, no land over you, your lantern lit)
 open_ = lambda r: r[2:4] + r[5:8]   # (all but hid: you are shown through what stands in front of you, a ladder too, as you would standing there)
@@ -58,7 +58,7 @@ def test_up_and_down_a_ladder_in_the_open_nothing_of_the_light_or_the_window_cha
         go(g, "ArrowDown", "myAt.z === 0 && !Climb.climbOf(ents.get('agent' + myId))")
         down = g.js(STOP)
         assert foot and stood and all(open_(r) == OPEN for r in foot + stood), (foot[:2], stood[:2])
-        assert len(up) > 20 and len(down) > 20
+        assert any(y - 4 < r[0] < y - 3 for r in up) and any(y - 4 < r[0] < y - 3 for r in down), (up, down)   # (on the rungs, both ways: frames between the foot and the top, however few a slow page draws)
         bad = [r for r in up + down if open_(r) != OPEN]
         assert not bad, (phase, bad[:6])
         assert flips(up, 4) <= 1 and flips(down, 4) <= 1 and up[-1][4] == stood[0][4] and down[-1][4] == foot[0][4], (up, down)   # (shown through the ladder once you are past it: as standing there)
