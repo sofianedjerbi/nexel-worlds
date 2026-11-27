@@ -6,12 +6,12 @@
 "use strict";
 const HdStands = (K) => {
   let cand = null, candKey = "";   // (what stands round you, looked for again when you or the land move: ck)
-  const lads = new Map(), piles = new Map(), stoodOf = new Map();   // (a ladder's picture, a pile's, a thing's last entry)
+  const lads = new Map(), piles = new Map(), stoodOf = new Map(), FAR = 64, TALL = 96;   // (a ladder's picture, a pile's, a thing's last entry)
   // things and furniture round you, and a ladder about to be put (its standing face where it will stand)
   function things(F) {
     const {p, tx, ty, L, Lf, w, h, now, dt, list, roof, wet, H0, fill, until} = F;
     let {left, nw} = F;
-    const {api, eng, ent, seen, solidAt, south, sprs, standAt, thing, topAt, warm, R, gen, EDGE, byY, cutOff, winMap, winRect} = K;
+    const {api, eng, ent, seen, solidAt, south, sprs, standAt, thing, topAt, warm, R, gen, EDGE, byY, cutOff, winMap, winRect, SEA_L} = K;
     const stood = (c, x, y, z, gh, m) => {      // a thing that stands: furniture as its card (hd_things.js: px for px, its top leaning with where it is on the screen), the rest a billboard
       if (c === "l") { const k = [x, y, z, landVer, Floors.ver].join(), ln = Climb.lean(x, y, z); let lc = lads.get(k); if (!lc) { if (lads.size > 60) lads.clear(); const LH = Math.ceil((shOf(ln ? ln.top - z : 2) + 48) / 16) * 16, R0 = LH - 32, a = HdThings.painted(48, LH, () => Climb.drawLadder(x, y, z, (X) => 16 + (X - x) * 16, (Y) => R0 + (Y - y) * 16 + shOf(z), 16, 1)); lc = document.createElement("canvas"); lc.width = 48; lc.height = LH;
         const q = lc.getContext("2d"); q.drawImage(a, 0, 0, 48, R0 - 10, 0, 12, 48, R0 - 10); q.drawImage(a, 0, R0 + 2, 48, LH - R0 - 2, 0, R0 + 2, 48, LH - R0 - 2); lads.set(k, lc); }   // (the game's picture of it runs 12 px on, a tile's depth in the classic picture: here it stood over the rim. Three rungs taken out of its middle; its canvas as tall as the wall it leans on: a deep shaft's ladder was cut at 128 px)   // (a ladder: a standing face of the land, a px of it a px of the land's own fronts: as tall as the wall it leans on at any pitch. Upright px for px it stood three tiles over the rim of a shaft)
@@ -25,10 +25,17 @@ const HdStands = (K) => {
     };
     const memo = (c, x, y, z) => { const k = c + "," + x + "," + y + "," + z; let o = stoodOf.get(k); if (!o) { if (stoodOf.size > 6000) stoodOf.clear(); stoodOf.set(k, o = {}); } return o; };   // (a thing's last entry, found when what stands is looked for, not each frame)
     const ck = [tx, ty, L, landVer, Floors.ver, api.builds, !!gen, Math.floor(now / 250)].join();   // (what stands: looked for four times a second and when you or the land move, not on 2400 tiles every frame)
+    // ...and past it, on the far land drawn to its horizon (HdLook.far): what grows there (each block's objs, tiles.js) whose foot is on the picture, FAR px off it at the most (a step's
+    // walk before the next look), and not sunk past the horizon (the sea's line, the lowest the land in front of it shows: TALL px under it, all of it under the land there). A far hill comes
+    // up over the horizon with its trees (#380); the ones sunk past it are not drawn (400 more each frame, 3 ms of a desk's)
     if (ck !== candKey) { candKey = ck; cand = []; for (let y = ty - R; y <= ty + south; y++) for (let x = tx - R; x <= tx + R; x++) {
       const c = combAt(x, y), up = Floors.any(x, y) ? HdThings.loose(x, y) : null; if (up) for (const [ch, z] of up) if (!cutOff(x, y, z)) cand.push([ch, x, y, z, memo(ch, x, y, z)]);   // (what stands on a built block)
       if (c && isObject(c) && !HdThings.is(c, x, y)) { const z = standAt(c, x, y); if (!cutOff(x, y, z)) cand.push([c, x, y, z, memo(c, x, y, z)]); }      // (not the boxes of the land: hd_things.js)
-    } }
+    }
+      const fb = api.far; if (fb) { let hy = 1e9, hd = 0; for (let d = 0; d <= ty - fb[1]; d++) { const a = eng.at(tx + .5, ty - d + .5, SEA_L); if (a && a[1] < hy) { hy = a[1]; hd = d; } }
+        for (let by = Math.floor(fb[1] / B); by <= Math.floor(fb[3] / B); by++) for (let bx = Math.floor(fb[0] / B); bx <= Math.floor(fb[2] / B); bx++) { const b = blocks.get(bkey(bx, by)); if (b) for (const [i, c] of b.objs) {
+          const x = bx * B + i % B, y = by * B + (i / B | 0); if (x < fb[0] || x > fb[2] || y < fb[1] || y > fb[3] || (y >= ty - R && y <= ty + south && x >= tx - R && x <= tx + R) || HdThings.is(c, x, y)) continue;
+          const z = standAt(c, x, y), a = eng.at(x + .5, y + .5, z); if (a && a[0] >= -FAR && a[0] <= w + FAR && a[1] >= -FAR && a[1] <= h + FAR && !(ty - y > hd && a[1] - TALL >= hy) && !cutOff(x, y, z)) cand.push([c, x, y, z, memo(c, x, y, z)]); } } } }
     { const wmp = winMap(); HdEase.frame(now); for (const [c, x, y, z, m] of cand) { const n0 = list.length, a = z > floorAt(x, y) ? HdEase.of(m.ek || (m.ek = x + "," + y), !wmp.has(m.ek)) : 1; if (a > 0) { if (fill && warm < 2 && !m.it && (warm < 1 || (nw && performance.now() > until))) left = true; else { nw += fill && !m.it ? 1 : 0; stood(c, x, y, z, false, m); } } if (a < 1) for (let i = n0; i < list.length; i++) list[i].fade = a; } }   // (what grows on ground the window leaves out is left out with it: one px in two of a flower hung over your room's floor; it goes and comes over 120 ms, hd_ease.js: a tree over your room was gone in one frame)
     // a ladder that would be put (the aim's, on your own tile in a shaft; build mode's plans): the ladder's own standing face where it will stand, as tall as its wall, pale (it was an upright picture laid over the frame: at 68 degrees two tiles over the shaft's rim, and not where the ladder comes)
     { const a = Build.on ? Build.aim() : aimedTile(), it = a && a.it, q = it && (it.own || a.p); if (q && it.ghost === "ladder" && it.z !== undefined && it.ok !== false && !it.info) stood("l", q.x, q.y, it.z, true);
