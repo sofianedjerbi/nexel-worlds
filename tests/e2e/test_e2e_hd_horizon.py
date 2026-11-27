@@ -27,10 +27,9 @@ def test_from_a_peak_the_distance_is_land_and_sky_not_the_backdrop(game):
         game.stamp(-20, dy, ["~" * 41] * 6)
     game.rpc("dev_col", tiles=[[x + i, y + j] for j in (-1, 0, 1) for i in (-1, 0, 1)], col=[16])     # a peak 16 high under you, the meadow round
     game.rpc("dev_teleport", x=x, y=y)
-    game.wait(f"myAt && myAt.x === {x} && myAt.y === {y} && topAt({x}, {y}) === 16 && myAt.z === 16", 10000)
-    game.wait("HdLook.live && !HdLook.busy && dirtyTiles.length === 0", 20000)
-    game.page.wait_for_timeout(3000)                     # (the far land's blocks come, a few a tenth of a second; the eye's level eases up)
-    game.wait("HdLook.live && !HdLook.busy && dirtyTiles.length === 0", 20000)
+    game.until(f"myAt && myAt.x === {x} && myAt.y === {y} && topAt({x}, {y}) === 16 && myAt.z === 16")
+    game.until("HdLook.live && farLeft() === 0")         # (the far land's blocks come, four a tenth of a second, nearest first: all of them that will come, state.js farLeft)
+    game.rest()                                          # (made, and the eye's level eased up to it)
     out = game.js(LOOK)
     assert out["line"] < out["H"], out                   # (the sky does not fill the picture)
     assert out["back"] < 200 and not out["checker"], out     # no flat backdrop, no checker strip

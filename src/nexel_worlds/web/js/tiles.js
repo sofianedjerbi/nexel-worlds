@@ -249,3 +249,21 @@ function hillSheet(k) {
 // (its tiles' bookkeeping: voxels.js, hd.js wrap this)
 const NOPX = new Uint32Array(0);
 function arriveBlock(b) { b.px = NOPX; b.drawn = true; b.ver = (b.ver || 0) + 1; landVer++; }
+
+// THE FAR LAND (state.js asks for the screen's blocks, this for the land past them, and onRegion above takes both): the blocks the HD look draws to its horizon,
+// asked for, what the server answers of them, and how many are still to come.
+const farOut = new Set();   // far blocks the server said are past what this page is given far (answered later, out): they never come, while it watches where it does
+// the far land's blocks (HdLook.far, in blocks), and how many of them are still to come: not here, not out of reach. 0: all the far land
+// that will come has (the tests' wait for the horizon, test_e2e_hd_horizon.py; a block being made off the tick is still to come)
+const farBox = () => { const f = typeof HdLook !== "undefined" && HdLook.live && HdLook.far; return f && [f[0], f[1], f[2], f[3]].map((v) => Math.floor(v / B)); };
+function farLeft() { const fb = farBox(); let n = 0; if (fb) for (let by = fb[1]; by <= fb[3]; by++) for (let bx = fb[0]; bx <= fb[2]; bx++) { const k = bkey(bx, by); if (!blocks.has(k) && !farOut.has(k)) n++; } return n; }
+// what the server answered a far ask (d: its reply): the block's land, or later (being made, or out of what this page is given far)
+function farAnswer(d) { const k = bkey(Math.floor(d.x / B), Math.floor(d.y / B)); if (d.rows || !d.out) farOut.delete(k); else farOut.add(k); }
+// THE FAR LAND the HD look draws to its horizon (HdLook.far: its patches, 40 tiles past its box): asked for too, nearest first, four blocks a tenth of a second. (Not the top-down
+// screen's blocks only: past them the far land would not be known, drawn as a flat sea, and the sky's line over a gap of the backdrop's flat colours: "a flat blue mass", seen from a mountain)
+function askFar(fb, now) { const cx = Math.floor(cam.x / B), cy = Math.floor(cam.y / B), far = [];
+  for (let by = fb[1]; by <= fb[3]; by++) for (let bx = fb[0]; bx <= fb[2]; bx++) { const k = bkey(bx, by), b = blocks.get(k); if ((!b || now - b.at > 30000) && !(Math.abs(requested.get(k)) > now - 3000)) far.push([Math.abs(bx - cx) + Math.abs(by - cy), bx, by]); }
+  for (const [, bx, by] of far.sort((a, b) => a[0] - b[0]).slice(0, 4)) { const k = bkey(bx, by), b = blocks.get(k); requested.set(k, -now); if (b) b.at = now; sendSpec({op: "region", x: bx * B, y: by * B, w: B, h: B, far: true}); } }   // (far: land not made yet is made off the server's tick, and asked for again 3 s on: views.py far_ready)
+// (A FAR ASK IS NOT A NEAR ONE: its time is kept as minus itself, and the land on the screen above asks for its block again at once. Land not made yet is answered "later" to a far ask
+//  (nothing comes), and the block then waited the 3 s for the land on the screen too: sprinting toward new land, or zooming out, a block-wide strip of the screen's side was the backdrop's
+//  flat colours for up to 3 s, growing as you ran in: "part of the world disappears", 5400 px of a 600 x 400 picture, test_e2e_holes.py)

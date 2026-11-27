@@ -74,7 +74,8 @@ function connectSpec() {
     else if (d.type === "event") onEvent(d.ev);
     else if (d.type === "resync") { for (const b of blocks.values()) b.at = -1e9; }   // we missed events (too many at once): ask for our land again
     else if (d.type === "reply") {
-      if (d.rows) onRegion(d);
+      if (d.rows) { farAnswer(d); onRegion(d); }
+      else if (d.later) farAnswer(d);   // (being made off the tick: it comes, asked again; out: it never does, from here: tiles.js farAnswer)
       else if (d.agents) { agents = d.agents; drawAgents(); if (document.body.classList.contains("tab")) drawWho(); }
       else if (d.tick_ms_p50 !== undefined) { metrics = d; }      // (the debug screen reads them: panels.js)
       else if (d.who) accountNamed(d.name);                  // (account.js)
@@ -110,7 +111,7 @@ setInterval(() => {
     const r0 = typeof HdLook !== "undefined" && HdLook.live && HdLook.reach, r = r0 && r0[0] < x + w && r0[2] > x && r0[1] < y + h && r0[3] > y ? r0 : null, ex =   // (a reach of another place, before a teleport, is not joined to this one: the server cut the two to 200 tiles, this place outside: no far land for it, views.py far_near)
       r ? Math.min(x, r[0] - 4) : x, ey = r ? Math.min(y, r[1] - 4) : y;
     const ew = (r ? Math.max(x + w, r[2] + 5) : x + w) - ex, eh = (r ? Math.max(y + h, r[3] + 5) : y + h) - ey, key = [Math.round(ex / 4), Math.round(ey / 4), ew, eh].join();
-    if (key !== lastWatch) { lastWatch = key; sendSpec({op: "watch", x: ex, y: ey, w: ew, h: eh}); } }
+    if (key !== lastWatch) { lastWatch = key; farOut.clear(); sendSpec({op: "watch", x: ex, y: ey, w: ew, h: eh}); } }
   const now = performance.now();
   for (let by = Math.floor(y / B); by <= Math.floor((y + h) / B); by++)
     for (let bx = Math.floor(x / B); bx <= Math.floor((x + w) / B); bx++) {
@@ -118,15 +119,8 @@ setInterval(() => {
       const stale = b && now - b.at > 30000;
       if ((!b || stale) && !(requested.get(k) > now - 3000)) { requested.set(k, now); if (b) b.at = now; sendSpec({op: "region", x: bx * B, y: by * B, w: B, h: B}); }
     }
-  // THE FAR LAND the HD look draws to its horizon (HdLook.far: its patches, 40 tiles past its box): asked for too, nearest first, four blocks a tenth of a second. (Not the top-down
-  // screen's blocks only: past them the far land would not be known, drawn as a flat sea, and the sky's line over a gap of the backdrop's flat colours: "a flat blue mass", seen from a mountain)
-  const f = typeof HdLook !== "undefined" && HdLook.live && HdLook.far, fb = f && [f[0], f[1], f[2], f[3]].map((v) => Math.floor(v / B));
-  if (fb) { const cx = Math.floor(cam.x / B), cy = Math.floor(cam.y / B), far = [];
-    for (let by = fb[1]; by <= fb[3]; by++) for (let bx = fb[0]; bx <= fb[2]; bx++) { const k = bkey(bx, by), b = blocks.get(k); if ((!b || now - b.at > 30000) && !(Math.abs(requested.get(k)) > now - 3000)) far.push([Math.abs(bx - cx) + Math.abs(by - cy), bx, by]); }
-    for (const [, bx, by] of far.sort((a, b) => a[0] - b[0]).slice(0, 4)) { const k = bkey(bx, by), b = blocks.get(k); requested.set(k, -now); if (b) b.at = now; sendSpec({op: "region", x: bx * B, y: by * B, w: B, h: B, far: true}); } }   // (far: land not made yet is made off the server's tick, and asked for again 3 s on: views.py far_ready)
-  // (A FAR ASK IS NOT A NEAR ONE: its time is kept as minus itself, and the land on the screen above asks for its block again at once. Land not made yet is answered "later" to a far ask
-  //  (nothing comes), and the block then waited the 3 s for the land on the screen too: sprinting toward new land, or zooming out, a block-wide strip of the screen's side was the backdrop's
-  //  flat colours for up to 3 s, growing as you ran in: "part of the world disappears", 5400 px of a 600 x 400 picture, test_e2e_holes.py)
+  const fb = farBox();
+  if (fb) askFar(fb, now);
   // land left well behind is forgotten, with its pictures (it comes again if you go back): a long walk kept it all
   const bx0 = Math.min(Math.floor(x / B) - 1, fb ? fb[0] : 1e9), bx1 = Math.max(Math.floor((x + w) / B) + 1, fb ? fb[2] : -1e9), by0 = Math.min(Math.floor(y / B) - 1, fb ? fb[1] : 1e9), by1 = Math.max(Math.floor((y + h) / B) + 1, fb ? fb[3] : -1e9);
   for (const [k, b] of blocks) if (b.bx < bx0 || b.bx > bx1 || b.by < by0 || b.by > by1) blocks.delete(k);
