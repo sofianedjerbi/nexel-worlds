@@ -12,7 +12,7 @@ const ICONS = {   // [sheet, x, y, w, h]: the items sheet has seed packets in co
   axe: ["items", 32, 0], pickaxe: ["gen", "pickaxe"], hoe: ["items", 48, 0], watering_can: ["items", 32, 16], spear: ["gen", "spear"], sword: ["gen", "sword"],
   torch: ["gen", "torch"], rope: ["gen", "rope"], name_tag: ["gen", "name_tag"], ladder: ["gen", "ladder"], stairs: ["gen", "stairs"],
   berries: ["items", 32, 160], fruit: ["items", 32, 96], mushroom: ["nature", 16, 0], egg: ["items", 48, 176], milk: ["items", 64, 0],
-  meat: ["gen", "meat"], eclipse_core: ["gen", "eclipse_core"], cooked_meat: ["gen", "cooked_meat"], bread: ["gen", "bread"],
+  meat: ["gen", "meat"], eclipse_core: ["gen", "eclipse_core"], bone: ["gen", "bone"], cooked_meat: ["gen", "cooked_meat"], bread: ["gen", "bread"],
   wheat: ["items", 16, 128], pumpkin: ["items", 16, 144], cauliflower: ["items", 16, 48], lettuce: ["items", 16, 112],
   eggplant: ["items", 16, 80], carrot: ["items", 16, 32],
   flower: ["nature", 16, 48], workbench: ["gen", "workbench"], hob: ["hob", 4, 0, 24, 40], campfire: ["gen", "campfire0"], chest: ["chest", 16, 16],

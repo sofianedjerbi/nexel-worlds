@@ -11,6 +11,7 @@ LEGEND = {
     "j": "gustling (a little whirlwind by day: snatches what is in your hand and runs; hit it while it spins up)",
     "N": "grumblestump (a stump that walks at night: when its arms go up, get two tiles away)",
     "d": "snapbloom (a flower that bites: when it rears back, step aside)",
+    ">": "skeleton (at night: when its jaw drops and its skull rattles, step back; it swipes)",
     "a": "hob (a walking hearth: an ally; it burns wild creatures that come close to it)", "E": "wyrm (a sea serpent in deep water: keep off its line)",
     "G": "Old Mossback (a giant tortoise, three tiles wide, asleep until hit: back off when it rises, step aside when its head pulls in)",
     "s": "sporeling (a small walking mushroom: one hit kills it)",

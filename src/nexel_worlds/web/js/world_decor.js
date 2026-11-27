@@ -31,6 +31,7 @@ const WILD = {
   nyxwing: {cw: 128, ch: 114, hp: 120, idle: [0, 8, 96], walk: [8, 8, 48], breath: [16, 8, [192, 192, 193, 96, 96, 96, 96, 96]],    // (drawn by nyxwing.js: its moves are timed to its song)
     storm: [24, 21, [192, 192, 193, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 96, 96]], dive: [45, 9, [192, 192, 193, 96, 96, 96, 96, 96, 96]],
     sweep: [54, 8, [192, 192, 193, 64, 64, 64, 96, 96]], rush: [62, 6, [96, 96, 193, 192, 192, 192]]},
+  skeleton: {cw: 24, ch: 26, idle: [0, 8, [300, 260, 300, 200, 260, 300, 90, 90]], walk: [8, 8, 85], act: [16, 10, [160, 200, 120, 120, 80, 90, 140, 160, 160, 160]]},   // (rattles 0.6 s, then the swipe: sim/skeleton.py)
   sporeling: {cw: 24, ch: 24, idle: [0, 8, 240], walk: [8, 8, 75], land: [16, 6, [80, 80, 160, 120, 90, 140]], puff: [22, 6, [150, 150, 90, 130, 150, 140]], once: ["land", "puff"]},
 };
 // Each creature's own sounds (music/sfx.py, "Creatures", picked by ear): its warning, its blow when it lands, its cry
@@ -44,6 +45,7 @@ const CRY = {
   grumblestump: {warn: "grumblestump_warn", slams: true, hurt: "grumblestump_hurt"},
   snapbloom: {warn: "snapbloom_warn", blow: "snapbloom_bite", hurt: "snapbloom_hurt"},
   hob: {warn: "hob_warn"}, wisp: {warn: "gloom"}, mossback: {warn: "boss_groan"},
+  skeleton: {warn: "skeleton_rattle", blow: "skeleton_swipe", hurt: "skeleton_hurt"},
   nyxwing: {slams: true, hurt: "drake_hurt"},          // (its warnings and blows sound in nyxwing.js: a scream when its jaws open)
 };
 // A blow lands (an "attack" event, its `who` {kind: "tusker", ...} when it is a wild one): the creature's own sound in place of a
