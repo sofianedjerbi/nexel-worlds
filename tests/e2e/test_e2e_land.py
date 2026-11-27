@@ -46,8 +46,9 @@ def test_a_blocks_water_is_made_again_only_when_it_changed(game):
     game.wait(built)                                             # (the pond in its block: the sea is made a slice a frame (voxels.js), b.water put when it is done, b.seaAt: in as many frames as the machine takes)
     game.js("(() => { window.__w = __b.water; return 1; })()")
     assert game.js("__w.any") is True and game.js(f"tileIdx({cx}, {py})[0] === __b && tileIdx({px}, {py + 2})[0] === __b") is True
+    game.js("(() => { window.__v = __b.ver; return 1; })()")
     game.stamp(cx - x, py - y, ["_"])                            # its block is built again
-    game.sleep(500); game.wait(built)
+    game.wait("__b.ver !== __v", 8000); game.wait(built)
     assert game.js("__b.water === __w") is True
     game.stamp(px - x, py + 2 - y, ["~"])                        # the pond grows
     game.wait("__b.water !== __w", 8000); game.wait(built)

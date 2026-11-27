@@ -10,7 +10,7 @@ def test_the_grumblestump_is_a_stump_by_day_and_slams_at_night(game):
     game.rpc("dev_needs", hp=20, hunger=17)                    # (whole, and not healing by itself)
     game.rpc("dev_time", phase=.3)
     game.spawn("grumblestump", 3, 0)
-    game.sleep(900)
+    game.tick(9)
     assert kind(game, "grumblestump")["act"] == "sleep"       # by day: eyes shut, a stump
     assert game.server()["hp"] == 20
     game.rpc("dev_time", phase=.85)
@@ -47,7 +47,7 @@ def test_a_hob_set_down_burns_a_grumblestump_and_it_runs(game):
     game.spawn("grumblestump", 3, 0)
     game.wait(WINDUP.format("hob"), 10000)                     # it saw it: it hunches, its fire draws in
     shot(game, "hob_hunch")
-    game.sleep(500)
+    game.tick(5)
     shot(game, "hob_burst")
     game.wait("[...ents.values()].some((q) => q.e && q.e.kind === 'grumblestump' && q.e.hp < 14)", 15000)
     assert not game.errors

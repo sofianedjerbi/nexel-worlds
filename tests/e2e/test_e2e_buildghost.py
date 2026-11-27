@@ -4,6 +4,7 @@ wall's top stays at that height (a roof), the ghost of the block where it will g
 and no red sentence; X by hand digs down (it answered "Needs a hoe"); a phone: A held with the stick is a row."""
 import pytest
 
+from clock import stepped_wait
 from test_e2e_hd_sun import hd
 from test_e2e_touch import touch_game
 
@@ -158,7 +159,7 @@ def test_a_ghost_behind_a_wall_is_not_drawn_through_it_and_the_window_does_not_o
         g.rpc("dev_teleport", x=x + dx, y=y + dy)
         g.arrive()
         g.rest()
-        g.sleep(400)
+        g.frames(2)                                              # (a window that opens shows from its first frame: its alpha grows each frame it has tiles)
         assert g.js("HdLook.win.a") == 0 and not g.js(f"[0, 1, 2].some((i) => HdLook.winAt({x} + i, {y - 3}) || HdLook.winAt({x} + i, {y - 2}))"), (dx, dy, g.js("JSON.stringify(HdLook.win)"))
     g.rpc("dev_teleport", x=x + 1, y=y)
     g.arrive()
@@ -193,7 +194,7 @@ def test_on_a_phone_a_held_with_the_stick_is_a_row_and_held_still_places_once(br
         a = tuple(g.js(MID, "#tA"))
         send("touchStart", {2: a})
         g.wait("Build.S.plans.size + (topAt(%d, %d) > 0 ? 1 : 0) >= 1" % (x + 1, y), 3000)
-        g.sleep(900)                                             # held still: one block, not a pile (a second would go on top of the first)
+        stepped_wait(g.page, 900)                                # held still: one block, not a pile (a second would go on top of the first)
         assert g.js(f"[...Build.S.plans.values()].filter((j) => j.x === {x + 1}).length + topAt({x + 1}, {y})") == 1
         # the stick pushed east, A still held, till the cursor is two tiles on; then both thumbs lift. (A held stick steps on
         # at the cursor's own pace, build.js: how far it goes before the lift reaches the page is the machine's, so the row
