@@ -201,6 +201,12 @@ SWEEP = """([x0, y0, x1, y1, step]) => { const k = devicePixelRatio, out = [], S
       for (const z of [t, lo]) for (const [a, b] of [[0, 0], [1, 0], [1, 1], [0, 1]]) { const p = S(q.x + a, q.y + b, z); if (p) pts.push(p); }
       ok = pts.length === 8 && mx >= Math.min(...pts.map((p) => p[0])) - 2 && mx <= Math.max(...pts.map((p) => p[0])) + 2 && my >= Math.min(...pts.map((p) => p[1])) - 2 && my <= Math.max(...pts.map((p) => p[1])) + 2; }
     out.push([mx, my, sky, q && [q.x, q.y], ok]); } return out; }"""
+# every px of the sky within 4 of the land's rim (where the picture turns from sky to land, rows y0 to y1): [how many rims crossed, those px on a tile: [mx, my, tile]]
+RIM = """([y0, y1, dy]) => { const k = devicePixelRatio, W = innerWidth, out = []; let n = 0;
+  for (let my = y0; my <= y1; my += dy) { const d = HdLook.read(0, Math.round(my * k), Math.round(W * k), 1).data, sky = [];
+    for (let mx = 0; mx < W; mx++) { const o = Math.round(mx * k) * 4; sky.push(d[o + 2] > d[o + 1] + 12 && d[o + 1] > d[o] + 12); }
+    for (let mx = 1; mx < W; mx++) if (sky[mx] !== sky[mx - 1]) { n++; for (let x = Math.max(0, mx - 4); x < Math.min(W, mx + 4); x++) { const q = sky[x] && tileAtScreen(x, my); if (q) out.push([x, my, [q.x, q.y]]); } } }
+  return [n, out]; }"""
 # the middle of every top, and of every side turned south, east or west, of the land round (x, y) as the picture has it: [which, dx, dy, mx, my, the tile under that point or null]
 FACES = """([x, y]) => { const out = [], S = HdLook.screenOf; for (let j = -8; j <= 6; j++) for (let i = -11; i <= 11; i++) { const X = x + i, Y = y + j, t = topAt(X, Y);
   const add = (k, px, py, pz) => { const a = S(px, py, pz); if (a && a[0] > 8 && a[0] < innerWidth - 8 && a[1] > 8 && a[1] < innerHeight - 110) { const q = tileAtScreen(a[0], a[1]); out.push([k, i, j, a[0], a[1], q && [q.x, q.y]]); } };
@@ -235,6 +241,9 @@ def test_every_px_of_the_land_is_on_a_tile_and_the_sky_on_none(browser, server):
     assert len(under) > 150 and not [p for p in under if p[3] is None], [p for p in under if p[3] is None][:8]         # under the land's edge all is land: a tile each
     sky = [p for p in r if p[2] and p[1] < edge - 4]
     assert len(sky) > 30 and sum(1 for p in sky if p[3] is not None) <= 2, [p for p in sky if p[3] is not None][:8]     # the clear sky: none (a point on a cliff's very edge aside)
+    crest = g.js(f"Math.min(...Array.from({{length: 30}}, (_, n) => HdLook.screenOf({x} + .5, {y} - n, 0)[1]))")   # (the meadow's skyline, where the curved land's crest meets the far hills: #389)
+    rims, on = g.js(RIM, [6, min(edge, crest) - 6, 6])
+    assert rims > 20 and not on, f"sky px beside the land's rim on a tile: {on[:12]} (of {rims} rims crossed, the sky's edge {edge}, the meadow's skyline {crest})"   # (the picture is whole art px: px by px, none of the sky)
     faces = g.js(FACES, [x, y])
     kinds = {k: sum(1 for f in faces if f[0] == k) for k in ("top", "south", "east", "west")}
     assert kinds["top"] > 200 and kinds["south"] >= 8 and kinds["east"] >= 6 and kinds["west"] >= 6, kinds

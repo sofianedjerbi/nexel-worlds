@@ -112,6 +112,7 @@ def test_a_frame_costs_a_phone_little_one_small_picture_nothing_the_screens_size
     size; every tile walked made the whole land again."""
     ctx, g = phone(browser, server)
     try:
+        g.hour(.3, still=True)                            # (by day: at dusk and night the hour's light is two draws more a frame: the count is read at a named hour, #397, #399)
         g.wait("HdLook.live && !HdLook.busy && HdView.el")
         assert g.js("[HdView.el.width, HdView.el.height, HdView.el.style.width, HdView.el.nextElementSibling === cv, getComputedStyle(HdView.el).imageRendering]") == [195, 422, "390px", True, "pixelated"]   # ONE canvas for the world, an art px a px, under the game's
         c = max(((g.page.evaluate(COST), g.frames(3))[0] for _ in range(3)), key=lambda c: c["same"])     # (the best of three rounds, README.md rule 6: on a busy machine a frame comes so late that something has always moved since the last: 1 still frame in 60, with two browsers at work. Three frames between two rounds: the count's last frame puts the game's own back)

@@ -1809,6 +1809,32 @@ def _(c):
     return sweep(c, n, 2600, 700, 0.5) * env(n, 0.02, 0.15)
 
 
+@sfx("skeleton_rattle", "Creatures", "warning: the skeleton's jaw drops and its skull rattles: a quick dry clatter of bones", 1, 0.34, seed="skeleton_rattle_A", change="new")
+def _(c):
+    n = N(0.6)
+    y = np.zeros(n)
+    for k in range(9):
+        place(y, (0.5 + 0.06 * (k % 3)) * strike(c, N(0.04), "wood", size=0.35, hard=1.2), 0.02 + k * 0.06)
+    return y
+
+
+@sfx("skeleton_swipe", "Creatures", "the swipe lands: a bony arm whips round, a dry knock", 1, 0.44, seed="skeleton_swipe_A", change="new")
+def _(c):
+    n = N(0.4)
+    y = sweep(c, n, 3500, 900, 0.4) * env(n, 0.01, 0.12) * 0.5
+    return place(y, strike(c, N(0.15), "wood", size=0.6, hard=1.4), 0.08)
+
+
+@sfx("skeleton_hurt", "Creatures", "the skeleton is hit: bones knock and clatter loose", 1, 0.32, seed="skeleton_hurt_A", change="new")
+def _(c):
+    n = N(0.4)
+    y = np.zeros(n)
+    place(y, strike(c, N(0.12), "wood", size=0.7, hard=1.3), 0)
+    for k in range(4):
+        place(y, 0.35 * strike(c, N(0.04), "wood", size=0.3, hard=1.0), 0.09 + k * 0.05)
+    return y
+
+
 @sfx("hob_lit", "Creatures", "it is set down and catches: kindling pops twice, a soft roar settles in", 1, 0.38, seed="hob_lit_B", change="new")
 def _(c):
     n = N(0.9)

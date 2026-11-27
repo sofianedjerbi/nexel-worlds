@@ -52,3 +52,4 @@ hide
 gold_coin
 wire
 eclipse_core
+bone

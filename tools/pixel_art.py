@@ -199,6 +199,12 @@ GEN["eclipse_core"] = [
         "  nNNGkkkkkkGn  ", "  nNNGkkkkkkGn  ", "  nNNNGkkkkGGn  ", "  nNNNNGkkGGNn  ", "  nNNNNNGGGNNn  ", "   nNNNNNNNNn   ",
         "    nNNNNNNn    ", "     nnnnnn     ", "            Y   ", "                "]
 
+# The skeleton's drop (sim/skeleton.py): a bone, corner to corner, a knob at each end
+GEN["bone"] = [
+        "                ", "                ", "  ooo           ", " oeeeo          ", " oeeeeo         ", " oeeHeeo        ",
+        "  ooeeHeo       ", "    oeeHeo      ", "     oeeHeo     ", "      oeeHeo    ", "       oeeHeoo  ", "        oeeeeeo ",
+        "         oeeeeo ", "          oHeeo ", "           ooo  ", "                "]
+
 
 def gen_sheet():
     """The generated sprites in one strip, 16 px each, and their names in its order (web/assets gen.png, gen.txt)."""
