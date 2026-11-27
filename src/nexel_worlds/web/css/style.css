@@ -105,6 +105,8 @@
   #hud .hudrow { display:flex; gap:calc(2 * var(--u)); align-items:center; pointer-events:auto; }
   #vitals { display:flex; justify-content:space-between; align-items:flex-end; padding:0 4px; box-sizing:border-box; }
   #vitals canvas { image-rendering:pixelated; }
+  /* armor: steel rims round the hearts, on a canvas of its own just behind them (ui.js drawArmor) */
+  #heartbox { position:relative; z-index:0; display:flex; } #armor { position:absolute; z-index:-1; pointer-events:none; }
   /* experience: the wooden track between the vitals and the hotbar (drawn on a canvas by xp.js) */
   #xpwrap { position:relative; align-self:flex-start; margin:3px 0 7px; }
   #xpbar { display:block; image-rendering:pixelated; }
