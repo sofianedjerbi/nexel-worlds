@@ -5,7 +5,7 @@ name: CI
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, labeled]
+    types: [opened, synchronize, reopened]
   push:
     branches: [main]
 
@@ -83,9 +83,6 @@ jobs:
   # built sounds (not in git: tools/build_audio.py) skip here.
   e2e-plan:
     name: Browser tests to run
-    # While they are optional (#47), a pull request runs them only with the label `e2e` (the fixes for #47): the twenty
-    # runners are shared, and the browser jobs of every pull request held the quick checks queued behind them.
-    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'e2e')
     runs-on: ubuntu-latest
     outputs:
       shards: ${{ steps.plan.outputs.shards }}
@@ -164,9 +161,6 @@ jobs:
   e2e:
     name: Browser tests
     needs: [e2e-plan, sounds]
-    # Optional for now (the owner, 2026-11-25): the suite's old failures on these runners held every merge. The agents
-    # make it pass (#47); then this line goes and the browser tests are mandatory again.
-    continue-on-error: true
     if: needs.e2e-plan.outputs.shards != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -217,8 +211,7 @@ jobs:
   e2e-all:
     # The one name branch protection can require (#47): each browser job is named by its shard's files, which change
     # with durations.json and a pull request's changes. Red if the plan, the sounds or a browser job failed or was
-    # cancelled; green when they ran and passed, or were skipped (no `e2e` label, no browser test affected). While `e2e` is
-    # continue-on-error (#120 takes it out), a failing shard still reads as success here.
+    # cancelled; green when they ran and passed, or were skipped (no browser test affected by the change).
     name: Browser tests (all)
     needs: [e2e-plan, sounds, e2e]
     if: always()
