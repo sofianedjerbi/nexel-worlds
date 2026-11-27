@@ -28,6 +28,11 @@ def airtime(dz: float) -> float:
     return v / LEAP_G + math.sqrt(2 * max(0.0, LEAP_TOP - dz) / LEAP_G)
 
 
+def flight(v) -> bool:
+    """A tile of the way (a.via) that is a jump through the air (its 4th is what the flight says), not one walked."""
+    return isinstance(v[3], dict)
+
+
 class Leaping:
     """Simulation mixin: a player's jump through the air."""
 
@@ -59,7 +64,7 @@ class Leaping:
             a.flying, a.flying_n, a.flying_at = self.height(a), 0, self.tick
         steps = 0
         while True:
-            if not a.via or len(a.via[0]) < 4:
+            if not a.via or not flight(a.via[0]):
                 if self.tick - a.flying_at > sec(LEAP_WAIT):   # (never told where it came down)
                     break
                 yield
@@ -86,7 +91,7 @@ class Leaping:
             a.flying_n += 1
             a.flying_at = self.tick
             steps += 1
-        while a.via and len(a.via[0]) > 3:                 # (given up: down where it is, the flight's tiles dropped; the way walked
+        while a.via and flight(a.via[0]):                 # (given up: down where it is, the flight's tiles dropped; the way walked
             a.via.pop(0)                                   # after it is made from there, if it can be: all of it dropped, the screen
         a.flying = None                                    # was put back on the world, tiles behind)
         return steps, {}
