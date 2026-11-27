@@ -158,6 +158,7 @@ def test_dying_wakes_you_by_your_bed(game):
     s = game.server()
     assert s["deaths"] == 1 and abs(s["x"] - bed[0]) + abs(s["y"] - bed[1]) <= 3
     assert game.js("$('death').style.display") == "block" and "bed" in game.js("$('deathwake').textContent")   # the death screen
+    assert game.js("RULES.death_lines.struck.map((t) => t.replace(/\\{name\\}/g, me)).includes($('deathquip').textContent)")      # and the line on it the server picked for its cause (#383)
     game.sleep(3000)                                         # it waits for you... (a window in which nothing must happen: so at any frame's length)
     assert game.js("$('death').style.display") == "block"
     game.press("q", 700)                                     # ...until a key

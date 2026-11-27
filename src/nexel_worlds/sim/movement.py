@@ -2,7 +2,7 @@
 
 from ..pathfind import astar
 from ..tiles import DIRS, GROUNDS
-from .leaping import Leaping
+from .leaping import Leaping, flight
 from .constants import CLIMB_S, EAT_PACE, PACE, FALL_HP, FALL_SAFE, SLOPE_DOWN, SLOPE_UP, SPRING_S, SPRINT_FOOD, SWIM_PACE, VIA_FAR, VIA_MAX, sec
 from .entities import ActionError, Agent
 
@@ -210,12 +210,12 @@ class Movement(Leaping):
 
     # A player's screen walks ahead of the world (web/js/walk.js: it doesn't wait for an answer, which may come late)
     # and says where it went: the tiles it turned at (`walk`'s `from`) and stopped on (`stop`'s `at`), each [x, y, n],
-    # n counting up. They are kept in order (a.via) and made first, a stride a tile, in straight lines, so the world
-    # ends where the screen is. a.via_done says how far it got (the screen is told: views.py).
+    # n counting up, and the `jump` it was said with (auto-jump: up steps). They are kept in order (a.via) and made first, a stride
+    # a tile, in straight lines, so the world ends where the screen is. a.via_done says how far it got (the screen is told: views.py).
 
-    def via_add(self, a: Agent, tile):
+    def via_add(self, a: Agent, tile, jump=False):
         if isinstance(tile, (list, tuple)) and len(tile) in (2, 3) and all(type(v) is int for v in tile) and len(a.via) < VIA_MAX:
-            a.via.append((tile[0], tile[1], tile[2] if len(tile) == 3 else a.via_done))
+            a.via.append((tile[0], tile[1], tile[2] if len(tile) == 3 else a.via_done, True if jump else None))
 
     def via_drop(self, a: Agent):
         a.flying = None                                          # (a flight given up: down on the ground where it is)
@@ -226,29 +226,29 @@ class Movement(Leaping):
     def follow(self, a: Agent, args):
         """Make the way in a.via. -> (steps made, what a fall did to you). A tile that isn't straight ahead, or too
         far, or behind a wall: the way is given up (the screen then comes back to where the world has you)."""
-        steps, j = 0, True if args.get("jump") else None         # (`jump`: the screen walks up steps by itself: auto-jump)
+        steps, j = 0, True if args.get("jump") else None         # (`jump`: the screen walks up steps by itself: auto-jump; or the tile's own, up)
         while a.via:
-            if len(a.via[0]) > 3:                                # a jump through the air (leaping.py): made, or given up
+            if flight(a.via[0]):                                 # a jump through the air (leaping.py): made, or given up
                 n, fall = yield from self.fly(a)
                 steps += n
                 if fall:
                     return steps, fall
                 continue
-            x, y, n = a.via[0]
+            x, y, n, up = a.via[0]                               # (up: the walk or stop that said it had `jump`. A stop up a step, replaced at once by the leap off its top, #368)
             dx, dy = x - a.x, y - a.y
             if not dx and not dy:
                 a.via.pop(0)
                 a.via_done = n
                 continue
             to = (a.x + (dx > 0) - (dx < 0), a.y + (dy > 0) - (dy < 0))
-            if (dx and dy) or abs(dx) + abs(dy) > VIA_FAR or not self.can_go(a, *to, j):
+            if (dx and dy) or abs(dx) + abs(dy) > VIA_FAR or not self.can_go(a, *to, j or up):
                 self.via_drop(a)
                 break
             yield from self.pace(a, args)
-            if not self.can_go(a, *to, j):
+            if not self.can_go(a, *to, j or up):
                 self.via_drop(a)
                 break
-            if j:
+            if j or up:
                 a.spring[to] = self.tick
             fall = self.move(a, *to)
             steps += 1

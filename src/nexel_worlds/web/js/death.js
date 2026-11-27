@@ -10,11 +10,21 @@ let deathTimer = null;
 const WHY_DIED = {killed: (w) => `killed by ${w.name}`, bitten: (w) => `bitten by ${w.name || "a " + label(w.kind).toLowerCase()}`,
   burnt: () => "burnt by a hob", fell: () => "fell", starvation: () => "starved", fire: () => "burnt in a fire", admin: () => "struck down", dev: () => "struck down"};
 const whyDied = (e) => (Object.hasOwn(WHY_DIED, e.code) ? WHY_DIED[e.code] : () => "fell")(e.who || {});   // (its own codes only: one from the wire such as "constructor" is not a method of Object)
+// ...AND A LINE ON IT, said to everyone (#383): the server picked it (death_lines.py: e.line, [pool, i], and the item it
+// names), the words are the rules' table. `mark` puts the names in the chat's bold. "": none (a server from before it)
+function deathLine(e, mark = (n) => n) {
+  const [pool, i] = e.line || [], t = RULES.death_lines && Object.hasOwn(RULES.death_lines, pool) ? RULES.death_lines[pool][i] : null;
+  if (!t) return "";
+  const w = e.who || {}, it = e.item ? label(e.item).toLowerCase() : "";
+  const fill = {name: mark(e.name), who: mark(w.name || (w.kind ? "a " + label(w.kind).toLowerCase() : "someone")), item: it, Item: it.replace(/^./, (m) => m.toUpperCase())};
+  return t.replace(/\{(\w+)\}/g, (m, k) => (Object.hasOwn(fill, k) ? fill[k] : m));
+}
 function showDeath(e) {
   const v = $("deathveil"), p = $("death");
   const skull = $("deathskull").getContext("2d"), [c, r] = EMOTE.skull;
   skull.imageSmoothingEnabled = false; skull.clearRect(0, 0, 32, 32); skull.drawImage(IMG.emoji, c * 32, r * 32, 32, 32, 0, 0, 32, 32);
   $("deathcause").textContent = whyDied(e).replace(/^./, (m) => m.toUpperCase()) + ".";
+  $("deathquip").textContent = deathLine(e);
   const loot = $("deathloot"); loot.innerHTML = "";
   const items = Object.entries(e.dropped || {}).filter(([, n]) => n > 0);
   for (const [name, n] of items.slice(0, 8)) {

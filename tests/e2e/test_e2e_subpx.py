@@ -179,6 +179,10 @@ def test_a_bubble_looks_the_same_on_every_step_of_a_walk(browser, server, dpr):
 # The land's own canvas made a checker of art px, the frames stopped, all else hidden: the widths of its px on the screen
 STOP = "(() => { window.__stop = frame; frame = () => {}; for (const e of document.body.children) if (e !== HdView.el) e.style.visibility = 'hidden'; return 1; })()"   # (the frame already asked for is the last: it asks for none; nothing over the land's canvas)
 GO = "(() => { frame = window.__stop; for (const e of document.body.children) e.style.visibility = ''; requestAnimationFrame(frame); return 1; })()"
+# the land's canvas drawn at the zoom there is now: as many art px as the screen holds at it, each artPx() of the screen's px (hd_view.js fit, on a frame the look draws; on one
+# it does not draw (its context lost, held: the last picture kept) it is the last zoom's: zoom 3's size was read after the glide had ended, #391)
+SIZED = "HdLook.live && HdView.el.width === Math.ceil(cv.width / (artPx() * DPR)) && HdView.el.style.width === HdView.el.width * artPx() + 'px'"
+STATE = "JSON.stringify({lost: HdLook.lost, held: HdLook.held, live: HdLook.live, n: HdLook.n, el: [HdView.el.width, HdView.el.style.width], cv: cv.width, zoom, art: artPx(), DPR})"   # (a red says what was shown)
 CHECKER = """() => { const el = HdView.el, g = el.getContext('2d'); g.setTransform(1, 0, 0, 1, 0, 0);
   for (let j = 0; j < el.height; j++) for (let i = 0; i < el.width; i++) { g.fillStyle = (i + j) % 2 ? '#000' : '#fff'; g.fillRect(i, j, 1, 1); }
   return [el.width, el.height, zoom, artPx(), devicePixelRatio]; }"""
@@ -206,7 +210,7 @@ def test_an_art_px_is_a_whole_number_of_the_screen_s_px_after_a_zoom_too(browser
             if step:
                 g.js(GO)
                 g.page.keyboard.press(step)
-                g.until("zoom === 4 && !ZOOM.busy && !HdView.el.getAnimations().length && !cv.getAnimations().length")
+                g.until("zoom === 4 && !ZOOM.busy && !HdView.el.getAnimations().length && !cv.getAnimations().length && " + SIZED)
                 g.frames(3)
             g.js(STOP)
             g.frames(3)
@@ -216,7 +220,7 @@ def test_an_art_px_is_a_whole_number_of_the_screen_s_px_after_a_zoom_too(browser
             assert abs(u * d - k) < 1e-6, (z, u, d)
             for row in (int(40 * d), int(150 * d)):
                 r = runs(g, png, row)
-                assert len(r) > 20 and set(r) == {k}, (z, d, k, sorted(set(r)), r[:12])   # every art px k px wide
+                assert len(r) > 20 and set(r) == {k}, (z, d, k, sorted(set(r)), r[:12], g.js(STATE))   # every art px k px wide
         assert not g.errors
     finally:
         page.close()
