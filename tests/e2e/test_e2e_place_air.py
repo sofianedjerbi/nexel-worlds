@@ -38,7 +38,7 @@ def test_the_pointer_over_the_drop_is_on_the_plane_of_your_level_with_a_block_in
     on the land the pointer shows, as it was (there, none: the air before the cliff)."""
     x, y = terrace(game)
     m = game.js(f"HdLook.screenOf({x + 2.5}, {y + .5}, 6)")
-    game.page.mouse.move(m[0], m[1]); game.frames(3)
+    game.page.mouse.move(m[0], m[1]); game.rest(frames=3)
     q = game.js(f"(() => {{ const q = tileAtScreen({m[0]}, {m[1]}); return [q.x, q.y, clickIntent(q, 'use').it.z]; }})()")
     assert q == [x + 2, y, 6], (q, game.js(f"(() => {{ const p = HdLook.pick({m[0]}, {m[1]}), s = myPos(); return [p && [p.x, p.y, topAt(p.x, p.y)], s && myZ(s.x, s.y)]; }})()"))   # (what the pointer shows past the drop, and your level)
     # (nothing in hand and the read in one task: each observation takes in hand what the hand's slot holds (ui.js handSync),

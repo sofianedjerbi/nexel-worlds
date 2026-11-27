@@ -1,14 +1,26 @@
 """A phone's taps and its HUD (touch.js, ui.js hudFit, bag.js): a window opened by a tap stays open (the tap's own click
 went to the "x" that had come up under the finger: Items and Craft opened and shut at once, held upright); on its side
 the HUD is one band, 14% of the height at most, a slot 40 px at least; the inventory's label, upright, is on no cell."""
+from clock import stepped_wait
 from test_e2e_touch import touch_game
 
 BOX = "(s) => { const b = document.querySelector(s).getBoundingClientRect(); return [b.left, b.top, b.width, b.height]; }"
 
 
+CLICKS = "(() => { if (!window.__clicks) { window.__clicks = {n: 0}; addEventListener('click', () => { window.__clicks.n++; }, true); } return window.__clicks.n; })()"
+
+
 def tap(g, sel):
+    """A finger's tap on `sel` -> the clicks the page had seen before it."""
+    n = g.js(CLICKS)
     x, y, w, h = g.js(BOX, sel)
     g.page.touchscreen.tap(x + w / 2, y + h / 2)
+    return n
+
+
+def clicked(g, n):
+    """Until the click the browser sends after a tap has come (the page saw more than `n`)."""
+    g.until(f"window.__clicks.n > {n}")
 
 
 def test_a_tap_opens_a_window_and_it_stays_open(browser, server):
@@ -17,9 +29,9 @@ def test_a_tap_opens_a_window_and_it_stays_open(browser, server):
         try:
             for sel, shown, shut in (("#tBag", "$('bag').style.display === 'block'", "#bagclose"), ("#tCraft", "$('craft').style.display === 'block'", "#craftclose"),
                                      ("#tMenu", "getComputedStyle($('menu')).display !== 'none'", None), ("#goalhint", "getComputedStyle($('goals')).display === 'block'", None)):
-                tap(g, sel)
+                n = tap(g, sel)
                 g.wait(shown, 2000)
-                g.sleep(400)                                   # (the click that follows the touch has come by now)
+                clicked(g, n)                                  # (the click that follows the touch has come)
                 assert g.js(shown), (w, sel)
                 if shut:                                       # its own "x", under the same finger held upright: a tap of its own shuts it
                     tap(g, shut)
@@ -52,9 +64,9 @@ def test_upright_the_inventorys_label_is_on_no_cell(browser, server):
     ctx, g = touch_game(browser, server, 390, 844)
     try:
         g.give(axe=1, wood=3)
-        tap(g, "#tBag")
+        n = tap(g, "#tBag")
         g.wait("$('bag').style.display === 'block'", 2000)
-        g.sleep(300)
+        clicked(g, n)                                                 # (the tap's own click come, before the next tap)
         tap(g, "#bagbar .cell[draggable=true]")                      # (a cell with a thing: the first, the hand, is kept empty)
         g.wait("$('bagnote').innerText.includes('Axe') || $('bagnote').innerText.includes('Wood')", 2000)
         note, bag = g.js(BOX, "#bagnote"), g.js(BOX, "#bag")
@@ -78,7 +90,7 @@ def test_the_debug_screen_is_the_only_readout_and_stands_over_the_top_left_with_
         g.js("F3.set(false)")
         hold = "(k) => $('goalhint').dispatchEvent(new PointerEvent(k, {bubbles: true, pointerType: 'touch'}))"
         g.js(hold, "pointerdown")
-        g.sleep(700)                                           # (half a second held)
+        stepped_wait(g.page, 700)                              # (half a second held, on the page's own clock)
         g.js(hold, "pointerup")
         g.wait("F3.on && $('f3').innerText.includes('fps') && $('f3').innerText.includes('HD look')", 6000)
         box = lambda s: g.js(BOX, s)
