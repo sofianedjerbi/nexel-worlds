@@ -53,6 +53,7 @@ def backward_jumps(rec, axis, sign):
     return max(((rec[k - 1][i] - rec[k][i]) * sign for k in range(1, len(rec))), default=0)
 
 
+@pytest.mark.stepped   # (a pace read off the frames: on a runner's frames of 150 ms and more every frame was the page catching up, none at its own pace, "too few frames"; on the page's own 1/60 s frames it reads the same anywhere, #47)
 def test_walk_and_sprint_speeds(game):
     # (on a meadow of its own: 7.5 tiles east at a walk, then 15 west at a sprint. It walked over whatever the test before
     # it left, water at half the pace or a step to jump, and read 2.7 to 4 tiles a second now and then: #28)
