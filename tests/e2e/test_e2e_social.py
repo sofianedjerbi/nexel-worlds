@@ -205,7 +205,7 @@ def test_an_ai_player_talks_in_the_chip_voice_a_person_babbles(game, friend):
       ws.onopen = () => ws.send(JSON.stringify({id: 1, op: "hello", name: "Rusty", token: "t", persona: "a quiet builder"})); })()""")
     game.wait("window.rustyAt", timeout=8000)
     x, y = game.js("rustyAt")
-    game.rpc("dev_teleport", x=x + 1, y=y)
+    game.rpc("dev_teleport", x=x + 1, y=y); game.arrive()                # (your page hears from where it has you: until then the old place, out of a say's 12 tiles, a shout's 30 in)
     friend.rpc("dev_teleport", x=x + 2, y=y)
     game.wait("[...ents.values()].some((q) => q.e && q.e.name === 'Rusty')", timeout=8000)
     game.press("ArrowLeft", 60)                                         # (a key: the page's sound wakes)
