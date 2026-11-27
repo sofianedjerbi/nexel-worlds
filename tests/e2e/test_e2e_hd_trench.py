@@ -6,6 +6,8 @@ floor, you are not; the plants over your room go and come over a few frames, not
 never drawn as earth brown, and no px is drawn from one on ten walks down the stair and back; on grey stone the hole has
 a darker lip."""
 
+import pytest
+
 from test_e2e_hd_stair import deep_room, spot, stair
 from test_e2e_hd_sun import hd
 from test_e2e_hd_window import PX
@@ -90,6 +92,7 @@ STATE = "(() => { const p = ents.get('agent' + myId); return {pos: myPos(), at: 
 # the eye on you: your screen point across the middle of the screen (CSS px)
 ON_YOU = "(() => { const p = myPos(), m = p && HdLook.screenOf(p.x + .5, p.y + .5, myZ(p.x, p.y)); return !!m && Math.abs(m[0] - innerWidth / 2) < innerWidth * .15; })()"
 
+@pytest.mark.timeout(1200)   # (ten walks there and back, about 4200 frames: at 200 ms each 850 s, and a walk up that never gets there adds its cap's 1200 frames, 240 s, and its wait: past CI's 300 s, so a slow runner ends on the cap's message, and this guard is only for a hang)
 def test_no_px_is_drawn_from_a_paint_that_is_not_there_on_ten_walks_down_the_stair_and_back(browser, server):
     g = hd(browser, server)
     g.rpc("dev_time", phase=.3)
@@ -98,10 +101,9 @@ def test_no_px_is_drawn_from_a_paint_that_is_not_there_on_ten_walks_down_the_sta
     for _ in range(10):
         for key, done in (("ArrowRight", f"myPos().x >= {x + 18}"), ("ArrowLeft", f"myPos().x <= {x}")):
             g.page.keyboard.down(key)
-            if key == "ArrowLeft":                                               # up the steps: Space at each (walking into one stops you)
-                for _ in range(200):
-                    if g.js(done):
-                        break
+            if key == "ArrowLeft":                                               # up the steps: Space at each (walking into one stops you), till you are up:
+                n0 = g.js("__n")                                                 # 1200 frames drawn at the most (20 s at 60 a second), not a count of
+                while not g.js(done) and g.js("__n") - n0 < 1200:                # presses: how many frames a press stood for was the machine's rhythm
                     g.page.keyboard.press("Space")
                     g.frames(1)                                                  # (a press a frame drawn, not one every 100 ms of the machine's: #47)
             g.wait(done, timeout=20000)
