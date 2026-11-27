@@ -6,7 +6,7 @@ from helpers import clear, run
 from test_wild import put
 
 from nexel_worlds.sim import Creature, sec
-from nexel_worlds.sim.spawning import CAP_R, LIMITS, PASSIVE, ROAMING, SPAWN_MIN
+from nexel_worlds.sim.spawning import CAP_R, LIMITS, PASSIVE, ROAMING, SIM_R, SPAWN_MIN
 
 ANIMALS = dict(LIMITS)[PASSIVE]
 
@@ -121,3 +121,14 @@ def test_a_world_saved_while_hens_bred_without_end_is_thinned_once(world):
     put(sim, "chicken", a.x + 30, a.y + 30)
     sim.thin_wild(sim.world.store)
     assert len(sim.creatures) == n + 1                                 # only once
+
+
+def test_chicks_that_wandered_past_the_cap_still_count_for_the_next_egg(world):
+    """#405: the hens' limit counted a player's animals within CAP_R alone: chicks hatched by you that wandered off past
+    it stopped counting, and more hatched, without end. They count while they are in the land simulated round you (its
+    ticking chunks, past SIM_R)."""
+    sim, a = world
+    clear(sim, a, r=SIM_R + 10)
+    for i in range(ANIMALS):                                      # as many as the limit, all past CAP_R and SIM_R, in land that ticks
+        put(sim, "chicken", a.x + SIM_R + 4 + i % 3, a.y + i // 3)
+    assert not sim.room_for("chick", a.x + 1, a.y), [(c.x - a.x, c.y - a.y) for c in sim.creatures.values()]   # an egg by you: no room

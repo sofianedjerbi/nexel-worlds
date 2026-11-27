@@ -105,11 +105,17 @@ class Spawning:
     def count_near(self, a: Agent, kinds) -> int:
         return sum(1 for c in self.creatures.values() if c.kind in kinds and max(abs(c.x - a.x), abs(c.y - a.y)) <= CAP_R)
 
+    def count_ticking(self, a: Agent, kinds) -> int:
+        """The kinds in the land simulated round a (its ticking chunks: ticking_chunks): who wanders there lives on."""
+        r, ax, ay = SIM_R // CHUNK + 1, a.x // CHUNK, a.y // CHUNK
+        return sum(1 for c in self.creatures.values() if c.kind in kinds and abs(c.x // CHUNK - ax) <= r and abs(c.y // CHUNK - ay) <= r)
+
     def room_for(self, kind: str, x: int, y: int) -> bool:
-        """May one more of this kind be born here: someone awake is near, and everyone near is under their limit."""
+        """May one more of this kind be born here: someone awake is near, and everyone near is under their limit, counted
+        over the whole land simulated round them (count_ticking): one born by you that wandered past CAP_R still counts (#405)."""
         kinds, most = next((g for g in LIMITS if kind in g[0]), ((kind,), 0))
         near = [a for a in self.agents.values() if a.online and max(abs(x - a.x), abs(y - a.y)) <= CAP_R]
-        return bool(near) and all(self.count_near(a, kinds) < most for a in near)
+        return bool(near) and all(self.count_ticking(a, kinds) < most for a in near)
 
     def in_sight(self, x: int, y: int) -> bool:
         """Someone may be looking at this tile: it is on a screen (the rectangle a screen watches, and EDGE tiles
