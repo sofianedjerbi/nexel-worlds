@@ -14,11 +14,12 @@ from .nyxwing import Nyxwing
 from .gust import Gust
 from .hob import Hob
 from .skeleton import Skeleton
+from .redknee import Redknee
 from .stump import Bloom, Stump
 from .entities import CREATURES, ref
 
 WILD = ("tusker", "pincer", "strawman", "wisp", "wyrm", "gustling", "grumblestump", "snapbloom", "mossback", "sporeling",
-        "nyxwing", "hob", "skeleton")   # (mossback and sporeling: boss.py; nyxwing: nyxwing.py; the hob is no enemy, an ally: hob.py; skeleton: skeleton.py)
+        "nyxwing", "hob", "skeleton", "redknee")   # (mossback and sporeling: boss.py; nyxwing: nyxwing.py; the hob is no enemy, an ally: hob.py; skeleton: skeleton.py; redknee: redknee.py)
 TUSKER_SEES, TUSKER_WINDUP, TUSKER_RUN = 4, 0.7, 8        # tiles; seconds pawing the ground; tiles it charges
 TUSKER_STUN, TUSKER_REST = 2.5, 3.0                       # seconds stunned after ramming something; between charges
 # A tusker that is hit is angry for a while (it only went on as before: a charge, a long rest, whoever was nearest).
@@ -42,8 +43,8 @@ BITE_HIGH = 4            # layers: how far up or down a bite reaches (two tiles:
 SEES_HIGH = 4            # layers: who is further over it or under it than that is not seen, nor gone for
 
 
-class Wild(Gust, Stump, Bloom, Hob, Boss, Nyxwing, Skeleton):
-    """Simulation mixin: how the wild enemies behave (and, from Boss, Old Mossback and its sporelings; and the gustling, the grumblestump, the snapbloom, the hob and the skeleton from theirs)."""
+class Wild(Gust, Stump, Bloom, Hob, Boss, Nyxwing, Skeleton, Redknee):
+    """Simulation mixin: how the wild enemies behave (and, from Boss, Old Mossback and its sporelings; and the gustling, the grumblestump, the snapbloom, the hob, the skeleton and the redknee from theirs)."""
 
     def step_wild(self, c, online):
         getattr(self, "_step_" + c.kind)(c, online)

@@ -235,6 +235,11 @@ function onEvent(e) {
     sfx("die");
     showDeath(e);                                     // (death.js)
   }
+  if (e.type === "silk") {                                // a redknee's pounce pinned someone: threads round them, and you can't step
+    burst(e.x, e.y - .3, "silk", 16, {up: .5, spread: 1.1, g: 1.5, life: e.seconds});
+    sfx("silk", e.x, e.y);
+    if (e.name === me) silkUntil = performance.now() + e.seconds * 1000;     // (walk.js)
+  }
   if (e.type === "creature_died" || e.type === "fade") {   // it flashes, lifts and fades away in a puff of smoke
     const key = e.kind + e.id, p = ents.get(key) || (recentlyGone.get(key) || {}).p;
     bossDied(e);                                          // (its bar shatters: bossbar.js)
