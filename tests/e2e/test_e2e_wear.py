@@ -26,6 +26,9 @@ def test_dressing_up(game):
     game.until(f"(() => {{ const q = [...ents.values()].find((q) => q.e && q.e.kind === 'agent' && q.e.id === myId); return q && q.e.worn && Object.keys(q.e.worn).length === {len(outfit)}; }})()")   # (and the next tick told the page)
     worn = me(game)["worn"]
     assert worn == {"head": "straw_hat", "top": "overalls", "pants": "denim", "shoes": "leather_boots", "effect": "flame_charm"}
+    # (and the panel drawn from it: wear_items.js draws #wearing from meObs.self.wearing on its own 250 ms round, not with the
+    # tick that told ents: read the frame after, it had 4 of the 5 (#47, job 140391628734))
+    game.until(f"Object.keys((meObs && meObs.self.wearing) || {{}}).length === {len(outfit)} && document.querySelectorAll('#wearing .slot').length === {len(outfit)}")
     assert game.js("document.querySelectorAll('#wearing .slot').length") == 5
     sheet = game.js("(() => { const s = wornSheet(agentTint(me), [...ents.values()].find((q) => q.e && q.e.id === myId).e.worn); return [s.width, s.height, s.edges.length]; })()")
     assert sheet == [384, 2112, 352]                          # every frame of the sheet dressed
