@@ -4,6 +4,7 @@ the server: sim/storeys.py)."""
 import pytest
 
 from tap import step
+from waits import QUIET
 
 SLOT = "(n) => String((slots.indexOf(n) + 1) % 10)"           # the key of the bar's slot that holds it
 # the blocks at height z over w x h tiles: p planks, r roof, or the char of what stands on the block
@@ -77,7 +78,7 @@ def test_a_second_floor_is_built_and_climbed_by_keys_alone(game):
     game.press("e", 700)
     assert cells(game, x + 4, y - 4, 1, 1, 3) == "W/" and game.js(f"combAt({x + 4}, {y - 4})") == "n"      # (on the floor: the room under it is as it was)
     game.hold(["ArrowRight"], 90)
-    game.sleep(450)
+    game.until(f"({QUIET})()"); game.tick()                   # (the step answered, and a tick after: you would be on the other side)
     assert game.server()["x"] == x + 3                          # it shuts the way
     game.press("x")                                            # and comes down again (by hand: two seconds)
     game.wait(f"({CELLS})([{x + 4}, {y - 4}, 1, 1, 3]) === 'p/'", 8000)
@@ -173,7 +174,7 @@ def test_earth_raises_the_ground_and_planks_go_on_from_a_floor(game):
     game.press("e", 700)
     assert game.js(f"[topAt({x + 1}, {y}), combAt({x + 1}, {y})]") == [1, "."] and game.inv("dirt") == 5       # up a layer, its grass on it
     game.press("Space", 0)                                     # a jump up onto it (Space: walking into it stops you)
-    game.sleep(500)
+    game.until(f"({QUIET})()")                                 # (the jump done and answered, you standing where you went)
     assert (game.server()["x"], game.server()["z"]) == (x + 1, 1)
     game.press("b")                                            # in build mode: a row of three, north of you
     game.js(f"Build.S.at = {{x: {x}, y: {y - 2}}}")
