@@ -116,7 +116,7 @@ def test_out_of_your_own_shaft_by_keys(game):
     hp = game.server()["hp"]
     game.hold(["ArrowLeft"], 90)
     game.wait(f"myAt && myAt.x === {x - 1} && myAt.z === 0", 6000)
-    game.sleep(300)
+    game.still()                                              # (the world on your tile with you: not 300 ms)
     s = game.server()
     assert (s["x"], s["y"], s["z"], s["hp"]) == (x - 1, y, 0, hp) and not game.errors
 

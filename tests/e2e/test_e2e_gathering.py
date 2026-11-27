@@ -1,6 +1,5 @@
 """Gathering: picking plants, chopping trees, mining, stumps, regrowth, and aiming at things with keys and mouse."""
 
-import time
 
 SCREEN = "([x, y]) => { const r = cv.getBoundingClientRect(), a = HdLook.screenOf(x + .5, y + .5, topAt(x, y)); return [r.left + a[0], r.top + a[1]]; }"      # (the middle of a tile's top, as the HD look draws it)
 
@@ -81,10 +80,7 @@ def test_a_click_picks_on_the_move(game):
       for (const t of ["mousedown", "mouseup"]) cv.dispatchEvent(new MouseEvent(t, {{clientX: x, clientY: y, button: 0, bubbles: true}}));
       done(1); }}))""")
     toast = game.toast()
-    for _ in range(40):                                      # (its answer: the server's word, however late it comes)
-        if game.inv("flower") >= 1:
-            break
-        game.sleep(50)
+    game.until_world(lambda s: s["inventory"].get("flower", 0) >= 1)        # (its answer: the server's word, however late it comes)
     moving = game.js("walking !== null")
     game.page.keyboard.up("d")
     assert game.inv("flower") >= 1 and moving, (game.inv("flower"), moving, toast)   # ...picks it without stopping you
@@ -94,10 +90,12 @@ def test_chop_by_hand_and_with_an_axe(game):
     game.stamp(1, 0, ["T"])
     game.face(1, 0)
     assert "Chop tree (slow)" in game.actions()                # (a verb and a thing: "interaction sentences are wayyyy too long")
-    t0 = time.time()
+    # (by the world's ticks, not the machine's seconds: a loaded runner's second is not the game's)
+    tick = lambda: game.rpc("ping")["tick"]
+    t0 = tick()
     game.press("x", 0)
     game.wait(f"combAt({game.pos()[0] + 1}, {game.pos()[1]}) === 't'", 8000)
-    by_hand = time.time() - t0
+    by_hand = tick() - t0
     assert game.inv("wood") == 3
     game.press("x", 0)                                   # the stump: one more wood
     game.wait(f"combAt({game.pos()[0] + 1}, {game.pos()[1]}) === '.'", 8000)
@@ -106,10 +104,10 @@ def test_chop_by_hand_and_with_an_axe(game):
     game.hold_item("axe")
     game.stamp(1, 0, ["T"])
     assert "Chop tree" in game.actions() and "(slow)" not in game.actions()
-    t0 = time.time()
+    t0 = tick()
     game.press("x", 0)
     game.wait(f"combAt({game.pos()[0] + 1}, {game.pos()[1]}) === 't'", 8000)
-    assert time.time() - t0 < by_hand / 2
+    assert tick() - t0 < by_hand / 2
 
 
 def test_bushes_and_fruit_trees_stay_and_bear_again(game):
@@ -122,7 +120,8 @@ def test_bushes_and_fruit_trees_stay_and_bear_again(game):
     game.press("e", 1500)
     assert game.tile(-1, 0) == "U" and game.inv("fruit") == 3
     game.rpc("dev_skip", seconds=250)
-    game.sleep(800)
+    x, y = game.pos()
+    game.settle(f"combAt({x + 1}, {y}) === 'b' && combAt({x - 1}, {y}) === 'F'", timeout=8000)   # (until the page has them back)
     assert game.tile(1, 0) == "b" and game.tile(-1, 0) == "F"
 
 
@@ -131,7 +130,7 @@ def test_clicking_a_tree_crown_means_the_tree(game):
     x, y = game.pos()
     sx, sy = game.js(SCREEN, [x + 2, y])                     # the tile above the trunk, under the crown
     game.page.mouse.move(sx, sy)
-    game.sleep(200)
+    game.settle("$('hover').innerText.includes('Chop tree')")              # (the hint drawn: not 200 ms)
     assert "Chop tree" in game.js("$('hover').innerText")
     game.page.mouse.click(sx, sy)
     game.wait(f"combAt({x + 2}, {y + 1}) === 't'", 9000)
@@ -140,7 +139,8 @@ def test_clicking_a_tree_crown_means_the_tree(game):
 def test_too_far_is_too_far(game):
     game.stamp(4, 0, ["M"])
     click_tile(game, 4, 0)
-    game.sleep(300)
+    game.settle("$('toast').style.display === 'block' && $('toastt').innerText.includes('Too far')")
+    game.still()
     assert "Too far" in game.toast() and game.tile(4, 0) == "M"
     assert game.pos() == (game.server()["x"], game.server()["y"])   # and nothing walked you there
 
@@ -153,7 +153,7 @@ def test_what_is_up_a_cliff_is_out_of_reach(game):
     game.clear_area(8)
     game.stamp(0, -1, ["f"], levels=["6"])
     game.face(0, -1)
-    game.sleep(500)
+    game.rest()                                               # (the land and its hints drawn, at rest: not 500 ms)
     assert not any("flower" in r[1].lower() for r in game.js("availableActions()"))
     game.press("e", 400)
     assert game.tile(0, -1) == "f" and "Out of reach" not in game.js("$('toastt').textContent") and "reach" not in game.actions()

@@ -10,10 +10,7 @@ def test_eating_takes_three_bites_and_stops_when_full(game):
     game.hold_item("bread")
     game.press("e", 0)
     game.wait("myAside && myAside.tool === 'eat' && biteIcon('bread', 1) !== null", 3000)   # (asked as it begins: 450 ms on, on a runner, the 0.9 s meal was over)
-    for _ in range(50):                                        # (until the world has it: the meal's end, then its word)
-        if game.server()["hunger"] == hunger0 + 10:
-            break
-        game.sleep(100)
+    game.until_world(lambda s: s["hunger"] == hunger0 + 10)    # (until the world has it: the meal's end, then its word)
     assert game.server()["hunger"] == hunger0 + 10            # one bread: five pieces
     game.rpc("dev_needs", hunger=20)
     while game.server()["hunger"] < 20 and game.inv("bread"):
@@ -33,7 +30,7 @@ def test_eating_your_hands_are_full(game):
     game.give(bread=1, stone=1)
     game.rpc("dev_needs", hunger=8)
     game.act("drop", item="stone", n=1)                       # something to pick up, under you
-    game.sleep(300)
+    game.settle("groundItems.length > 0")                      # (on the ground as the page sees it: not 300 ms)
     game.face(1, 0)
     game.hold_item("bread")
     game.js("(() => { window.__asked = []; const o = rpc; rpc = function (op, d) { if (op === 'act') __asked.push(d.tool); return o(op, d); }; return 1; })()")
@@ -111,12 +108,12 @@ def test_you_eat_while_you_walk(game):
 
 def test_hit_a_chicken_while_walking_and_it_runs(game):
     hen = game.spawn("chicken", 2, -1, still=10 ** 6)
-    game.sleep(400)
+    game.wait(f"ents.has('chicken{hen}')", 4000)
     x0, y0 = game.pos()
     game.page.keyboard.down("d")
-    game.sleep(150)
+    game.wait(f"walking !== null && ents.get('agent' + myId).x >= {x0 + .25}", 4000)   # (on the move: not 150 ms)
     game.press("x", 0)                                       # X on the hen: a punch, and no stopping
-    game.sleep(250)
+    game.wait(f"ents.get('chicken{hen}').e.hp < 10", 4000)  # (until it is hit: not 250 ms)
     still_walking = game.js("walking !== null")
     game.page.keyboard.up("d")
     assert still_walking
@@ -136,13 +133,12 @@ def test_killing_leaves_a_poof_and_drops(game):
     game.give(sword=1)
     game.hold_item("sword")
     hen = game.spawn("chicken", 1, 0, still=10 ** 6)
-    game.sleep(400)
+    game.wait(f"ents.has('chicken{hen}')", 4000)
     game.face(1, 0)
     game.press("x", 300)
-    game.sleep(200)
+    game.settle(f"!ents.has('chicken{hen}')")
     assert game.js(f"!ents.has('chicken{hen}')") and game.js("puffs.length + dying.length > 0")
-    game.sleep(800)
-    game.sleep(1200)
+    game.until_world(lambda s: s["inventory"].get("meat", 0) >= 1)      # (dropped, then drawn into your bag: not 2 s)
     assert game.inv("meat") >= 1                              # meat (and an egg) dropped, then drawn into your bag
 
 
@@ -157,11 +153,12 @@ def test_dying_wakes_you_by_your_bed(game):
     bed = game.server()["spawn"]
     game.rpc("dev_teleport", x=bed[0] + 30, y=bed[1]); game.arrive()
     game.rpc("dev_damage", n=500)
-    game.sleep(1500)
+    game.until_world(lambda s: s["deaths"] == 1)
+    game.settle("$('death').style.display === 'block'")
     s = game.server()
     assert s["deaths"] == 1 and abs(s["x"] - bed[0]) + abs(s["y"] - bed[1]) <= 3
     assert game.js("$('death').style.display") == "block" and "bed" in game.js("$('deathwake').textContent")   # the death screen
-    game.sleep(3000)                                         # it waits for you...
+    game.sleep(3000)                                         # it waits for you... (a window in which nothing must happen: so at any frame's length)
     assert game.js("$('death').style.display") == "block"
     game.press("q", 700)                                     # ...until a key
     assert game.js("$('death').style.display") == "none"
@@ -176,11 +173,11 @@ def test_fire_burns_to_ash_and_ash_grows_back(game):
     game.press("e", 800)
     assert game.js("fireAt.length") >= 1
     game.rpc("dev_skip", seconds=20)
-    game.sleep(800)
     x, y = game.pos()
+    game.settle(f"gndAt({x + 1}, {y}) === \"'\"", timeout=8000)    # (until the page has the ash)
     assert game.js(f"gndAt({x + 1}, {y})") == "'"            # ash
     game.rpc("dev_skip", seconds=250)
-    game.sleep(800)
+    game.settle(f"gndAt({x + 1}, {y}) === '.'", timeout=8000)
     assert game.js(f"gndAt({x + 1}, {y})") == "."
 
 
@@ -192,7 +189,8 @@ def test_mining_ore_sends_orbs_and_fills_the_bar(game):
     game.press("x", 0)
     game.wait("orbs.length > 0", 6000)                        # orbs burst out of the rock...
     game.wait("orbs.length === 0", 6000)                      # ...and fly into you
-    game.sleep(800)
+    game.until_world(lambda s: s["xp"] == 4)
+    game.settle("meObs.self.xp === 4")                       # (the bar drawn from the page's own word on you)
     assert game.server()["xp"] == 4
     w, fill = game.js("$('xpbar').dataset.sig").split(",")[:2]
     assert int(fill) / int(w) > .5                           # 4 of 7 to the first level
@@ -204,11 +202,12 @@ def test_loot_next_to_you_comes_to_you(game):
     hen = game.spawn("chicken", 1, 1, still=10 ** 6)
     game.give(sword=1)
     game.hold_item("sword")
-    game.sleep(400)
+    game.wait(f"ents.has('chicken{hen}')", 4000)
     x, y = game.pos()
     game.js(f"act('attack', {{target: {hen}, with: 'sword'}})")
     game.wait("magnets.length > 0", 4000)                     # the meat and egg slide over
-    game.sleep(600)
+    game.until_world(lambda s: s["inventory"].get("meat", 0) == 1)
+    game.still()
     assert game.inv("meat") == 1 and game.pos() == (x, y)
 
 
@@ -219,7 +218,7 @@ def test_ten_hearts_and_ten_pieces_in_halves_and_no_sprint_when_hungry(game):
     assert game.js("[HP_MAX, FOOD_MAX, SPRINT_FOOD]") == [20, 20, 6]
     game.clear_area(12)                                     # (a meadow to run on: the walk ran into what lay east and ended, walking null)
     game.rpc("dev_needs", hp=13, hunger=7)
-    game.sleep(900)
+    game.settle("meObs.self.hp === 13 && meObs.self.hunger === 7")   # (the bars drawn from the page's word on you: not 900 ms)
     lit = """(id) => { const c = $(id), g = c.getContext('2d'), n = c.width / 99;        // each icon: 2 as the first (full), 0 as the last (empty), 1 neither
       const px = (i) => g.getImageData(i * 10 * n, 0, 9 * n, c.height).data.join(), full = px(0), none = px(9);
       return [...Array(10)].map((_, i) => px(i) === full ? 2 : px(i) === none ? 0 : 1); }"""
@@ -228,15 +227,15 @@ def test_ten_hearts_and_ten_pieces_in_halves_and_no_sprint_when_hungry(game):
     assert game.js("$('status').textContent") == ""
     game.page.keyboard.down("Shift")
     game.page.keyboard.down("d")
-    game.sleep(400)
+    game.settle("!!walking && walking.run === true")
     assert game.js("walking && walking.run") is True                             # fed enough: a sprint
     game.rpc("dev_needs", hunger=6)
-    game.sleep(1100)
+    game.settle("!!walking && walking.run === false && $('status').textContent.includes('sprint')")
     assert game.js("walking && walking.run") is False and "sprint" in game.js("$('status').textContent")   # ...and no more, the keys still held
     game.page.keyboard.up("d")
     game.page.keyboard.up("Shift")
     game.rpc("dev_needs", hunger=0)
-    game.sleep(900)
+    game.settle("$('status').textContent.includes('Starving')")
     assert "Starving" in game.js("$('status').textContent")
 
 
