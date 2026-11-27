@@ -135,13 +135,18 @@ def test_walking_off_a_high_ledge_into_water_the_jump_s_fall_takes_you_down(game
         # (__lp: how long the jump's fall drew you, ms. It counted frames, more than 10: on the runners a frame is 70 to
         # 130 ms, and a fall of six layers four of them)
         game.js("(() => { window.__lp = 0; let t = null; const f = (n) => { if (Leap.on()) { if (t !== null) __lp += n - t; t = n; } if (myAt.z > 5.5 || Leap.on()) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; })()")
-        game.page.keyboard.down("d"); game.wait("myAt.z < .5", 4000); t = game.rpc("ping")["tick"]
+        # (the world's own ticks, each as it is said to the page: the first that has you on the ledge's last tile, the first
+        #  that has you down. From the edge it is a stride, the fall of six levels (about 0.7 s) and a frame or two of the
+        #  page's word, about 1.2 s even on frames of 200 ms; the bug was the world waiting a second at the edge for a jump
+        #  (sim/movement.py at_ledge, sec(1.0)), 1.7 s and more. The bound is the old one, 1.5 s, in the world's time: the
+        #  machine's 1.5 s it was, read by a frame and a round trip, was a busy runner's own time)
+        game.js(f"""(() => {{ window.__tk = {{}}; const o = onTick; onTick = (d) => {{ const e = d.entities.find((e) => e.kind === 'agent' && e.id === myId);
+          if (e && e.x === {x} && __tk.edge === undefined) __tk.edge = d.tick; if (e && e.z < .5 && __tk.down === undefined) __tk.down = d.tick; o(d); }}; return 1; }})()""")
+        game.page.keyboard.down("d"); game.wait("myAt.z < .5", 4000)
         game.page.keyboard.up("d")
-        # (the world down too, soon after: within a second of the world's own time, by its ticks. The bug was the world
-        #  waiting a second at the edge for a jump (sim/movement.py at_ledge, sec(1.0)). It was 1500 ms of the machine's
-        #  time for the page's word on it, a runner's busy second more than the game's)
-        down = game.until_world(lambda s: s["z"] < .5)
-        assert down["z"] < .5 and game.rpc("ping")["tick"] - t < sec(1.0) and game.js("__lp") > 160, (down["z"], game.rpc("ping")["tick"] - t, game.js("__lp"))
+        game.wait("window.__tk.down !== undefined", 8000)                   # (the world down too)
+        tk = game.js("window.__tk")
+        assert tk.get("edge") is not None and tk["down"] - tk["edge"] < sec(1.5) and game.js("__lp") > 160, (tk, sec(1.5), game.js("__lp"))
     finally:
         game.js("setOpt('shake', 1)")
     game.rest()
