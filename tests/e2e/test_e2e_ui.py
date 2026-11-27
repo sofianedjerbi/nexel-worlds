@@ -1,5 +1,7 @@
 """The interface: the bar and the inventory by keys, crafting cards, zoom, help, debug, hints, and that actions make sounds."""
 
+from waits import QUIET
+
 
 def test_hotbar_keys_and_tab_cycle_what_is_in_hand(game):
     game.give(wood=1, stone=1, fiber=1)
@@ -57,7 +59,7 @@ def test_the_recipe_you_are_on_says_what_it_takes_and_what_you_have(game):
     assert game.js(NEEDS) == [["Wood", "0/2", True], ["Stone", "0/3", True], ["Fiber", "0/1", True], ["Workbench", "far", True]]
     assert game.js(BUTTON + ".textContent") == "Missing materials" and "Missing materials" in game.js("document.querySelector('.rcard[data-name=pickaxe]').title")
     game.give(wood=2, stone=4, fiber=1)
-    game.sleep(300)
+    game.until(f"JSON.stringify({NEEDS}).startsWith('[[\"Wood\",\"2/2\",false]')")   # (the detail drawn again with what you have)
     assert game.js(NEEDS) == [["Wood", "2/2", False], ["Stone", "4/3", False], ["Fiber", "1/1", False], ["Workbench", "far", True]]
     assert game.js(BUTTON + ".textContent") == "Go to a workbench" and game.js("document.querySelector('.rcard[data-name=pickaxe]').classList.contains('no')")
     game.press("Enter", 300)                                                           # not yet: it says why, and makes nothing
@@ -82,7 +84,7 @@ def test_the_recipe_book_shows_five_names_of_one_kind_and_one_recipe(game):
     assert game.js(BUTTON + ".classList.contains('off')")
     assert game.js(KIND, "Basics") == "Basics" and game.js("craftFocus") == "workbench"
     game.js(BUTTON + ".click()")
-    game.sleep(1200)
+    game.until(f"({QUIET})()")                          # (made: the server has answered)
     assert game.inv("workbench") == 1
     game.press("Escape", 200)
     game.press("c", 300)                                                               # opened again: where you were
@@ -192,7 +194,7 @@ def test_hover_hints_follow_the_mouse(game):
     sx, sy = game.js("([x, y]) => { if (HdLook.on) return HdLook.screenOf(x + .5, y + .5, topAt(x, y)); const S = TS(), [ox, oy] = screenOrigin(S); return [ox + x * S + S / 2, oy + y * S + S / 2]; }", [x + 2, y])   # (the rock's tile's middle as the look draws it: the HD eye is not the flat one's, and a level is a cube)
     game.page.mouse.move(sx - 3, sy)
     game.page.mouse.move(sx, sy)
-    game.sleep(200)
+    game.until("$('hover').innerText.includes('Mine rock')")
     assert "Mine rock" in game.js("$('hover').innerText")
     assert game.js("inputMode") == "mouse"
     game.press("d", 100)
@@ -210,7 +212,7 @@ def test_actions_make_their_sounds(game):
     game.hold_item("axe")
     game.press("x", 0)
     game.wait(f"combAt({game.pos()[0] - 1}, {game.pos()[1]}) === 't'", 8000)
-    game.sleep(800)
+    game.until("['rustle', 'collect', 'chop', 'creak', 'fallthud', 'pick'].every((k) => __snd.includes(k))")   # (the fall's sounds come after the tile turns)
     heard = set(game.js("__snd"))
     assert {"rustle", "collect", "chop", "creak", "fallthud", "pick"} <= heard, heard     # (pick: the axe taken in hand; chop: the strike, struckOnce if no frame drew it, agent.js)
 
@@ -218,10 +220,10 @@ def test_actions_make_their_sounds(game):
 def test_coords_and_perf_are_typed_in_the_chat_line(game):
     """/coords and /perf are debugging aids, off until asked for (js/debug.js); any other /word is still an action.
     /coords and /perf open the debug screen (f3.js), as F3 does."""
-    say = lambda line: (game.page.keyboard.press("Enter"), game.page.keyboard.type(line), game.page.keyboard.press("Enter"), game.sleep(300))
+    say = lambda line: (game.page.keyboard.press("Enter"), game.page.keyboard.type(line), game.page.keyboard.press("Enter"), game.until(f"({QUIET})()"))   # (said, and what it asked answered)
     text = "(() => { const e = document.getElementById('f3'); return e && e.style.display !== 'none' ? e.innerText : ''; })()"
     game.js("(() => { F3.set(false); return 1; })()")
-    game.sleep(200)
+    game.until(f"{text} === ''")
     x, y = game.pos()
     assert game.js(text) == ""
     say("/coords")
@@ -236,8 +238,7 @@ def test_coords_and_perf_are_typed_in_the_chat_line(game):
     say("/perf")
     assert game.js(text) == ""
     game.stamp(0, -1, ["f"])
-    say("/dig dir=N")                                          # (not one of ours: sent to the server)
-    game.sleep(400)
+    say("/dig dir=N")                                          # (not one of ours: sent to the server; say waits for its answer)
     assert game.inv("flower") == 1 and not game.errors
 
 
@@ -247,7 +248,7 @@ def test_the_crafting_list_is_not_made_again_while_it_is_shut(game):
     before = game.js(made)
     game.give(wood=10)                                         # (enough for a workbench)
     game.press("d", 600)
-    game.sleep(900)
+    game.rest()                                                # (the walk done, the page settled: anything it would draw is drawn)
     assert game.js(made) == before and game.js("$('craft').style.display") != "block"
     game.press("c", 300)                                       # opened: it is up to date
     assert game.js(made) != before
@@ -275,11 +276,11 @@ def test_what_the_game_says_shows_over_the_bar_not_in_the_chat_nor_at_the_top(ga
     game.wait("$('heldname').textContent === label('bread') && $('heldname').className === 'on'")
     game.js("(() => { toast('You are full.'); return 1; })()")
     t0 = game.js("+$('heldname').dataset.t")
-    game.sleep(1600)                                                                    # longer than a name (1.4 s): the name's timer cut nothing
+    game.until(f"Date.now() > {t0} + 1600")                                              # longer than a name (1.4 s): the name's timer cut nothing (from its own start, the page's time)
     assert game.js("$('heldname').classList.contains('on')") and game.js(over)[1] == "You are full."
     game.js("(() => { toast('You are full.'); return 1; })()")                          # the same again: shown again from the start
     assert game.js("+$('heldname').dataset.t") > t0
-    game.sleep(1600)                                                                    # (3.2 s since the first: it began again)
+    game.until(f"Date.now() > {t0} + 3200")                                              # (3.2 s since the first: it began again)
     assert game.js("$('heldname').classList.contains('on')")
     game.wait("!$('heldname').classList.contains('on')", 3000)                          # then it goes
     game.js("(() => { toast('What hides you: **Cut away** `V`'); return 1; })()")                 # a guide (a key in it) shows and goes:
@@ -290,7 +291,7 @@ def test_what_the_game_says_shows_over_the_bar_not_in_the_chat_nor_at_the_top(ga
     assert game.js(last + ".className") == "note sys" and game.js("getComputedStyle($('chatlog').lastElementChild, '::before').width") == "6px"      # a line of the chat, its mark
     assert game.js(last + ".querySelector('b').textContent") == "wood" and game.js(last + ".querySelector('kbd').textContent") == "M" and game.js(last + ".querySelectorAll('br').length") == 1
     assert game.toast() == "In hand: wood Second line M"                                               # (plain where it is read as text)
-    game.sleep(6800)
+    game.until("$('chatlog').lastElementChild.classList.contains('old')")
     assert game.js("$('chatlog').lastElementChild.classList.contains('old')")                         # it fades, and stays in the history
     game.js("(() => { act('say', {text: 'a **b** `c`'}); return 1; })()")                             # what a player says is never dressed
     game.wait("[...$('chatlog').children].some((d) => d.textContent.includes('a **b** `c`'))", 5000)
