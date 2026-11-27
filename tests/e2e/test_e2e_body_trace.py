@@ -25,6 +25,7 @@ pytestmark = pytest.mark.realtime      # (the page's clock is set by hand here: 
 # steps: [frames, keys to press down before them, keys to let go before them]; a key: "d", " ", "Shift", ...
 PLAY = """(steps) => { const p = ents.get('agent' + myId), x0 = Math.round(p.x), y0 = Math.round(p.y), CODE = {' ': 'Space', Shift: 'ShiftLeft', ArrowUp: 'ArrowUp'}, out = [];
   const T0 = 1e9; let T = T0, f = 0, shift = false; performance.now = () => T;   // (a clock of its own, the same in every run: the first frame's step and every rounding with it)
+  lastT = T0 + 1000 / 60 - 100;   // (the first frame 0.1 s, as the traces were made: the jump to T0 was cut at the old cap)
   requestAnimationFrame = () => 0;
   rpc = () => new Promise(() => {}); srv = null;
   const key = (type, k) => { if (k === 'Shift') shift = type === 'keydown'; dispatchEvent(new KeyboardEvent(type, {key: k, code: CODE[k] || 'Key' + k.toUpperCase(), shiftKey: shift, bubbles: true, cancelable: true})); };
