@@ -89,6 +89,11 @@ WHERE = """([x, y, z]) => { const a = HdLook.screenOf(x, y, z), el = HdView.el, 
 UNTIL = """([expr, n]) => new Promise((ok) => { const f = new Function("return (" + expr + ")"); let k = 0; const g = () => { if (f()) ok(k); else if (++k > n) ok(-1); else requestAnimationFrame(g); }; g(); })"""
 # you as the page has you: your tile, where you are drawn, the walk, what you are doing
 STATE = "(() => { const p = ents.get('agent' + myId); return {pos: myPos(), at: p && [p.x, p.y, p.tx, p.ty], e: p && p.e && [p.e.x, p.e.y], walking: walking && walking.dir, pwalk: p && !!p.walking, act: myAction && myAction.tool, pred: !!pred, leap: Leap.on(), glide: Leap.gliding()}; })()"
+# what you and the world did, said if the walk back ends wrong: the page's x, the world's (p.e), in the air or not, as it
+# changed, and each act the page sent with the world's answer (the last 240, frames counted from the walks' start)
+TRAIL = """(() => { if (window.__trail) return 1; const T = window.__trail = [], F = () => window.__n || 0, put = (e) => { T.push(e); if (T.length > 240) T.shift(); }; let last = "";
+  const f = () => { const p = ents.get('agent' + myId), k = p ? [Math.round(p.x * 4) / 4, p.e && p.e.x, p.e && p.e.z, Leap.on() ? 'air' : '', walking ? walking.dir : ''].join() : ''; if (k !== last) { last = k; put([F(), k]); } requestAnimationFrame(f); }; requestAnimationFrame(f);
+  const r0 = window.rpc; window.rpc = (op, extra) => { const q = r0(op, extra); if (op === 'act') { const e = [F(), 'act', extra.tool, JSON.stringify(extra.args)]; put(e); q.then((a) => e.push(JSON.stringify(a).slice(0, 160))); } return q; }; return 1; })()"""
 # the eye on you: your screen point across the middle of the screen (CSS px)
 ON_YOU = "(() => { const p = myPos(), m = p && HdLook.screenOf(p.x + .5, p.y + .5, myZ(p.x, p.y)); return !!m && Math.abs(m[0] - innerWidth / 2) < innerWidth * .15; })()"
 
@@ -98,6 +103,7 @@ def test_no_px_is_drawn_from_a_paint_that_is_not_there_on_ten_walks_down_the_sta
     g.rpc("dev_time", phase=.3)
     x, y = stair(g)
     g.js("""(() => { window.__raw = 0; window.__n = 0; window.__on = true; const f = () => { __raw = Math.max(__raw, HdLook.raw()); __n++; if (__on) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; })()""")
+    g.js(TRAIL)
     for _ in range(10):
         for key, done in (("ArrowRight", f"myPos().x >= {x + 18}"), ("ArrowLeft", f"myPos().x <= {x}")):
             g.page.keyboard.down(key)
@@ -117,7 +123,7 @@ def test_no_px_is_drawn_from_a_paint_that_is_not_there_on_ten_walks_down_the_sta
     # (back at the stair's top where the walk began, the walk ended: one read on main was 10 tiles off the screen's left
     # edge, [-211, 192] of 960 px: run 45895689042. And the eye on you there, else the view is not where you are: a bug of its own)
     k = g.js(UNTIL, [f"myPos().x <= {x} && !walking && !myAction", 600])   # (frames, not ms: at 200 ms frames the walk's end takes longer than at 16)
-    assert k >= 0, f"the walk back did not end at the stair's top (x <= {x}): {g.js(STATE)}"
+    assert k >= 0, f"the walk back did not end at the stair's top (x <= {x}): {g.js(STATE)}, the world {g.server()}, its trail {g.js("__trail")}"
     g.rest()
     spot = [x - 4.5, y + 2.5, 0]
     assert g.js(ON_YOU), ("the view is not on you", g.js(WHERE, spot))
