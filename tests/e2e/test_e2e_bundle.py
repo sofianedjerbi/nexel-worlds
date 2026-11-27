@@ -83,9 +83,9 @@ def test_a_phone_plays_on_the_one_script_and_keeps_it(browser, bundled):
         try:
             page.wait_for_function("typeof blocks !== 'undefined' && blocks.size > 0", timeout=30000)
         except Exception:
-            raise AssertionError("loaded again, the land did not come: " + str(page.evaluate("({state: document.readyState, blocks: typeof blocks === 'undefined' ? null : blocks.size, me: typeof me === 'undefined' ? null : me, scene: typeof TitleScene === 'undefined' ? null : [TitleScene.on, TitleScene.S.tick], "
+            raise AssertionError("loaded again, the land did not come: " + str(page.evaluate("(() => { try { return ({state: document.readyState, blocks: typeof blocks === 'undefined' ? null : blocks.size, me: typeof me === 'undefined' ? null : me, scene: typeof TitleScene === 'undefined' ? null : [TitleScene.on, TitleScene.S.tick], "
                                  "join: document.getElementById('joinbox').style.display, img: typeof IMG === 'undefined' ? null : Object.keys(IMG).length, pack: typeof ASSET_PACK === 'undefined' ? null : Object.keys(ASSET_PACK), ws: typeof ws === 'undefined' ? null : ws && ws.readyState, "
-                                 "res: performance.getEntriesByType('resource').map((e) => [e.name.split('/').pop().slice(0, 24), Math.round(e.duration), e.transferSize])})")) + f" {errors}") from None
+                                 "res: performance.getEntriesByType('resource').map((e) => [e.name.split('/').pop().slice(0, 24), Math.round(e.duration), e.transferSize])}); } catch (e) { return `the report threw: ${e}`; } })()")) + f" {errors}") from None   # (a script of the game that threw as it ran leaves its consts unmade for good: typeof TitleScene throws then, and the errors were never said)
         kept = page.evaluate("performance.getEntriesByType('resource').filter((e) => /game\\.|pack\\./.test(e.name)).map((e) => [e.name.split('/').pop(), e.transferSize])")
         assert len(kept) == 2 and all(size == 0 for _, size in kept), kept
         assert not errors, errors

@@ -23,4 +23,7 @@ function drawRacePick() {
   }
 }
 function pickRace(key) { myRace = key; localStorage.setItem("nexel-race", myRace); drawRacePick(); }
-(() => { const row = document.createElement("div"); row.id = "racepick"; $("raceslot").appendChild(row); drawRacePick(); })();
+// (drawn a task on, once this script has run: loaded as one script of a few parts (web_bundle.py), wear.js can be in this part, its
+//  wornReady declared and not yet made, and typeof on it throws. With the pictures already kept, a reload painted at once here, and the
+//  throw stopped the rest of the part: no title, no land. A task on, wornReady is made, or not declared yet and paint asks again)
+(() => { const row = document.createElement("div"); row.id = "racepick"; $("raceslot").appendChild(row); setTimeout(drawRacePick); })();
