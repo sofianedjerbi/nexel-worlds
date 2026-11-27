@@ -272,6 +272,7 @@ def test_the_world_retraces_the_way_a_screen_walked(world):
     for _ in range(6):
         sim.step()
     assert (a.x, a.y) == (x + 6, y + 2) and done[0]["ok"] and a.via_done == 3
+    assert sim.observe(a)["self"]["vn"] == 3                                    # (an observe says it too: a page that missed the ticks, agent.js refresh)
     sim.submit(a, "walk", {"dir": "S", "from": [x + 4, y + 4, 4]})               # not straight ahead: given up
     for _ in range(3):
         sim.step()
