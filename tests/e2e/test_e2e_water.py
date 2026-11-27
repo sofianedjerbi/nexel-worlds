@@ -31,9 +31,9 @@ def test_the_water_setting_turns_the_bed_on_and_off(game):
     game.clear_area(10)
     game.stamp(-10, -9, ["~" * 12] * 8); x, y = game.pos(); game.wait(READY, 20000); game.rest()
     assert game.js("WaterBed.on") is True
-    game.js("setOpt('clearwater', false)"); game.frames(3)
+    game.js("setOpt('clearwater', false)"); game.rest()
     assert game.js("WaterBed.on") is False
-    game.js("setOpt('clearwater', true)"); game.frames(3)
+    game.js("setOpt('clearwater', true)"); game.rest()
     assert game.js("WaterBed.on") is True and game.js(f"WaterBed.depth({x - 5}, {y - 5})") == 2
     game.stamp(-10, -9, ["." * 12] * 8, levels=["0" * 12] * 8)
 
@@ -60,7 +60,7 @@ def test_a_river_just_made_in_a_gorge_shows_its_water_round_you_in_the_hd_look(b
     g.stamp(-11, -11, ["." * 23] * 10 + ["(" * 23] * 3 + ["." * 23] * 10, levels=["9" * 23] * 10 + ["2" * 23] * 3 + ["6" * 23] * 10)
     g.rpc("dev_teleport", x=x, y=y)
     g.wait("HdLook.cam.pitch > HdLook.steep - .1 && !HdLook.busy && HdLook.level[0] === 2 && !dirtyTiles.length", 8000)      # (the tiles all drawn: the land made of them)
-    g.frames(3)
+    g.rest()
     g.wait("!HdLook.busy && !dirtyTiles.length", 8000)
     held = g.js(face, [x, y, TILE])
     g.js("__hold()")
