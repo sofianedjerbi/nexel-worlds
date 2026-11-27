@@ -113,6 +113,7 @@ function update(now) {
   stepLoot(now); stepOrbs(dt); stepEffects(dt, performance.now());
   drawXp();
   foodPreview();
+  bossBar(now);                                      // (a boss's name and life across the top: bossbar.js)
   swingDoors(t);
   updateActions();
   Build.tick();                                      // (plans that could not be done go; out of the mode when you are gone: build.js)

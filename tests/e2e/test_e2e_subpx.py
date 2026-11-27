@@ -224,3 +224,33 @@ def test_an_art_px_is_a_whole_number_of_the_screen_s_px_after_a_zoom_too(browser
         assert not g.errors
     finally:
         page.close()
+
+
+@pytest.mark.parametrize("dpr", [1, 2])
+def test_the_half_step_between_2_and_3_is_whole_px_where_it_is_offered(browser, server, dpr):
+    """#401: a level of 2.5 between 2 and 3 where an art px is then a whole number of the screen's px (at a density of 2:
+    5 px), skipped where it is not (at 1: from 3 the next level down is 2). Each art px of the land as wide as the next."""
+    page = browser.new_page(viewport={"width": 1000, "height": 600}, device_scale_factor=dpr)
+    try:
+        g = Game(page, server)
+        g.join(new_name(), 3)
+        g.rest()
+        want = 2.5 if dpr == 2 else 2
+        assert g.js("zoomLevels()") == ([2, 2.5, 3, 4, 5, 6] if dpr == 2 else [2, 3, 4, 5, 6]), g.js("zoomLevels()")
+        g.page.keyboard.press("Minus")
+        g.until(f"zoom === {want} && !ZOOM.busy && !HdView.el.getAnimations().length && !cv.getAnimations().length && " + SIZED)
+        assert g.js("[localStorage.getItem('nexel-zoom'), document.querySelectorAll('#zoomer i').length, document.querySelectorAll('#zoomer i.on').length]") == \
+            [str(want), 6 if dpr == 2 else 5, 2 if dpr == 2 else 1]          # (saved; the sign has its square, lit up to it)
+        g.frames(3)
+        g.js(STOP)
+        g.frames(3)
+        w, h, z, u, d = g.js(CHECKER)
+        png = g.page.screenshot()
+        k = round(z * d)
+        assert z == want and abs(u * d - k) < 1e-6, (z, u, d)
+        for row in (int(40 * d), int(150 * d)):
+            r = runs(g, png, row)
+            assert len(r) > 20 and set(r) == {k}, (z, d, k, sorted(set(r)), r[:12], g.js(STATE))   # every art px k px wide (5 at 2.5 x 2)
+        assert not g.errors
+    finally:
+        page.close()

@@ -81,3 +81,17 @@ def test_each_creature_makes_its_own_sounds(game):
     heard = game.js("window.__heard")
     assert {"hob_lit", "hob_warn", "hob_burst"} <= set(heard), heard
     assert not game.errors
+
+
+def test_the_skeleton_walks_up_rattles_and_swipes_who_stays(game):
+    game.clear_area(8)
+    game.rpc("dev_needs", hp=20, hunger=17)
+    game.rpc("dev_time", phase=.85)                           # night: it is out
+    game.spawn("skeleton", 3, 0)
+    game.until("IMG.skeleton && IMG.skeleton.complete && IMG.skeleton.naturalWidth === 24 * 26")   # (its sheet: idle, walk, the act)
+    # it walks up and rattles; its act plays from the warning (world_decor.js: windAt, set as it is drawn)
+    game.until(WINDUP.format("skeleton") + " && [...ents.values()].find((q) => q.e && q.e.kind === 'skeleton').windAt > 0")
+    shot(game, "skeleton_rattles")
+    game.until("meObs.self.hp < 20")                           # we stood beside it: swiped
+    shot(game, "skeleton_swipes")
+    assert not game.errors

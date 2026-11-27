@@ -29,6 +29,8 @@ LINES = {
                "{name} underestimated the pincer. Everyone does. Once."],
     "strawman": ["{name} was killed by a scarecrow. Crows cheered.", "{name} punched a strawman. It punched back.",
                  "The strawman never moves. It moved for {name}."],
+    "skeleton": ["{name} heard the rattle and lingered to listen.", "A skeleton swiped {name}. Its eyes, the last light.",
+                 "{name} met a skeleton at night. Soon, two."],
     "grumblestump": ["{name} sat on a stump. The stump stood up.", "{name} tried to chop a grumblestump. It chopped back.",
                      "The grumblestump grumbled at {name}. Then acted."],
     "snapbloom": ["{name} stopped to smell a flower. It stopped {name}.", "{name} picked a flower. The flower picked back.",

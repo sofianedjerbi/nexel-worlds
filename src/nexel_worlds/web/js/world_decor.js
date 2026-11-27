@@ -16,7 +16,7 @@ const ANIMALS = {
 // Wild enemies (sim/wild.py): one sheet each, drawn in design/enemies; rows are down, up, left, right. Each animation is
 // [first column, frames, ms a frame (or one per frame)]. The tusker warns (paws the ground) and runs for as long as the
 // server says; the others play their whole action once from the moment the warning starts, so the blow lands on its strike frame.
-// Old Mossback and its sporelings have several actions (`once`), named as the server names them, and the boss a health bar (`hp`).
+// Old Mossback and its sporelings have several actions (`once`), named as the server names them; `hp`: a boss's whole life, for its bar across the top (bossbar.js).
 const WILD = {
   tusker: {cw: 32, ch: 32, idle: [0, 8, 260], walk: [8, 8, 90], warn: [16, 4, 170], run: [20, 8, 55]},
   pincer: {cw: 24, ch: 16, idle: [0, 8, [800, 300, 300, 600, 140, 500, 140, 600]], walk: [8, 8, 80], act: [16, 5, [140, 420, 80, 220, 220]]},
@@ -31,6 +31,7 @@ const WILD = {
   nyxwing: {cw: 128, ch: 114, hp: 120, idle: [0, 8, 96], walk: [8, 8, 48], breath: [16, 8, [192, 192, 193, 96, 96, 96, 96, 96]],    // (drawn by nyxwing.js: its moves are timed to its song)
     storm: [24, 21, [192, 192, 193, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 96, 96]], dive: [45, 9, [192, 192, 193, 96, 96, 96, 96, 96, 96]],
     sweep: [54, 8, [192, 192, 193, 64, 64, 64, 96, 96]], rush: [62, 6, [96, 96, 193, 192, 192, 192]]},
+  skeleton: {cw: 24, ch: 26, idle: [0, 8, [300, 260, 300, 200, 260, 300, 90, 90]], walk: [8, 8, 85], act: [16, 10, [160, 200, 120, 120, 80, 90, 140, 160, 160, 160]]},   // (rattles 0.6 s, then the swipe: sim/skeleton.py)
   sporeling: {cw: 24, ch: 24, idle: [0, 8, 240], walk: [8, 8, 75], land: [16, 6, [80, 80, 160, 120, 90, 140]], puff: [22, 6, [150, 150, 90, 130, 150, 140]], once: ["land", "puff"]},
 };
 // Each creature's own sounds (music/sfx.py, "Creatures", picked by ear): its warning, its blow when it lands, its cry
@@ -44,6 +45,7 @@ const CRY = {
   grumblestump: {warn: "grumblestump_warn", slams: true, hurt: "grumblestump_hurt"},
   snapbloom: {warn: "snapbloom_warn", blow: "snapbloom_bite", hurt: "snapbloom_hurt"},
   hob: {warn: "hob_warn"}, wisp: {warn: "gloom"}, mossback: {warn: "boss_groan"},
+  skeleton: {warn: "skeleton_rattle", blow: "skeleton_swipe", hurt: "skeleton_hurt"},
   nyxwing: {slams: true, hurt: "drake_hurt"},          // (its warnings and blows sound in nyxwing.js: a scream when its jaws open)
 };
 // A blow lands (an "attack" event, its `who` {kind: "tusker", ...} when it is a wild one): the creature's own sound in place of a
@@ -129,11 +131,6 @@ function drawWild(p, x, y, now) {
     const mx = x + 13 * z, my = y - (A.ch - 16) * z + 3 * z - (Math.floor(now / 170) % 2) * z;
     ANGER.forEach((row, j) => [...row].forEach((ch, i) => { if (ch === "r") { ctx.fillStyle = "#6e1d1d"; ctx.fillRect(mx + i * z, my + (j + 1) * z, z, z); } }));
     ANGER.forEach((row, j) => [...row].forEach((ch, i) => { if (ch === "r") { ctx.fillStyle = "#f0503f"; ctx.fillRect(mx + i * z, my + j * z, z, z); } }));
-  }
-  if (A.hp && e.act !== "sleep" && e.hp < A.hp) {                    // the boss's health, over its tree
-    const w = 40 * z, bx = Math.round(x + 8 * z - w / 2), by = y - (A.ch - 12) * z;
-    ctx.fillStyle = "#5b3f36"; ctx.fillRect(bx - z, by - z, w + 2 * z, 4 * z);
-    ctx.fillStyle = e.hp * 2 > A.hp ? "#6aa66f" : "#d9473a"; ctx.fillRect(bx, by, Math.max(0, w * e.hp / A.hp), 2 * z);
   }
 }
 const VARIANTS = {chicken: ["chicken", "chicken", "chicken_brown", "chicken_red", "chicken_blue", "chicken_green"],
