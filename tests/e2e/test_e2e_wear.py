@@ -19,7 +19,7 @@ def test_dressing_up(game):
         if (px < 12 || grey === px) out[n] = px; }
       return out; })()""")
     assert drawn == {}, drawn
-    assert game.js("craftGroups().find(([t]) => t === 'Wear')[2].length") == 19 + 15 + 9      # (clothes, armor, charms: one bookmark of the recipe book)
+    assert game.js("craftGroups().find(([t]) => t === 'Wear')[2].length") == 19 + 24 + 9      # (clothes, armor (#393: five sets of four, Mossback's four), charms: one bookmark of the recipe book)
     for item in outfit:
         game.act("wear", item=item)
         game.until(f"({QUIET})()")                        # (worn: the server has answered)
