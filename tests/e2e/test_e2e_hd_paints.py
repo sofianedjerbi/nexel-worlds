@@ -8,9 +8,9 @@ from test_e2e_hd_sun import hd, settled
 pytestmark = pytest.mark.e2e
 
 # fill the shown land's sheet: paints asked as a ghost asks them, between two frames, till it has no place left
-FILL = """(() => { const solid = (px, at, st) => { for (let j = 0; j < 16; j++) px.fill(0xff0000ff, at + j * st, at + j * st + 16); }; let i = 0;
-  for (; i < 5000; i++) { const q = HdLook.paints; if (q.n >= q.cap && !q.free) break; q.slot('test fill ' + i, solid); }
-  const q = HdLook.paints; return [i, q.n, q.cap, q.free, HdLook.work.overs]; })()"""
+FILL = """(() => { const solid = (px, at, st) => { for (let j = 0; j < 16; j++) px.fill(0xff0000ff, at + j * st, at + j * st + 16); }; const end = HdLook.paints.cap + 1; let i = 0;
+  for (; i < end; i++) { const q = HdLook.paints; if (q.n >= q.cap && !q.free) break; q.slot('test fill ' + i, solid); }
+  const q = HdLook.paints; return [i, end, q.n, q.cap, q.free]; })()"""
 # ...and on a later frame two more: [their places, the last place, are they the land's, the sheet's overflows they made, lands made from none]
 MORE = """(() => { const q = HdLook.paints, solid = (px, at, st) => { for (let j = 0; j < 16; j++) px.fill(0xff00ff00, at + j * st, at + j * st + 16); };
   const o = HdLook.work.overs, a = q.slot('test ghost a', solid), b = q.slot('test ghost b', solid); return [a, b, q.cap, q.shown(a), q.shown(b), HdLook.work.overs - o, HdLook.work.wipes]; })()"""
@@ -21,7 +21,7 @@ SHADOW = """(() => { const p = myPos(), a = HdLook.screenOf(p.x + .5, p.y + .92,
 
 
 def test_a_paint_asked_while_the_sheet_is_full_gets_a_place_of_its_own(browser, server):
-    """The shown land's sheet full (all its 4095 places given, none free) and two paints asked outside a land's making,
+    """The shown land's sheet full (all its places given, none free) and two paints asked outside a land's making,
     on a frame after: two places, not the last one, not the land's. (They all took the last place: every such paint
     drew the paint of the last one to ask, your shadow a block of another's paint, dark over you till the land was made
     again from none: hd_sun's shadow lost all its px, #106.) All of it between frames, at the page's own pace: the same
@@ -32,8 +32,8 @@ def test_a_paint_asked_while_the_sheet_is_full_gets_a_place_of_its_own(browser, 
         g.wait("Math.abs((clock.phase || 0) - .9) < .02")
         settled(g)
         before = g.js(SHADOW)
-        n, used, cap, free, _ = g.js(FILL)
-        assert used >= cap and free == 0 and n < 5000, (n, used, cap, free)
+        n, end, used, cap, free = g.js(FILL)       # (each new paint takes a place: cap + 1 asks fill it whatever the land holds)
+        assert used >= cap and free == 0 and n < end, (n, end, used, cap, free)
         g.frames(2)
         a, b, last, sa, sb, overs, wipes0 = g.js(MORE)
         assert a != b and last not in (a, b) and not sa and not sb, (a, b, last, sa, sb)
