@@ -3,6 +3,9 @@ you make it more intuitive ??": each mode said its keys in the chat, and the res
 
 PART = "(k) => { const r = document.querySelector('#prompts .' + k).getBoundingClientRect(); return [r.left, r.right, r.top, r.bottom, document.querySelector('#prompts .' + k).innerText.trim()]; }"
 
+# the keys said on the screen, as game.actions() reads them
+ACTS = r"[$('prompts'), $('actions')].map((e) => e.innerText.trim().replace(/\n/g, ' | ')).filter(Boolean).join(' | ')"
+
 
 def test_build_mode_says_its_keys_by_the_cursor_and_nothing_in_the_chat(game):
     game.clear_area(8)
@@ -10,7 +13,7 @@ def test_build_mode_says_its_keys_by_the_cursor_and_nothing_in_the_chat(game):
     chat = game.js("$('chatlog').children.length")
     game.press("ArrowDown", 200)
     game.press("b")
-    game.sleep(200)
+    game.until("Build.S.rect")                                   # (build mode on, its cursor's box drawn)
     assert game.js("$('chatlog').children.length") == chat     # (it said its keys there each time)
     r = game.js("Build.S.rect")
     side, up, down = (game.js(PART, k) for k in ("side", "up", "down"))
@@ -22,7 +25,7 @@ def test_build_mode_says_its_keys_by_the_cursor_and_nothing_in_the_chat(game):
     r = game.js("Build.S.rect"); side, up = game.js(PART, "side"), game.js(PART, "up")
     assert r["under"] and r["right"] and side[2] >= r["y"] + r["h"] and up[0] >= r["x"] + r["w"]
     game.press("b")
-    game.sleep(200)
+    game.until("$('prompts').innerText.trim() === ''")
     assert game.js("$('prompts').innerText").strip() == "" and not game.errors
 
 
@@ -52,7 +55,7 @@ def test_no_row_is_written_on_you_or_on_another_row(game):
         assert game.js(hit) == [True, True, False, False, False, False, False], (d, game.js("zoom"), game.js(hit))
     game.give(wood_wall=4)
     game.hold_item("wood_wall")
-    game.press("b"); game.sleep(200)
+    game.press("b"); game.until("Build.S.rect")
     for key in ("ArrowRight", "ArrowRight", "ArrowLeft", "ArrowLeft", "ArrowLeft", "ArrowLeft", "ArrowDown"):
         game.press(key, 150)
         game.settle(f"{hit}.slice(2).every((v) => !v)")              # (the view pans half way to the cursor: once it is there)
@@ -71,7 +74,8 @@ def test_only_what_your_hand_gets_to_is_offered(game):
     for dx, dy, lv, said in ((-1, 0, "6", "Dig into the hill"), (0, 1, "f", "")):
         game.stamp(dx, dy, ["f"], levels=[lv])
         game.face(dx, dy)
-        game.sleep(400)
+        want = said and game.js("capOf('alt')") + said
+        game.until(f"({ACTS}) === {want!r}")                    # (the keys said for what you face now)
         assert game.actions() == (said and game.js("capOf('alt')") + said), (lv, game.actions())      # (X digs the block you face: the pillar's at your feet; nothing of a floor six down, nor of the flower)
         game.js("$('toast').style.display = 'none'")
         game.press("e", 300)
@@ -91,5 +95,5 @@ def test_only_what_your_hand_gets_to_is_offered(game):
     game.stamp(-1, 0, ["."], levels=["6"])
     game.spawn("tusker", -1, 0, still=600)
     game.wait("[...ents.values()].some((q) => q.e && q.e.kind === 'tusker')", 4000)
-    game.sleep(400)
+    game.rest()                                                 # (drawn, the keys said again for it)
     assert "tusker" not in game.actions() and not game.errors

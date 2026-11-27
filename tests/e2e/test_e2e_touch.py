@@ -3,6 +3,7 @@
 
 import pytest
 from game import Game, new_name
+from waits import QUIET
 
 
 def touch_game(browser, server, w, h):
@@ -34,7 +35,7 @@ def test_play_with_thumbs(browser, server):
         g.wait(f"myPos().x === {x0 + 2}", 4000)                               # up to the tree, and stops there
         g.sleep(400)
         g.touch("touchEnd")
-        g.sleep(500)
+        g.until(f"({QUIET})()")                                          # (let go: what it asked answered, you at rest)
         assert g.pos() == (x0 + 2, y0) and g.server()["x"] == x0 + 2
         assert "Chop" in g.js("$('tB').innerText")                            # B (break) says what it will do
         a = g.js("(() => { const r = $('tB').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()")
@@ -53,7 +54,7 @@ def test_crafting_on_a_phone_takes_the_screen_and_a_tap_makes_a_lit_card(browser
     try:
         g.give(wood=4)
         g.js("toggleCraft()")
-        g.sleep(400)
+        g.until(f"({QUIET})()")                                                # (open, nothing sliding)
         box = g.js("(() => { const b = $('craft').getBoundingClientRect(); return [b.left, b.top, b.right, b.bottom]; })()")
         assert box[0] >= 0 and box[1] >= 0 and box[2] <= 844 and box[3] <= 390 and box[2] - box[0] > 500
         shown = "['ttop', 'tbtns', 'tctx'].map((id) => getComputedStyle($(id)).visibility).join()"
@@ -63,8 +64,7 @@ def test_crafting_on_a_phone_takes_the_screen_and_a_tap_makes_a_lit_card(browser
         for sel in (".rcard[data-name=campfire]", ".rcard[data-name=workbench]", "#craftdetail .cbtn"):   # a tap on a name takes you to it; the button makes it
             x, y = g.js("(s) => { const b = document.querySelector(s).getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2]; }", sel)
             g.page.touchscreen.tap(x, y)
-            g.sleep(300)
-        g.sleep(900)
+            g.until(f"({QUIET})()")                                     # (lit, or made: the server has answered)
         assert g.inv("workbench") == 1
         g.js("$('craftclose').click()")
         assert g.js(shown) == "visible,visible,visible" and not g.errors
@@ -79,7 +79,7 @@ def test_out_of_your_own_shaft_with_the_thumbs(browser, server):
     ctx, g = touch_game(browser, server, 390, 844)
     try:
         mid = lambda i: g.js(f"(() => {{ const r = $('{i}').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }})()")
-        tap = lambda i: (g.page.touchscreen.tap(*mid(i)), g.sleep(150))
+        tap = lambda i: (g.page.touchscreen.tap(*mid(i)), g.until(f"({QUIET})()"))   # (what it did answered)
         g.give(pickaxe=1, ladder=1, plank=2)
         g.js("selectItem('pickaxe')")
         x, y = g.pos()
@@ -125,7 +125,7 @@ def test_out_of_your_own_shaft_with_the_thumbs_and_a_pickaxe_alone(browser, serv
     ctx, g = touch_game(browser, server, 390, 844)
     try:
         mid = lambda i: g.js(f"(() => {{ const r = $('{i}').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }})()")
-        tap = lambda i: (g.page.touchscreen.tap(*mid(i)), g.sleep(150))
+        tap = lambda i: (g.page.touchscreen.tap(*mid(i)), g.until(f"({QUIET})()"))   # (what it did answered)
         g.give(pickaxe=1)
         g.js("selectItem('pickaxe')")
         x, y = g.pos()
