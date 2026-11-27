@@ -14,16 +14,21 @@ def bar(game):
 
 def test_the_boss_bar_follows_a_boss_from_its_waking_to_its_death(game):
     game.clear_area(10)
-    game.rpc("dev_needs", hp=20)
-    cid = game.spawn("mossback", 0, -4, still=3000)     # (still: it strikes nobody while the test reads its bar)
-    key = f"mossback{cid}"
-    game.until(f"ents.has({key!r}) && ents.get({key!r}).e.act === 'sleep'")
     goals = game.js("Math.round($('goalhint').getBoundingClientRect().top)")
-    assert game.js("$('bossbar').dataset.state || 'none'") == "none", bar(game)          # asleep, a hill: no bar
+    # asleep, a hill with a tree on it: no bar
+    cid = game.spawn("mossback", 0, -4)
+    key = f"mossback{cid}"
+    game.until(f"ents.has({key!r}) && ents.get({key!r}).e.act === 'sleep' && ($('bossbar').dataset.state || 'none') === 'none'")
+    game.rpc("dev_creatures", clear=10)
+    game.until(f"!ents.has({key!r})")
 
-    # woken: the bar comes, slams its name in, fills to its life; the goals step down under it
+    # awake (spawned `still`: it stands and strikes nobody while the test reads its bar): the bar comes, slams its name
+    # in, fills to its life; the goals step down under it; a blow takes its share off
+    cid = game.spawn("mossback", 0, -4, still=100000)
+    key = f"mossback{cid}"
+    game.until(f"$('bossbar').dataset.state === 'fight' && +$('bossbar').dataset.hp === 60")
     hp = game.rpc("dev_hit", creature=cid, n=8)["hp"]
-    game.until(f"$('bossbar').dataset.state === 'fight' && +$('bossbar').dataset.hp === {hp} && ents.get({key!r}).e.hp === {hp}")
+    game.until(f"+$('bossbar').dataset.hp === {hp} && ents.get({key!r}).e.hp === {hp}")
     game.until(f"$('goalhint').getBoundingClientRect().top >= {goals} + parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bossband')) - 1")
     s = bar(game)
     d = json.loads(s)

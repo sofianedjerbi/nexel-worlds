@@ -16,7 +16,7 @@ const ANIMALS = {
 // Wild enemies (sim/wild.py): one sheet each, drawn in design/enemies; rows are down, up, left, right. Each animation is
 // [first column, frames, ms a frame (or one per frame)]. The tusker warns (paws the ground) and runs for as long as the
 // server says; the others play their whole action once from the moment the warning starts, so the blow lands on its strike frame.
-// Old Mossback and its sporelings have several actions (`once`), named as the server names them, and the boss a health bar (`hp`).
+// Old Mossback and its sporelings have several actions (`once`), named as the server names them; `hp`: a boss's whole life, for its bar across the top (bossbar.js).
 const WILD = {
   tusker: {cw: 32, ch: 32, idle: [0, 8, 260], walk: [8, 8, 90], warn: [16, 4, 170], run: [20, 8, 55]},
   pincer: {cw: 24, ch: 16, idle: [0, 8, [800, 300, 300, 600, 140, 500, 140, 600]], walk: [8, 8, 80], act: [16, 5, [140, 420, 80, 220, 220]]},
