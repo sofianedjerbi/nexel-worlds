@@ -1,6 +1,7 @@
 """Falling from a height in Chrome (js/jump.js): you come down by your own weight, with the wind, and land in dust."""
 
 import pytest
+from clock import FRAME_MS
 
 
 @pytest.mark.realtime
@@ -35,10 +36,10 @@ def test_a_fall_takes_the_time_of_a_fall_and_lands_in_dust(game):
     down = next(r[0] for r in rec if r[1] == 0 and any(q[1] == 1 for q in rec if q[0] < r[0]))     # the frame you are down
     hurt = game.js("__hurt")
     assert len(hurt) == 1 and hurt[0] - down < 40, (hurt, down)                                  # what it cost shown as you land, once: it came most of a second after (the world's word, then 0.7 s more)
-    # (the game's time of a frame: the frame's own, 0.1 s at the most, render.js update. Judged by frames of 17 ms on the
+    # (the game's time of a frame: the frame's own, FRAME_MS at the most, render.js update. Judged by frames of 17 ms on the
     # Mac; on a machine drawing on the CPU (the runners) a fall is five frames of 70 to 180 ms, which a frame's drops
     # compared one to the next cannot tell from a slow one)
-    game_ms = lambda i: min(rec[i][0] - rec[i - 1][0], 100)
+    game_ms = lambda i: min(rec[i][0] - rec[i - 1][0], FRAME_MS)
     first = next(i for i, r in enumerate(rec) if r[1] == 1 and r[2] < 8 - 1e-6)                 # (off the edge: under the tower's top)
     last = rec.index(next(r for r in rec[first:] if r[1] == 0))                                 # the frame you are down
     air = rec[first:last]

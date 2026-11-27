@@ -2,13 +2,15 @@
 
 import math
 
+from clock import FRAME_MS
+
 import pytest
 
 
 def game_s(a, b):
-    """The game's time a recorded frame moved things by (s): the frame's own, 0.1 s at the most (render.js update: a
+    """The game's time a recorded frame moved things by (s): the frame's own, FRAME_MS at the most (render.js update: a
     longer one is cut there, as on any machine that cannot keep up)."""
-    return min(b[0] - a[0], 100) / 1000
+    return min(b[0] - a[0], FRAME_MS) / 1000
 
 
 def gone(a, b):

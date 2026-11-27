@@ -6,6 +6,7 @@ player glitches and at the end teleports", "drawn above the cave"). The jump key
 import math
 
 import pytest
+from clock import FRAME_MS
 
 pytestmark = pytest.mark.e2e
 
@@ -208,10 +209,10 @@ def test_sprinting_over_steps_up_and_down_keeps_its_speed(game):
     # runner's server, a tick late, had you at 4.4 tiles a second there. Those frames say the machine, not the jump)
     lead = game.js("LEAD[0]")
     ahead = lambda r: r[15] > lead
-    # (by the game's time: a frame moves you by its time up to 0.1 s, render.js; a runner's 105 ms frames read 7.9)
+    # (by the game's time: a frame moves you by its time up to FRAME_MS, render.js)
     game_ms, t = {}, 0.0
     for a, b in zip([None] + rec, rec):
-        t += min(b[0] - a[0], 100) if a else 0
+        t += min(b[0] - a[0], FRAME_MS) if a else 0
         game_ms[id(b)] = t
     # (over 300 ms of game time at least, a jump up and its landing: a lost velocity is a stop, most of that; three frames
     # of a runner's, 216 ms with a landing in them, read 7.8 for a few hundredths of a tile)

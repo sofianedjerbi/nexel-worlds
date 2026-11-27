@@ -143,7 +143,7 @@ def test_sprint_jumping_down_off_a_high_step_you_go_on_south_never_put_back(game
     game.wait("!Leap.on()", 4000)
     # (on three tiles from where it came down, then the keys up, and until the walk is over and the world's tick has you
     #  where you stopped: where it ends is the game's, at any frame's length. Time held, 700 ms then 500, ran on further the
-    #  slower the frames; a frame moves you a tile at most (render.js: 0.1 s at most, at a sprint's 10 a second), the
+    #  slower the frames; a frame moves you by its own time (render.js FRAME_S), the
     #  keys are up a frame or two after the third tile, and the arc lands where it does at any frame (leap.js: steps of
     #  1/60 s): the run ends some 10 + 3 + 2 tiles south of the edge, on the run-out laid for it)
     land = game.js("ents.get('agent' + myId).y")

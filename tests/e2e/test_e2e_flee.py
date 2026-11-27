@@ -3,6 +3,8 @@
 
 import math
 
+from clock import FRAME_MS
+
 
 def test_a_hit_cow_runs_off_without_jumping(game):
     game.clear_area(8)
@@ -18,9 +20,9 @@ def test_a_hit_cow_runs_off_without_jumping(game):
     game.until("window._cow.length >= 220")                   # (its 220 frames recorded, however long they take)
     rec = game.js("window._cow")
     # how fast it is drawn going, tiles a second of the frame's own time (render.js: a frame moves a body by its time,
-    # 0.1 s at the most). Its steps a frame were 0.35 at most at 10 frames a second, a slow machine's: a step's size is
+    # FRAME_MS at the most). Its steps a frame were 0.35 at most at 10 frames a second, a slow machine's: a step's size is
     # the machine's; its speed is the game's
-    speeds = [math.hypot(b[0] - a[0], b[1] - a[1]) / min(.1, (b[4] - a[4]) / 1000) for a, b in zip(rec, rec[1:]) if b[4] > a[4]]
+    speeds = [math.hypot(b[0] - a[0], b[1] - a[1]) / min(FRAME_MS, b[4] - a[4]) * 1000 for a, b in zip(rec, rec[1:]) if b[4] > a[4]]
     behind = [abs(r[2] - r[0]) + abs(r[3] - r[1]) for r in rec]
     moved = abs(rec[-1][2] - rec[0][2]) + abs(rec[-1][3] - rec[0][3])
     assert moved >= 3, rec[-1]                                 # it did run

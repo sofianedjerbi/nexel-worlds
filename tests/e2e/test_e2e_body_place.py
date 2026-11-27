@@ -68,11 +68,12 @@ def test_up_and_down_a_ladder_in_the_open_nothing_of_the_light_or_the_window_cha
             off = [r for r in up + down if r[i] is not None and not min(ref) - tol <= r[i] <= max(ref) + tol]
             assert phase > .5 or not off, (phase, i, min(ref), max(ref), off[:6])
         # (at night your lantern goes up the ladder with you: the meadow by its foot darkens as you go, a little a frame, no
-        # light switched: 8 a sixtieth of a second at most, by the frame's own time (a frame moves you by it, 0.1 s at the
-        # most): 22 in one frame of a runner's 15 a second was the climb, not a switch)
+        # light switched: 8 a sixtieth of a second at most, by the frame's own time (a frame moves you by it, render.js FRAME_S at
+        # the most): 22 in one frame of a runner's 15 a second was the climb, not a switch)
+        cap = g.js("FRAME_S") * 1000
         for rows in (up, down):
             seq = [(r[8], r[-1]) for r in rows if r[8] is not None]
-            fast = [(a, b, round(t2 - t1)) for (a, t1), (b, t2) in zip(seq, seq[1:]) if abs(a - b) > 8 * max(1, min(100, t2 - t1) / 16.7)]
+            fast = [(a, b, round(t2 - t1)) for (a, t1), (b, t2) in zip(seq, seq[1:]) if abs(a - b) > 8 * max(1, min(cap, t2 - t1) / 16.7)]
             assert not fast, (phase, fast[:6])
     assert not g.errors
 
