@@ -280,7 +280,7 @@ function onEvent(e) {
   switch (e.type) {
     case "say": text = e.text; break;
     case "shout": text = e.text; break;
-    case "death": text = `**${e.name}** died (${whyDied(e)})`; break;
+    case "death": text = deathLine(e, (n) => `**${n}**`) || `**${e.name}** died (${whyDied(e)})`; break;      // (its line, the same for all: death.js)
     case "give": if (e.from !== me && e.to !== me) return; text = `**${e.from}** gave **${e.to}** ${fmt(e.items)}`; break;
     case "join": text = `**${e.name}** ${e.new ? "washed ashore" : "woke up"}`; break;
     case "leave": text = `**${e.name}** fell asleep`; break;

@@ -103,7 +103,14 @@ const ERROR_TEXT = {
   accounts_down: () => "The accounts don't answer: try again soon",
   not_wearable: () => "That isn't worn", nothing_worn: () => "Nothing worn there", wont_burn: () => "That won't burn", not_ready: () => "Not ready yet: try again in a while",
   cannot_dig: (d) => (d.what ? `${label(d.what)} can't be dug` : (Object.hasOwn(NO_DIG, d.why) ? NO_DIG[d.why] : "That can't be dug")),
+  // (the world's own refusals, not an action's: each had only the agents' sentence, and rate_limited's was its table, "limits: {'act': (900, 60.0), ...}")
+  rate_limited: () => "Too fast: wait a moment", hello_first: () => "Not in the world yet: wait a moment", banned: () => "You are banned from this world",
+  bad_args: () => "That can't be done that way", bad_json: () => "The world didn't understand that: reload the page", bug: () => "Something went wrong in the game",
+  unknown_op: () => "The world doesn't know that", unknown_tool: () => "The world doesn't know that action", too_soon: () => "Not yet: wait a moment",
+  hands_full: () => "You're eating: you can walk, nothing else until it's eaten", interrupted: () => "Stopped",
 };
+// (said over the bar: words, never a table, a list or a hole: "the messages over the health bar sometimes show JSON", #382)
+const WORDS = (s) => typeof s === "string" && /\w/.test(s) && !/[{}[\]]|\b(undefined|null|NaN)\b|\[object/.test(s);
 const NO_DIG = {deepest: "This is as deep as it goes", enclosed: "Inside the land: dig to it from beside it", not_clear: "Stand on clear ground to dig down"};
 const IN_THE_WAY = {body: "Someone is standing there", you: "You stand where it goes: step aside", thing: "Something is there"};
 const lcLabel = (n) => label(n).toLowerCase();
@@ -118,7 +125,12 @@ const TARGET_WHY = {
   self: () => "You can't hit yourself", untouchable: () => "Your hand goes through it", not_kind: (d) => `That is not a ${lcLabel(d.kind)}`, wont_eat: (d) => `A ${lcLabel(d.kind)} doesn't eat that`,
   not_agent: () => "Give to someone, not a creature",
 };
-const errorText = (r) => (Object.hasOwn(ERROR_TEXT, r.error) && (r.data || !ERROR_TEXT[r.error].length) ? ERROR_TEXT[r.error](r.data) : r.detail || r.error);   // (words that need no data, as "changed"'s, need none sent)
+// (its own words, from its data; a code whose words need data and came with none: the agents' sentence if it is words; else a plain no)
+function ownWords(r) {
+  const f = r && Object.hasOwn(ERROR_TEXT, r.error) ? ERROR_TEXT[r.error] : null;
+  try { return f && (r.data || !f.length) ? f(r.data) : null; } catch (e) { return null; }   // (data short of what its words read)
+}
+const errorText = (r, s = ownWords(r)) => (WORDS(s) ? s : r && WORDS(r.detail) ? r.detail[0].toUpperCase() + r.detail.slice(1) : "That can't be done");
 // A dig done with no strike heard: the strike sounds as the frame drawn at its fourth (characters.js), and a frame
 // longer than the swing's first third (a slow device; the tests' fast clock on a runner: 0.47 s of the game a frame)
 // went from before it to the action's end. The axe was silent ("chop" not heard, test_e2e_ui #47). Once, on the tile

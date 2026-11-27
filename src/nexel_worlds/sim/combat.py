@@ -1,5 +1,6 @@
 """Fighting, damage, death and respawn."""
 
+from .. import death_lines
 from .. import tiles as T
 from ..tiles import DIRS
 from .constants import ATTACK_COOLDOWN, FARM, FLEE_SECONDS, FOOD_MAX, HP_MAX, SAT_START, sec
@@ -95,12 +96,19 @@ class Combat:
         self.add_items(a.x, a.y, dict(a.inventory))
         dropped = dict(a.inventory)
         a.inventory.clear()
+        # a line on it for everyone, the same for all (death_lines.py): which one, never the last death's
+        kind = who["kind"] if isinstance(who, dict) else None
+        pool, i, item = death_lines.pick(self.rng, self.death_line, code=code, kind=kind,
+                                         held=a.held if a.held in dropped else None, dropped=dropped,
+                                         water=T.GROUNDS[self.world.get(a.x, a.y)[0]].liquid, night=self.is_night(),
+                                         food=T.FOOD, weapons=T.WEAPONS, tools=T.TOOLS)
+        self.death_line = [pool, i]
         a.deaths += 1
         self.stats["deaths"] += 1
         if by:
             by.bump("kills")
         self.emit("death", a.x, a.y, name=a.name, code=code, who=who, by=by.name if by else None,
-                  dropped=dropped)
+                  dropped=dropped, line=[pool, i], item=item)
         if a.action or a.aside:
             self.interrupt(a, "you died")
         if a.sailing:

@@ -14,6 +14,7 @@ from pathlib import Path
 
 from . import tiles as T
 from .cells import HIGH, LOW, SEA
+from .death_lines import LINES as DEATH_LINES
 from .chunks import EARTH, STONE_FROM
 from .floors import KINDS
 from .landblocks import LAND_BLOCKS
@@ -25,6 +26,7 @@ from .sim.progress import LEVEL
 from .sim.storeys import RESTS_ON, STOREY, UPSTAIRS
 from .sim.wear import SLOTS
 from .sim.wild import BITE_HIGH
+
 
 FILE = Path(__file__).parent / "web" / "js" / "rules.js"
 
@@ -66,6 +68,7 @@ def rules_table() -> dict:
         "reach": T.REACH, "long": T.LONG, "wide": {k: v["wide"] for k, v in CREATURES.items() if "wide" in v}, "layer": C.LAYER,
         "leap": {"g": LEAP_G, "top": LEAP_TOP}, "fall_safe": C.FALL_SAFE, "fall_hp": C.FALL_HP, "bite_high": BITE_HIGH,
         "level": list(LEVEL),
+        "death_lines": DEATH_LINES,     # (a death's line, the server's pick: death_lines.py; the page fills it in, death.js)
         "recipes": {k: {"inputs": r.inputs, "output": r.output, "station": r.station} for k, r in T.RECIPES.items()},
     }
 
