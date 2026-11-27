@@ -64,7 +64,7 @@ const Target = (() => {
   }
   // a rect (the canvas's units) lies on a box drawn, or on the way's block (your own name is not written there: characters.js)
   api.over = (x, y, w, h) => [...api.drew.map((d) => d.r), typeof WayShow !== "undefined" && WayShow.block].some((r) => r && x < r.x + r.w && r.x < x + w && y < r.y + r.h && r.y < y + h);
-  // once a frame, in the marks pass: g, what a painter of marks needs (HdLook.art()), opts: {thing: what is aimed at stands (its own brackets), shown(x, y): a tile's level as the picture has it}
+  // once a frame, in the marks pass: g, what a painter of marks needs (HdLook.art()), opts: {thing: what is aimed at stands (its own brackets), at: the tile they are round, shown(x, y): a tile's level as the picture has it}
   // THE SELECTED CELL (the one the key in focus acts on: build mode the cursor's, else E's when it puts a block, else X's, else E's): its box always whole
   // ("which level am I interacting with?": a box at your body's cell or over your head was cut out of your sprite, or not drawn). At your body or over it:
   // drawn over you, your sprite seen through it (top()); under you: a box under your feet, your sprite in front of it whole. And your body aims at it (aim_art.js)
@@ -89,6 +89,7 @@ const Target = (() => {
       const r = K ? (K.r === undefined ? (K.r = TargetBox.boxRect(Q, c)) : K.r) : TargetBox.boxRect(Q, c);
       if (c.mine) { api.drew.push({x: c.x, y: c.y, z: c.z, kind: c.kind, key: c.key, mine: true, px, u: P.u}); continue; }
       if (c.way) { api.drew.push({x: c.x, y: c.y, z: c.z, kind: c.kind, key: c.key, way: true, px, u: P.u}); continue; }   // (wayshow.js draws that block)
+      if (c.thing && opts.at && c.x === opts.at.x && c.y === opts.at.y) { api.drew.push({x: c.x, y: c.y, z: c.z, kind: c.kind, key: c.key, bracketed: true, px, u: P.u}); continue; }   // (what stands there, aimed at: the corners round all of it are its one mark, hd_marks.js; not also a block-high box inside them, #360)
       // (a block to put where you stand, your body's cell or your head's: it cannot go, you are in it. Not an error: cream dotted, "can't" (not red, the
       // first thing seen in a shaft); red is for a place that is wrong)
       if (c === sel && !c.mine && !c.way) { const you = own && c.kind === "place" && c.ok === false && c.z - myZ(me0.x, me0.y) <= 2 ? {far: true, item: null} : {};
