@@ -58,7 +58,7 @@ class Game(Waits):
         """(curve: the settings' Curved world: None, as the game has it for a player (on); False: the flat picture,
         for a test that cannot be about the curved one; True: the curved one)"""
         self.load(zoom, curve)
-        self.page.wait_for_function("typeof ready !== 'undefined'")
+        self.page.wait_for_function("typeof ready !== 'undefined'"); self.wait("!document.getElementById('boot')", 30000)   # (the wait gone, in the page's time: the click's 30 s are the wall's)
         self.page.click("#name")
         self.page.keyboard.type(name)
         self.page.keyboard.press("Enter")
