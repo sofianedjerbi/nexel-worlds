@@ -240,7 +240,9 @@ def test_hop_down_off_a_hill_edge(game):
     assert s["x"] <= x - 3 and game.js(f"levelAt({s['x']}, {s['y']})") == 0 and game.pos() == (s["x"], s["y"])
     low = s["x"]
     game.page.keyboard.down("d")                                # and a jump back up the same edge (Space)
-    game.wait(f"ents.get('agent' + myId).x >= {low + .25}", 4000); game.page.keyboard.press("Space"); game.wait(f"myAt && myAt.z === 1 && myPos().x >= {x - 2}", 5000)
+    # (jumped a quarter tile into the edge's foot, x - 3: where the walk west let go of you is the wall's, and from a tile
+    #  further west the leap came down short of the edge, then walked into it)
+    game.wait(f"ents.get('agent' + myId).x >= {x - 3 + .25}", 4000); game.page.keyboard.press("Space"); game.wait(f"myAt && myAt.z === 1 && myPos().x >= {x - 2}", 5000)
     game.page.keyboard.up("d")
     game.still()                                              # (the world on your tile: settle gave up silently after 3 s)
     s = game.server()
