@@ -105,6 +105,9 @@
   #hud .hudrow { display:flex; gap:calc(2 * var(--u)); align-items:center; pointer-events:auto; }
   #vitals { display:flex; justify-content:space-between; align-items:flex-end; padding:0 4px; box-sizing:border-box; }
   #vitals canvas { image-rendering:pixelated; }
+  /* the boss bar across the top (bossbar.js); the buttons there step down under it while it is there (--bossband) */
+  #bossbar { position:fixed; top:calc(4px + env(safe-area-inset-top)); left:50%; transform:translateX(-50%); z-index:4; display:none; pointer-events:none; image-rendering:pixelated; }
+  body:not(.playing) #bossbar { visibility:hidden; } :is(#goals, #goalhint, #ttop) { translate:0 var(--bossband, 0px); transition:translate .25s; }
   /* experience: the wooden track between the vitals and the hotbar (drawn on a canvas by xp.js) */
   #xpwrap { position:relative; align-self:flex-start; margin:3px 0 7px; }
   #xpbar { display:block; image-rendering:pixelated; }

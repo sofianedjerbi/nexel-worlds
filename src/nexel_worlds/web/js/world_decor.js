@@ -130,11 +130,6 @@ function drawWild(p, x, y, now) {
     ANGER.forEach((row, j) => [...row].forEach((ch, i) => { if (ch === "r") { ctx.fillStyle = "#6e1d1d"; ctx.fillRect(mx + i * z, my + (j + 1) * z, z, z); } }));
     ANGER.forEach((row, j) => [...row].forEach((ch, i) => { if (ch === "r") { ctx.fillStyle = "#f0503f"; ctx.fillRect(mx + i * z, my + j * z, z, z); } }));
   }
-  if (A.hp && e.act !== "sleep" && e.hp < A.hp) {                    // the boss's health, over its tree
-    const w = 40 * z, bx = Math.round(x + 8 * z - w / 2), by = y - (A.ch - 12) * z;
-    ctx.fillStyle = "#5b3f36"; ctx.fillRect(bx - z, by - z, w + 2 * z, 4 * z);
-    ctx.fillStyle = e.hp * 2 > A.hp ? "#6aa66f" : "#d9473a"; ctx.fillRect(bx, by, Math.max(0, w * e.hp / A.hp), 2 * z);
-  }
 }
 const VARIANTS = {chicken: ["chicken", "chicken", "chicken_brown", "chicken_red", "chicken_blue", "chicken_green"],
   cow: ["cow", "cow", "cow_light", "cow_pink", "cow_purple", "cow_green"],
