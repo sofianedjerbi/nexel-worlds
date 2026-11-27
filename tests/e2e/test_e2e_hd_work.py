@@ -83,6 +83,8 @@ def test_made_at_other_tiles_on_the_way_back_the_far_land_is_kept(browser, serve
     assert all(n > 0 for n in there) and sum(back) < sum(there) / 4, {"fresh": way, "there": there, "back": back, "work": g.js("HdLook.work")}   # (each step east: far land new; back: next to none)
 
 
+@pytest.mark.realtime   # (the sheet's steps go while the page is idle, 8 ms of performance.now at a time (wear.js pump): a budget of
+#  the machine's time; stepped, the page's time stands still between frames and one turn makes the whole sheet)
 def test_a_persons_sheet_is_made_between_frames(browser, server):
     g = hd(browser, server)
     r = g.js("""(async () => { let idle = 0; const ric = window.requestIdleCallback; window.requestIdleCallback = (f, o) => ric((d) => { idle++; f(d); }, o);
