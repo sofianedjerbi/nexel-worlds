@@ -123,7 +123,9 @@ def test_a_shadow_keeps_its_px_while_the_land_is_made_again(browser, server):
     g = hd(browser, server)
     try:
         x, y = g.pos()
-        g.hour(.9)                                           # (night: the shadow under you alone, no cloud, no sun)
+        g.hour(.9, still=True)                               # (night: the shadow under you alone, no cloud, no sun; and the hour held: the
+        # light of the night goes on with it, and its colour with it: px of your shadow's soft rim left the colour under
+        # you as it was read, 153 -> 144 in 150 frames of 200 ms, never at 16 ms)
         g.wait("Math.abs((clock.phase || 0) - .9) < .02")
         g.stamp(-3, -3, ["T.b", "...", "M.C"])
         for dx, dy in ((3, 2), (-2, -1), (0, 0)):                             # (walked about: the paints are no longer in the order a new land makes them)
