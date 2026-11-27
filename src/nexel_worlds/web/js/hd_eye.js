@@ -34,7 +34,7 @@ const HdEye = (H) => {
   // gap the land could never fill, the backdrop's flat colours in it (the far land's green, the sea's blue in columns, a checker at their ends): "a flat blue mass" between the land and the far hills
   // ...and that is the EDGE (he, api.sky's edge), not the sky's line: the sky's line stays the eye's, the pitch's alone (hl). On the sky's line, climbing a hill of steps 6 levels the
   // whole sky, sun and clouds would come down 55 art px with the land ahead's own horizon, 9 a level, and up again down the other side. The far hills stand on the edge, the sky goes on down to them
-  let lowKey = "", lowL = 1; const eyeC = {k: "", y: 0}, edgeC = {k: "", y: 0};
+  let lowKey = "", lowL = 1, lastAt = null; const eyeC = {k: "", y: 0}, edgeC = {k: "", y: 0};
   function eyeLine(at, w, h, low, C) { const lv = Math.min(at[2] - .5, low), k = [cam.pitch.toFixed(2), cam.fov, api.bend, w, h, Math.round(lv * 16), Math.round(at[2] * 16)].join(); if (k !== C.k) { let m = 1e9; for (let dn = 1; dn <= H.R + 40; dn++) { const a = H.eng.at(at[0], at[1] - dn, lv, true); if (a && isFinite(a[1])) m = Math.min(m, a[1]); } C.k = k; C.y = m < 1e8 ? m : 0; } return C.y; }
   function lowAhead(tx, ty) { const H0 = Voxels.host, k = [tx >> 2, ty >> 2, H.eng.stamp].join(); if (k === lowKey) return lowL; lowKey = k; let m = 1e9;   // (every 4 tiles, as you go 4: some 200 columns)
     for (let dy = 6; dy <= H.R + 40; dy += 4) for (let dx = -H.R; dx <= H.R; dx += 4) { const x = tx + dx, y = ty - dy, c = H0.column(x, y); m = Math.min(m, !c ? H.SEA_L : H0.water(x, y) ? H0.waterTop(x, y) : c.length ? c[c.length - 1] : H.SEA_L); }
@@ -44,7 +44,8 @@ const HdEye = (H) => {
   // and the land's edge (the far land's level comes in steps) are eased
   function lines(tx, ty, L, at, w, h, dt) {   // (the horizon is the surface's, however deep you are)
     horizon(tx, ty, L); const ease = (v, t) => !v || Math.abs(t - v) < .5 ? t : v + (t - v) * (1 - Math.exp(-dt / .25)), lw = lowAhead(tx, ty), te = Math.max(8, eyeLine(at, w, h, lw, edgeC) + 2);
-    { const t = Math.max(8, eyeLine(at, w, h, 1e9, eyeC) + 2); hl = tilt > 0 && tilt < 1 ? t : ease(hl, t); api.skyStill = hl === t; } he = ease(he, te); api.skyStill = api.skyStill && he === te; api.line = [Math.min(at[2] - .5, lw), te - 2];   // (skyStill: the line and the land's edge where they ease to, this frame: tests, waits.py rest)
+    const tilts = tilt > 0 && tilt < 1, goes = tilts || (lastAt !== null && at[2] !== lastAt); lastAt = at[2];   // (the edge where this frame puts it while the eye tilts or its level moves (a step, a hop, a climb): eased a second behind the eye up a hill, a strip of the backdrop's flat far-land green was between it and the land, #359. The sky's line keeps its easing: a px a frame at most, hd_sky)
+    const t = Math.max(8, eyeLine(at, w, h, 1e9, eyeC) + 2); hl = tilts ? t : ease(hl, t); he = goes ? te : ease(he, te); api.skyStill = hl === t && he === te; api.line = [Math.min(at[2] - .5, lw), te - 2, t - 2];   // (line: tests: the far land's level, the edge's px and the sky's line's, as this frame puts them. skyStill: the line and the land's edge where they ease to, this frame: waits.py rest)
   }
   return {pitch, level, lines, snap() { hl = 0; }, get camL() { return camL; }, get tilt() { return tilt; }, get above() { return !!stage; }, get hy() { return hy; }};
 };
