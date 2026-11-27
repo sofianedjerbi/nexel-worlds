@@ -98,8 +98,12 @@ const VoxStyleFS = (() => {
       vec3 sea = vec3(.36, .64, .8) * max(l, .6);
       col = mix(sea, wc.rgb, wc.a * .3);
       float hz = .55 * smoothstep(fn, ff, distance(wp, eye)), gz = graze();   // (the haze: the land's own, below)
-      if (wtn[4].a > .5) { int k = int(clamp(ve, 0., 4.)); vec4 tn = wtn[k]; float g = wu > .5 ? 1. : gz, A = mix(tn.a, 1., g);   // (a far patch of the sea (ve 8, 9): the open sea's own, 4: whole)
-       tn.rgb = mix(tn.rgb * tn.a, wtn[5 + k].rgb, g) / A;   // (seen along its face, its bed goes to its sand's colour under it, whole (wtn 5..9): the water over the bed it has, near the horizon too)
+      if (wtn[4].a > .5) { int k = int(clamp(ve, 0., 4.)); vec4 tn = wtn[k], tw = wtn[5 + k]; float g = wu > .5 ? 1. : gz;   // (a far patch of the sea (ve 8, 9): the open sea's own, 4: whole)
+       if (ve < 7.5) { float dv = fract(vu.x) * 10., det = wx.x * wy.z - wx.z * wy.x;   // (its depth here, from its corners' (vox_land_water.js), at the centre of the art px it is in (on a top: its slope over the face; a side keeps its own), in quarter levels: PIXEL BANDS, #347)
+         if (abs(det) > 1e-9) { float ax = gx.x * 10., ay = gy.x * 10.; dv += dot(vec2(ax * wy.z - ay * wx.z, ay * wx.x - ax * wy.x) / det, (floor(wp.xz * 16.) + .5) / 16. - wp.xz); }
+         dv = clamp(floor(dv * 4. + .5) / 4., 1., 4.); int a = int(dv), b = min(a + 1, 4); float f = dv - float(a); tn = mix(wtn[a], wtn[b], f); tw = mix(wtn[5 + a], wtn[5 + b], f); }
+       float A = mix(tn.a, 1., g);
+       tn.rgb = mix(tn.rgb * tn.a, tw.rgb, g) / A;   // (seen along its face, its bed goes to its sand's colour under it, whole (wtn 5..9): the water over the bed it has, near the horizon too)
        col = mix(tn.rgb * max(l, .6), wc.rgb, wc.a * .45); o = vec4(mix(col, fogc, hz), max(A, wc.a * .45)); return; }   // (light.wtint: clear water: a tint and how much of it for water 0..4 levels deep (ve), the bed showing through; the game's picture of the water, its waves and glints, over it)
       o = vec4(mix(col, fogc, hz), wu > .5 ? 1. : mix(wa, 1., gz)); return;   // (the far sea stays blue to the horizon)
     }
