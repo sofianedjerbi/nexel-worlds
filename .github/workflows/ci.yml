@@ -111,9 +111,59 @@ jobs:
           echo "shards=$(python3 tools/e2e_shards.py plan $files)" >> "$GITHUB_OUTPUT"
           echo "browser test files: $(echo $files | wc -w)" >> "$GITHUB_STEP_SUMMARY"
 
+  # The game's sounds (tools/build_audio.py, not in git), built once for all the browser jobs (#341: each of the 16
+  # built them, ~100 s each). Kept in the cache by what they are made of: the effects (music/sfx.py, sfx_map.json), the
+  # build and the game's tables its checks read (src/nexel_worlds/*.py: every placeable item and ground has a sound),
+  # the locked numpy, and the music's renders it cuts (game.yml's cache, only read: nothing is played on Surge here).
+  # Built again only when one of them changed; with no renders cached, the effects are still built and the music's
+  # tests skip on their own ("no music rendered").
+  sounds:
+    name: The game's sounds
+    needs: e2e-plan
+    if: needs.e2e-plan.outputs.shards != '[]'
+    runs-on: ubuntu-latest
+    outputs:
+      key: ${{ steps.key.outputs.key }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: The music's renders, the last ones kept (game.yml's cache, read only)
+        uses: actions/cache/restore@v6.1.0
+        with:
+          path: music/site/audio
+          key: music-${{ hashFiles('music/*.py', 'music/*.json', '!music/sfx*') }}
+          restore-keys: music-
+      - id: key
+        run: echo "key=sounds-${{ hashFiles('tools/build_audio.py', 'music/sfx*', 'src/nexel_worlds/*.py', 'uv.lock', 'music/site/audio/*.wav') }}" >> "$GITHUB_OUTPUT"
+      - id: built
+        name: The sounds built from the same sources (cache)
+        uses: actions/cache/restore@v6.1.0
+        with:
+          path: src/nexel_worlds/web/audio
+          key: ${{ steps.key.outputs.key }}
+          lookup-only: true
+      - if: steps.built.outputs.cache-hit != 'true'
+        uses: astral-sh/setup-uv@v10.4.0
+        with:
+          python-version: "3.14"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - if: steps.built.outputs.cache-hit != 'true'
+        name: The game's sounds (tools/build_audio.py)
+        run: |
+          ls music/site/audio/final_*.wav 2>/dev/null | wc -l | xargs echo "music renders cached:" >> "$GITHUB_STEP_SUMMARY"
+          uv run --extra audio python tools/build_audio.py
+      - if: steps.built.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6.1.0
+        with:
+          path: src/nexel_worlds/web/audio
+          key: ${{ steps.key.outputs.key }}
+      - name: Said in the run's summary
+        run: |
+          echo "sounds: ${{ steps.built.outputs.cache-hit == 'true' && 'from the cache' || 'built' }} (${{ steps.key.outputs.key }})" >> "$GITHUB_STEP_SUMMARY"
+
   e2e:
     name: Browser tests
-    needs: e2e-plan
+    needs: [e2e-plan, sounds]
     # Optional for now (the owner, 2026-11-25): the suite's old failures on these runners held every merge. The agents
     # make it pass (#47); then this line goes and the browser tests are mandatory again.
     continue-on-error: true
@@ -140,19 +190,13 @@ jobs:
       # Mesa's GL driver through ANGLE (--use-angle=gl-egl) did not take: Chrome fell back to SwiftShader. The run's last
       # line names the renderer it got (tests/e2e/conftest.py).
       - run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends mesa-vulkan-drivers
-      # The sounds, so the sound tests run instead of skipping (#47). The effects are numpy, made here; the music is cut
-      # from the renders game.yml keeps (the same cache, only read: nothing is played on Surge in this job). With no
-      # renders cached, the effects are still built and the music's tests skip on their own ("no music rendered").
-      - name: The music's renders, the last ones kept (game.yml's cache, read only)
+      # The sounds, so the sound tests run instead of skipping (#47): built once a run (the job `sounds`), taken here
+      - name: The game's sounds (the job `sounds`, from its cache)
         uses: actions/cache/restore@v6.1.0
         with:
-          path: music/site/audio
-          key: music-${{ hashFiles('music/*.py', 'music/*.json', '!music/sfx*') }}
-          restore-keys: music-
-      - name: The game's sounds (tools/build_audio.py)
-        run: |
-          ls music/site/audio/final_*.wav 2>/dev/null | wc -l | xargs echo "music renders cached:" >> "$GITHUB_STEP_SUMMARY"
-          uv run --extra audio python tools/build_audio.py
+          path: src/nexel_worlds/web/audio
+          key: ${{ needs.sounds.outputs.key }}
+          fail-on-cache-miss: true
       - name: The game in Chrome (the runner's own Google Chrome)
         env:
           FILES: ${{ matrix.files }}
@@ -172,20 +216,22 @@ jobs:
 
   e2e-all:
     # The one name branch protection can require (#47): each browser job is named by its shard's files, which change
-    # with durations.json and a pull request's changes. Red if the plan or a browser job failed or was cancelled; green
-    # when they ran and passed, or were skipped (no `e2e` label, no browser test affected). While `e2e` is
+    # with durations.json and a pull request's changes. Red if the plan, the sounds or a browser job failed or was
+    # cancelled; green when they ran and passed, or were skipped (no `e2e` label, no browser test affected). While `e2e` is
     # continue-on-error (#120 takes it out), a failing shard still reads as success here.
     name: Browser tests (all)
-    needs: [e2e-plan, e2e]
+    needs: [e2e-plan, sounds, e2e]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - env:
           PLAN: ${{ needs.e2e-plan.result }}
+          SOUNDS: ${{ needs.sounds.result }}
           E2E: ${{ needs.e2e.result }}
         run: |
-          echo "plan: $PLAN, browser tests: $E2E"
+          echo "plan: $PLAN, sounds: $SOUNDS, browser tests: $E2E"
           case "$PLAN" in success|skipped) ;; *) exit 1 ;; esac
+          case "$SOUNDS" in success|skipped) ;; *) exit 1 ;; esac
           case "$E2E" in success|skipped) ;; *) exit 1 ;; esac
 
   commits:
