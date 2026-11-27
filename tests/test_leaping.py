@@ -108,3 +108,16 @@ def test_a_walk_said_after_a_flight_down_a_long_way_goes_on_past_where_it_landed
     for _ in range(14):
         sim.step()
     assert a.hp < 20 and a.x >= x + 5 and sim.height(a) == 0, (a.hp, a.x - x, sim.height(a))
+
+
+def test_a_stop_up_a_step_replaced_at_once_by_the_leap_off_its_top_is_made_first(world):
+    """The screen walks up a step by itself (auto-jump: the stop says `jump`) and leaps off its top a frame later: the
+    leap replaces the stop before the world has made its stride. The way there is made with the stop's jump, then the
+    flight: made without it, the world stayed under the step and refused every flight after it (#368)."""
+    sim, a = world
+    x, y = a.x, a.y
+    sim.world.set(x - 1, y, level=1)
+    sim.world.set(x - 2, y, level=2)
+    sim.submit(a, "stop", {"at": [x - 1, y, 5], "jump": True})
+    r = run(sim, a, "leap", {"path": [[x - 2, y]], "land": 2, "n": 6})
+    assert r["ok"] and (a.x, a.y, sim.height(a)) == (x - 2, y, 2) and a.via_done == 6, (r, (a.x - x, sim.height(a)))

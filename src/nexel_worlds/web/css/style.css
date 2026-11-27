@@ -105,6 +105,8 @@
   #hud .hudrow { display:flex; gap:calc(2 * var(--u)); align-items:center; pointer-events:auto; }
   #vitals { display:flex; justify-content:space-between; align-items:flex-end; padding:0 4px; box-sizing:border-box; }
   #vitals canvas { image-rendering:pixelated; }
+  /* armor: steel rims round the hearts, on a canvas of its own just behind them (vitals.js drawArmor) */
+  #heartbox { position:relative; z-index:0; display:flex; } #armor { position:absolute; z-index:-1; pointer-events:none; }
   /* the boss bar across the top (bossbar.js); the buttons there step down under it while it is there (--bossband) */
   #bossbar { position:fixed; top:calc(4px + env(safe-area-inset-top)); left:50%; transform:translateX(-50%); z-index:4; display:none; pointer-events:none; image-rendering:pixelated; }
   body:not(.playing) #bossbar { visibility:hidden; } :is(#goals, #goalhint, #ttop) { translate:0 var(--bossband, 0px); transition:translate .25s; }
@@ -229,7 +231,8 @@
   #deathskull { width:64px; height:64px; image-rendering:pixelated; display:block; margin:-46px auto 0; animation:skullbob 1.6s steps(4) infinite; }
   @keyframes skullbob { 50% { transform:translateY(-4px); } }
   #death .dt { font-size:40px; line-height:44px; color:var(--warn); margin:2px 0 4px; text-shadow:2px 2px 0 rgba(91,63,54,.25); }
-  #deathcause { font-size:22px; color:var(--ink); margin-bottom:10px; }
+  #deathcause { font-size:22px; color:var(--ink); margin-bottom:4px; }
+  #deathquip { font-size:18px; line-height:22px; color:var(--ink2); font-style:italic; margin-bottom:10px; }
   #deathloot { display:flex; flex-wrap:wrap; justify-content:center; gap:6px; margin:6px 0 4px; }
   #deathloot .dslot { position:relative; width:calc(11 * var(--i) + 12px); height:calc(11 * var(--i) + 12px); background:#e9d3ab; border:2px solid #c9a676; border-radius:5px;
     box-shadow:inset 0 -3px 0 rgba(91,63,54,.15); animation:dslotin .4s steps(4) backwards; }

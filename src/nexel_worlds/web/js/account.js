@@ -8,12 +8,14 @@ const ACCOUNT = {url: document.body.dataset.accounts || "", session: localStorag
 const ACCOUNT_SAYS = {bad_email: "That does not look like an email.", too_many: "Too many tries. Wait a little, then ask again.",
   mail_down: "The mail could not be sent. Try again in a moment.", bad_code: "That is not the code. Look at the mail again, or start over.",
   offline: "The account service does not answer.", no_session: "You were logged out. Log in again."};
+// (a refusal not in it says no in words, never its code)
+const accountSays = (why) => (Object.hasOwn(ACCOUNT_SAYS, why) ? ACCOUNT_SAYS[why] : "The account service said no. Try again in a moment.");
 async function accountAsk(path, body, keepalive = false) {      // (keepalive: it reaches the door even if the page goes now)
   try { return await (await fetch(ACCOUNT.url + path, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body), keepalive})).json(); }
   catch (e) { return {ok: false, error: "offline"}; }
 }
 function accountStep() { return !ACCOUNT.url || ACCOUNT.session ? "me" : ACCOUNT.sent ? "code" : "mail"; }
-function accountNeed(id, why) { $(id).classList.add("need"); $(id).focus(); if (why) toast(ACCOUNT_SAYS[why] || why, true); }
+function accountNeed(id, why) { $(id).classList.add("need"); $(id).focus(); if (why) toast(accountSays(why), true); }
 async function accountCode() {                                // step one: mail me a code
   const email = $("email").value.trim();
   if (!/^\S+@\S+\.\S+$/.test(email)) return accountNeed("email", email ? "bad_email" : "");
@@ -43,7 +45,7 @@ async function accountTicket() {                              // what the world'
   const r = await accountAsk("/ticket", {session: ACCOUNT.session, world: location.host});
   if (r.ok) return r.ticket;
   if (r.error === "no_session") accountDrop();
-  toast(ACCOUNT_SAYS[r.error] || r.error, true);
+  toast(accountSays(r.error), true);
   return null;
 }
 async function accountWho() {                                 // has this account a character here already? the world says

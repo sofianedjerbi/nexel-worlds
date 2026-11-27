@@ -89,6 +89,7 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
         self.listeners: list = []  # callables(event) for spectators / logs
         self.event_log = open(event_log, "a") if event_log else None
         self.rng = random.Random()
+        self.death_line = None                     # (the last death's line, [pool, i]: the next one is another: death_lines.py)
         self.luck = 1.0                                    # what a creature's chances of leaving a thing are multiplied by (a dev tool: tests)
         self.stats = {"tiles_changed": 0, "actions": 0, "deaths": 0, "chat": 0, "trades": 0, "crafts": 0}
 
@@ -228,7 +229,7 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
         if tool in ("walk", "stop"):                    # where a player's screen turned, or stopped (Movement.follow): kept
             if args.get("cut"):                         # now, were this replaced before it starts (`cut`: it turned
                 self.via_drop(a)                        # back before the tile it had stopped on: not made after all)
-            self.via_add(a, args.get("from" if tool == "walk" else "at"))
+            self.via_add(a, args.get("from" if tool == "walk" else "at"), args.get("jump"))
         act = Action(a, tool, args, fn(a, args), on_done)
         moving = a.action is not None and a.action.tool in MOVES
         if tool in ASIDE:                               # with the hands: a walk goes on (anything else stops for it)
