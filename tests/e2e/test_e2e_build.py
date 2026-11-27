@@ -27,7 +27,9 @@ def test_a_wall_is_planned_with_a_cursor_and_built_by_keys_alone(game):
     for _ in range(3):
         game.press("ArrowRight", 160)
     kb.up("Space")
-    assert game.js("Build.S.plans.size") >= 1 or game.js(WALLS, [x + 2, y + 1, 4]) == "WWWW"
+    # (planned, or all four built: as one state of the page, when it comes. A plan is let go when the world answers its
+    # build (build_work.js) and the wall is on the page with a tick after: no plan and "WWW." in between, read by two calls)
+    game.wait(f"Build.S.plans.size >= 1 || ({WALLS})([{x + 2}, {y + 1}, 4]) === 'WWWW'", 20000)
     game.wait(f"({WALLS})([{x + 2}, {y + 1}, 4]) === 'WWWW' && Build.S.plans.size === 0", 20000)      # built, one after the other
     assert game.inv("wood_wall") == 2 and game.pos() != (x, y)                                    # you walked to them
     game.press("x")                                            # on the last one built: a plan to take it down
