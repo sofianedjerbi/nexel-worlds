@@ -15,6 +15,12 @@ from game import Game, new_name
 from waits import FRAMES
 
 
+# the road both walk east on, from 4 rows north of you: the speaker on its second row (3 north of you), and the 8 rows south
+# of it that hide a body to its head (hd_level.js behind: what stands there over the eye's line) all meadow, level 0, nothing
+# built. Six rows were 4 short: what the land or a test before held past them stood over the line, "no bubble drawn", hid True
+ROAD = ["." * 120] * 10
+
+
 def on_flat(g):
     """You on the tests' flat place (home.py: dry land at level 0 or 1 for 40 tiles, the same for every test), the meadow
     laid out round it. Where you woke, the land past the meadow was a chance: a hill rows south of the speaker hid it
@@ -58,7 +64,7 @@ def test_a_bubble_goes_with_its_speaker_px_for_px_and_its_letters_stay_as_they_a
         g = Game(page, server)
         g.join(new_name(), 3)                         # (zoom 3: the land's pixel and the bubble's (2) are not one in the other)
         on_flat(g)
-        g.stamp(-6, -4, ["." * 120] * 6)             # (a road east for both: long enough for the frames asked below at 200 ms a frame, half of them drawing no words, ~50 tiles)
+        g.stamp(-6, -4, ROAD)                        # (a road east for both: long enough for the frames asked below at 200 ms a frame, half of them drawing no words, ~50 tiles)
         other = open_game(browser, server)
         x, y = g.pos()
         other.rpc("dev_teleport", x=x + 2, y=y - 3)   # (its bubble not over your name)
@@ -128,7 +134,8 @@ THAW = "(() => { window.__frozen = false; frame = window.__go; requestAnimationF
 BUBBLE_AT = "(name) => { const b = bubbles.find((b) => b.name === name && b.at); return b && [b.at[0], b.at[1], b.w, b.h]; }"
 NO_BUBBLE = """(name) => { const p = [...ents.values()].find((e) => e.e && e.e.name === name); return {bubbles: bubbles.map((b) => [b.name, b.at, b.up, b.h]),
   drawn: p && View.of(p), hid: p && HdLook.hidden(p.x + .5, p.y + .5, p.e.z !== undefined ? p.e.z : floorAt(Math.round(p.x), Math.round(p.y))), at: p && [p.x, p.y],
-  me: myPos() && [myPos().x, myPos().y], W: innerWidth, H: innerHeight, opt: opt("bubbles")}; }"""
+  me: myPos() && [myPos().x, myPos().y], W: innerWidth, H: innerHeight, opt: opt("bubbles"),
+  south: p && [1, 2, 3, 4, 5, 6, 7, 8].map((d) => { const x = Math.floor(p.x), y = Math.floor(p.y) + d; const c = Voxels.host.column(x, y); return [x, y, c && c.length ? c[c.length - 1] : null, (HdThings.at(x, y) || []).length]; })}; }"""   # (what stands in the 8 rows south of it: the land's top, the built boxes)
 # how many px of each picture differ from the first's by more than 24 in a channel (the pictures read by the page itself)
 DIFFS = """async (b64s) => { const px = [];
   for (const b of b64s) { const im = await createImageBitmap(await (await fetch('data:image/png;base64,' + b)).blob()), c = document.createElement('canvas');
@@ -149,7 +156,7 @@ def test_a_bubble_looks_the_same_on_every_step_of_a_walk(browser, server, dpr):
         g = Game(page, server)
         g.join(new_name(), 3)
         on_flat(g)
-        g.stamp(-6, -4, ["." * 60] * 6)
+        g.stamp(-6, -4, ROAD)
         other = open_game(browser, server)
         x, y = g.pos()
         other.rpc("dev_teleport", x=x + 2, y=y - 3)
