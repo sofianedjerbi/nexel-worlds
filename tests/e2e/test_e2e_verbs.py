@@ -1,6 +1,8 @@
 """Two verbs, as in Minecraft (the owner: "E should be used to interact, right? Now it breaks things. Why do I break
 rocks with E?"): X (a left click) breaks what it is on, E (a right click) uses it (intent.js)."""
 
+from waits import QUIET
+
 SCREEN = "([x, y]) => { const r = cv.getBoundingClientRect(), a = HdLook.screenOf(x + .5, y + .5, topAt(x, y)); return [r.left + a[0], r.top + a[1]]; }"      # (the middle of a tile's top, as the HD look draws it)
 
 
@@ -62,7 +64,7 @@ def test_left_click_breaks_right_click_uses_ground_walks(game):
     assert game.js("$('hover').innerText") == "Mine rock (slow)"             # (a right click has nothing to do with it)
     for _ in range(2):
         game.page.mouse.click(sx, sy, button="right")
-        game.sleep(300)
+        game.until(f"({QUIET})()"); game.tick()
     assert game.tile(1, 0) == "M" and not game.js("myAction")                # the right button mines nothing
     game.page.mouse.click(sx, sy)                                            # the left one does
     game.wait("!!myAction || combAt(%d, %d) !== 'M'" % (x + 1, y), 3000)

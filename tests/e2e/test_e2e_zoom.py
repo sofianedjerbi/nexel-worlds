@@ -51,7 +51,7 @@ def test_the_keys_of_the_main_row_zoom_on_any_layout_and_for_a_watcher_too(game,
     assert abs(sign[0] - 600) < 2 and 0 < sign[2] - sign[1] < 20, sign          # the sign: in the middle, just over the hearts
     game.press("t", 200)                                       # typing a dash in the chat is not a zoom
     game.page.keyboard.type("a-b=c")
-    game.sleep(300)
+    game.until("!ZOOM.busy"); game.frames(2)
     assert game.js("zoom") == 3
     game.page.keyboard.press("Escape")
     page = browser.new_page(viewport={"width": 1000, "height": 700})            # someone who only watches
