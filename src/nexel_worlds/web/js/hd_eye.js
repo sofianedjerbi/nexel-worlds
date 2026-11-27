@@ -44,7 +44,7 @@ const HdEye = (H) => {
   // and the land's edge (the far land's level comes in steps) are eased
   function lines(tx, ty, L, at, w, h, dt) {   // (the horizon is the surface's, however deep you are)
     horizon(tx, ty, L); const ease = (v, t) => !v || Math.abs(t - v) < .5 ? t : v + (t - v) * (1 - Math.exp(-dt / .25)), lw = lowAhead(tx, ty), te = Math.max(8, eyeLine(at, w, h, lw, edgeC) + 2);
-    { const t = Math.max(8, eyeLine(at, w, h, 1e9, eyeC) + 2); hl = tilt > 0 && tilt < 1 ? t : ease(hl, t); } he = ease(he, te); api.line = [Math.min(at[2] - .5, lw), te - 2];
+    { const t = Math.max(8, eyeLine(at, w, h, 1e9, eyeC) + 2); hl = tilt > 0 && tilt < 1 ? t : ease(hl, t); api.skyStill = hl === t; } he = ease(he, te); api.skyStill = api.skyStill && he === te; api.line = [Math.min(at[2] - .5, lw), te - 2];   // (skyStill: the line and the land's edge where they ease to, this frame: tests, waits.py rest)
   }
   return {pitch, level, lines, snap() { hl = 0; }, get camL() { return camL; }, get tilt() { return tilt; }, get above() { return !!stage; }, get hy() { return hy; }};
 };
