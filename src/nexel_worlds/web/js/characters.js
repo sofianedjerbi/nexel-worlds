@@ -15,11 +15,18 @@ function biteIcon(name, bites) {
   const key = name + bites;
   if (biteIcons.has(key)) return biteIcons.get(key);
   const big = fullIcon(name).getContext("2d").getImageData(0, 0, 16, 16).data;
+  // The pack's icons are stickers: a light rim round each, for the bag's slots, and not part of the thing (#408). The light
+  // px reached from outside the icon through light px are that rim, left out here; a light px inside the thing's own
+  // outline (an egg's shell) is not reached and stays.
+  const I = 16, light = (x, y) => { const i = (y * I + x) * 4; return big[i + 3] > 128 && Math.min(big[i], big[i + 1], big[i + 2]) > 225; }, out = new Uint8Array(I * I), todo = [];
+  for (let y = 0; y < I; y++) for (let x = 0; x < I; x++) if (big[(y * I + x) * 4 + 3] <= 128 || ((x % (I - 1) === 0 || y % (I - 1) === 0) && light(x, y))) { out[y * I + x] = 1; todo.push([x, y]); }
+  while (todo.length) { const [x, y] = todo.pop(); for (const [X, Y] of [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]]) if (X >= 0 && Y >= 0 && X < I && Y < I && !out[Y * I + X] && light(X, Y)) { out[Y * I + X] = 1; todo.push([X, Y]); } }
+  const rim = (x, y) => out[y * I + x] === 1 && light(x, y);
   const c = document.createElement("canvas"); c.width = c.height = 8; const g = c.getContext("2d"), img = g.createImageData(8, 8);
   let left = 0;
   for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
     let best = -1;
-    for (const [dx, dy] of [[1, 1], [0, 0], [1, 0], [0, 1]]) { const i = ((y * 2 + dy) * 16 + x * 2 + dx) * 4; if (big[i + 3] > 128) { best = i; break; } }
+    for (const [dx, dy] of [[1, 1], [0, 0], [1, 0], [0, 1]]) { const i = ((y * 2 + dy) * I + x * 2 + dx) * 4; if (big[i + 3] > 128 && !rim(x * 2 + dx, y * 2 + dy)) { best = i; break; } }
     if (best < 0 || BITE_AT.slice(0, bites).some(([bx, by, r]) => (x - bx) ** 2 + (y - by) ** 2 < r * r)) continue;
     img.data.set(big.slice(best, best + 4), (y * 8 + x) * 4); left++;
   }
