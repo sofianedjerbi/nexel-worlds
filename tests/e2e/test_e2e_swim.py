@@ -167,7 +167,9 @@ def test_a_sprints_wake_thins_out_to_nothing_at_its_end_and_is_not_cut(game):
     game.rpc("dev_needs", hp=20, hunger=20)
     game.rpc("dev_stamp", x=s["x"] + 1, y=s["y"] - 4, rows=["(" * 40] * 9)
     game.rest()
-    game.hold_until(["d"], "swimsAt(ents.get('agent' + myId), ents.get('agent' + myId).e)")
+    # (two tiles into the water before the sprint, a swim's wake behind them: the wake's end in the water, where it can thin
+    #  out. As soon as it was in, the end was the shore, the wake cut there by the land: "37 <= 39.0", main's run on #320)
+    game.hold_until(["d"], f"swimsAt(ents.get('agent' + myId), ents.get('agent' + myId).e) && ents.get('agent' + myId).x >= {s['x'] + 3}")
     game.page.keyboard.down("Shift")
     game.page.keyboard.down("d")
     # until the first sprint mark has lived its whole life, in the page's own time (the wake is whole, its end thinning). A
