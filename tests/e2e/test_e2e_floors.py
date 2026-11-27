@@ -64,6 +64,9 @@ def test_a_second_floor_is_built_and_climbed_by_keys_alone(game):
         game.settle(f"myAt && myAt.x === {x + to[0]} && myAt.y === {y + to[1]} && myAt.z === {to[2]} && !walking && !pred && ents.get('agent' + myId).e.z === {to[2]}", timeout=5000)
         s = game.server()
         assert (s["x"] - x, s["y"] - y, s["z"]) == to, (key, to, s["x"] - x, s["y"] - y, s["z"])
+    # (and the body come down on its tile: myAt and the world's word have the cell as the arc goes over it, the body still on its way
+    # from the step: half way across it, 40.3 px between the step's 32 and the floor's 48, on main's run 45925486865)
+    game.wait("(() => { const p = ents.get('agent' + myId); return !Leap.on() && !Leap.gliding() && p.x === p.tx && p.y === p.ty; })()", timeout=5000)
     assert game.js("myAt.z") == 3 and game.js("liftOf(ents.get('agent' + myId)) / zoom") == 48      # drawn where you stand: three layers up
     game.press("b")                                            # upstairs, the cursor down a floor: the room under it
     game.js(f"Build.S.at = {{x: {x + 3}, y: {y - 3}}}")
