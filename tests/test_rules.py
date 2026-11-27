@@ -123,11 +123,12 @@ KEPT = {
     "target_box.js FACES": "a block's faces", "race_list.js BASE": "a palette's letters", "race_list.js EXTRA": "a palette's letters",
     "wear.js BASE": "a palette's letters", "wear.js BODY": "a palette's letters", "render.js WATCH": "a place: x, y, z",
     "voxpaint.js SLIM": "a shape's letters",
+    "tool_art.js METAL": "art: a tool tier's metal colours, in the paw and its swing (#393)",
 }
 # the kept tables with keys of their own besides the world's (a group's title, a goal's words, a material, a pose, the
 # kind a tiered tool is drawn as: vocab.js toolArt, every sword the "sword"): in
 # every other one, each key is a tile, an item or a creature the world has (a name dropped or changed there fails here)
-MIXED = {"assets.js LATE", "characters.js SWING_ROW", "craft.js RECIPE_GROUPS", "effects.js PCOL", "goals.js GOALS", "sound_of.js STRIKE", "sound_of.js BREAK",
+MIXED = {"assets.js LATE", "characters.js SWING_ROW", "tool_art.js METAL", "craft.js RECIPE_GROUPS", "effects.js PCOL", "goals.js GOALS", "sound_of.js STRIKE", "sound_of.js BREAK",
          "keyboard.js BOOK_KEYS", "keyboard.js HELD", "mouse.js FACE", "target_box.js FACES", "race_list.js BASE", "wear.js BASE", "render.js WATCH", "voxpaint.js SLIM"}
 
 
