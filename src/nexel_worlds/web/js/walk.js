@@ -142,7 +142,7 @@ function walkOn(p, dt, now) {
   if (performance.now() < silkUntil) return;                 // pinned: the server holds you there (your `ready`), and so does your screen
   const [wx, wy] = DIRV[walking.dir], s = wx || wy, side = wx ? "y" : "x", along = wx ? "x" : "y", lead = leadOf(p, now);
   let t = dt * (lead < -1 ? 1.25 : lead <= LEAD[0] ? 1 : Math.max(0, (LEAD[1] - lead) / (LEAD[1] - LEAD[0])));   // the time you walk in
-  for (let i = 0; i < 4 && t > 1e-5; i++) {
+  for (let i = 0; i < 12 && t > 1e-5; i++) {   // (a tile a turn: a half-second frame's sprint is 5, and the lane first)
     const off = walking.lane - p[side];
     if (Math.abs(off) > 1e-3) {
       const v = speedAt(Math.round(p.x), Math.round(p.y), p), go = Math.min(Math.abs(off), v * t);

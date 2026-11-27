@@ -5,6 +5,7 @@
 //  Frame
 // =====================================================================================
 let lastT = performance.now(), arrivingNow = true;
+const FRAME_S = .5;   // (a frame moves the world by its own time, up to half a second (a hidden tab's return past that). At 0.1 s a runner's 200 ms frame walked you at half the server's pace: let go, tiles behind it, snapped)
 const LAND_MS = 3 * (window.__pace || 1), HOLD_MS = 2500;      // (__pace: only in the browser tests, whose pages' clocks run faster, tests/e2e/clock.py: the land's share of a frame is the machine's time, not the game's)
 let goodAt = 0;                // when the land where you are was last all there (a frame drawn whole)
 const WATCH = {x: 0, y: 0, z: 0, free: true};      // (the eye of who watches: render.js, hd.js)
@@ -18,7 +19,7 @@ function frame(now) {
 }
 function update(now) {
   const began = performance.now();
-  const dt = Math.max(0, Math.min(.1, (now - lastT) / 1000)); lastT = now;   // (never back in time: a frame stamped before the last one moved every body standing still by 0/0, for good)
+  const dt = Math.max(0, Math.min(FRAME_S, (now - lastT) / 1000)); lastT = now;   // (never back in time: a frame stamped before the last one moved every body standing still by 0/0, for good)
   const t = now / 1000;
   for (const p of ents.values()) {
     if (p.e && p.e.kind === "agent" && p.e.id === myId && Leap.on()) { Leap.frame(p, dt, now); continue; }   // you in the air (leap.js)
