@@ -4,6 +4,7 @@ numbers): they are its sections now, and gone as boxes of their own."""
 
 import pytest
 from game import Game, new_name
+from waits import FRAMES, until
 
 TEXT = "(() => { const e = document.getElementById('f3'); return e && e.style.display !== 'none' ? e.innerText : ''; })()"
 OLD = "['xyz', 'debug', 'hdperf'].filter((id) => document.getElementById(id))"
@@ -78,6 +79,7 @@ def test_on_the_home_screen_it_is_not_shown_even_when_left_on(browser, server):
     page.evaluate("localStorage.setItem('nexel-f3', '1')")
     page.reload()
     page.wait_for_function("document.body.classList.contains('scene')", timeout=20000)
-    page.wait_for_timeout(800)
+    until(page, "!document.body.classList.contains('booting')")
+    page.evaluate(FRAMES, 2)                                     # (shown, it is painted on its first frame: f3.js paints at once, then 4 times a second)
     assert page.evaluate(TEXT) == "" and not page.evaluate("document.body.classList.contains('f3')")
     page.close()
