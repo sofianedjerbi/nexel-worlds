@@ -37,7 +37,8 @@ def test_the_recipe_book_is_done_without_a_mouse(game):
     for _ in range(4):
         game.press("s", 80)                                                      # (W and S, A and D do what the arrows do)
     assert game.js("craftFocus") == "plank"
-    game.press("Shift+Enter", 1500)
+    game.press("Shift+Enter", 0)
+    game.until(f"meObs.self.inventory.plank >= 1 && ({QUIET})()"); game.tick()   # (five a craft of 1.5 s, its bar: read once it has ended and been answered, not after 1.5 s of sleep, which ended with it)
     assert game.inv("plank") == 10                                               # five at once, two a time
     game.press("i", 250)
     assert game.js(OPEN) == "bag"                                                # one of the two at a time

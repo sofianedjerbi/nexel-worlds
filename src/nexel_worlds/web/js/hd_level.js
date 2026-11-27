@@ -24,6 +24,15 @@ const HdLevel = (() => {
     const b = !p.free && BodyPlace.of(p), [L, Lf] = p.free ? [p.z, p.z] : of(p, now);
     place = {tx: b ? b.tx : Math.round(p.x), ty: b ? b.ty : Math.round(p.y), L, Lf, free: !!p.free}; cov = p.free ? {top: L, dep: 0, roof: false, rim: rim(place.tx, place.ty, L)} : cover(place); return place;
   }
+  // SOUTH: the rows south of you the screen shows. On flat land `flat` (the screen's foot over a row's height); land south of you higher than you is nearer the eye, a row of it
+  // shows as one ks of its levels nearer you (ks: levels the eye's line climbs a tile): a hill climbed south shows more rows, and the land made round you reaches them. Every other column
+  // of the screen's width (a ridge two columns wide is still met); kept till where you are or what is asked changes (once a step, not once a frame)
+  let southK = "", southN = 0;
+  function south(tx, ty, L, rx, flat, ks, max) {
+    const k = [tx, ty, L, rx, flat, ks, max].join(); if (k === southK) return southN; let n = flat;
+    for (let d = flat + 1; d <= max; d++) { let r = 0; for (let x = tx - rx; x <= tx + rx; x += 2) r = Math.max(r, topAt(x, ty + d) - L); if (d - r / ks <= flat) n = d; }
+    southK = k; southN = n; return n;
+  }
   function cover({tx, ty, L}) { const top = topAt(tx, ty); return {top, dep: Math.max(0, top - L), roof: top > L, rim: rim(tx, ty, L)}; }
   function of(p, now) { const r = of0(p, now); if (!(p.e && p.e.kind === "agent" && p.e.id === myId)) return r; const a = Leap.state; return [a ? Math.max(r[0], Math.floor(a.z + .5)) : r[0], Leap.cam(r[1], now)]; }
   function of0(p, now) {   // (between two tiles: on the body's own line, BodyPlace.of: body_place.js line)
@@ -139,5 +148,5 @@ const HdLevel = (() => {
       if (w > 0 && h > 0 && w * h >= .25 * B.w * B.h) return true; }
     return false;
   }
-  return {track, foot, DRAW_AT, own, over, hides, behind, covered, veils, wall, wallAt, cut, body, drawsOf, get place() { return place; }, get cover() { return cov; }, coverOf: cover};
+  return {track, south, foot, DRAW_AT, own, over, hides, behind, covered, veils, wall, wallAt, cut, body, drawsOf, get place() { return place; }, get cover() { return cov; }, coverOf: cover};
 })();

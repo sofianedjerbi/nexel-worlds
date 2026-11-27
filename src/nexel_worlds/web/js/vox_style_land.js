@@ -143,6 +143,7 @@ const VoxStyleLand = (() => {
       const rx = Math.min(r, o.rx || r), X0 = cx - rx, X1 = cx + rx, Y0 = cy - r, Y1 = cy + Math.min(r, o.rs || r);
       const good = (ch, bx, by) => !!ch && ch.mk === (host.chunkKey ? host.chunkKey(bx * CH, by * CH, CH) : "") && (ch.low ? ch.L === L : ch.lo - 1 > L - deep);
       function* chunk(bx, by) {
+        const mk = host.chunkKey ? host.chunkKey(bx * CH, by * CH, CH) : "";   // (its key as it begins: a chunk is made a tile a step, over frames, and what it holds is what stood when each tile was made; a change since it began leaves it under the old key, made again by the next land)
         const out = {main: [], model: [], shade: [], water: []}; let lo = 1e9, low = false, wet = 0;
         const faces = (x, y, z, dst) => {
           const c = real(x, y) || col(x, y), open = c[c.length - 1], top = VoxMesh.topOf(c, z);   // (|| col: the land's block gone since its column was read for this chunk, before a yield)   // (what a face is lit as and painted by: the land as it is; which faces there are: as drawn, solidIn)
@@ -181,7 +182,7 @@ const VoxStyleLand = (() => {
           }
           wet += waterFaces(out.water, x, y, col, solidIn, L - deep);   // (still and running: one way)
         }
-        const ch = {mk: host.chunkKey ? host.chunkKey(bx * CH, by * CH, CH) : "", lo, low, L, wet}; for (const k of KINDS) ch[k] = new Float32Array(out[k]); return ch;
+        const ch = {mk, lo, low, L, wet}; for (const k of KINDS) ch[k] = new Float32Array(out[k]); return ch;
       }
       // past the box, to the horizon, in patches: the sea's flat face where the sea is (or nothing is known); where land is, the land at its height, a skirt south, west and east of it: no sea inland.
       // Their px are the land's own at the land's own size (the shader, kind 7): a top an 8 x 8 quarter of a tile's paint, which quarter and which way round by the tile it lies on; a skirt its rock's front (e: 9 a top, 10 a south skirt, 11 a west or east one). Not the paint's mean colour: that reads as flat slabs.
