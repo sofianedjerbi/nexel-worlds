@@ -2,6 +2,7 @@
 key does is written on it while you play by keys."""
 
 from test_e2e_touch import touch_game
+from waits import QUIET
 
 LIST = "[...document.querySelectorAll('#recipes .rcard')].map((c) => c.dataset.name)"
 LIT = "[...document.querySelectorAll('#recipes .rcard:not(.no)')].map((c) => c.dataset.name)"
@@ -31,7 +32,7 @@ def test_the_recipe_book_is_done_without_a_mouse(game):
     for _ in range(5):
         game.page.keyboard.down("Enter")
     game.page.keyboard.up("Enter")
-    game.sleep(1500)
+    game.until(f"meObs.self.inventory.workbench >= 1 && ({QUIET})()"); game.tick()   # (made, every craft asked answered, and a tick after)
     assert game.inv("workbench") == 1
     for _ in range(4):
         game.press("s", 80)                                                      # (W and S, A and D do what the arrows do)
@@ -57,7 +58,7 @@ def test_no_key_caps_on_a_phone(browser, server):
     try:
         g.give(wood=30)
         g.js("toggleCraft()")
-        g.sleep(400)
+        g.until(f"$('craft').style.display === 'block' && ({QUIET})()")              # (open, nothing sliding)
         g.js("document.body.classList.add('bykeys')")                             # (as the thumb stick has it)
         assert g.js("document.querySelectorAll('#craft kbd').length") >= 4 and g.js(CAPS) == []
     finally:

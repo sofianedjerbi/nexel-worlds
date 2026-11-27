@@ -1,6 +1,7 @@
 """The chat line finishes what you type: commands, their arguments, what an argument can be, a name (js/complete.js)."""
 
 from conftest import open_game
+from waits import QUIET
 
 ROWS = "[...$('sayhelp').children].map((d) => (d.querySelector('b') || d).textContent)"
 LINE = "$('say').value"
@@ -51,7 +52,7 @@ def test_a_command_is_built_with_tab_and_the_arrows(game):
     page.keyboard.type("dig dir=N")
     assert game.js(ROWS) == ["N"]
     page.keyboard.press("Enter")                                        # sent as typed: the list is not in the way
-    game.sleep(500)
+    game.until(f"({QUIET})()")                                         # (the dig answered: an action is answered when it ends)
     assert game.inv("flower") == 1
 
 
@@ -80,7 +81,7 @@ def test_what_an_argument_can_be(game):
     assert game.js(LINE) == "/unwear slot=pants " and game.js(OPEN) is True
     page.fill("#say", "/step dir=N run=false")                          # (and "false" is not a yes: it was, sent as a text)
     page.keyboard.press("Enter")
-    game.sleep(600)
+    game.until(f"({QUIET})()")                                         # (the step answered: what it says, it has said)
     assert game.js("$('toast').style.display") != "block" or "run" not in game.js("$('toastt').textContent")
 
 
