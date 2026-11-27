@@ -15,7 +15,14 @@ const VoxLandWater = (host, emit, TRI) => {
   // show by its height, the colour stays), and never over a pond's (2): the deeper bands are the still water's own, 3 a lake's, 4 the open sea's dark, OPAQUE (a pit filled 5 deep
   // under a river, a flood over the meadow: a flat navy slab). A still tile keeps its own depth; risen under a flood, a lake's at most.
   // Still water keeps its look: a side of its own only where running water lies beside it lower. Drawn as the sea's face, kind 3
-  const wq = (dst, q, lv, e, s = 0, oc = 0) => { for (const t of TRI) { const p = q[t]; emit(dst, p[0], p[2] * H, p[1], s, oc, 1, 1, 3, lv, e); } };
+  // ITS DEPTH AT EACH CORNER (#347, the owner's pick: "pixel bands"): a tile's one tint by its whole depth changed in a step at every tile's edge. A still tile's corner is
+  // as deep as the still water's tiles that meet there, 1 to 4 levels, their mean: the same for every tile at that corner, so the depth runs on across tiles with no edge.
+  // Carried in the uv's u past the side (s + depth / 10: under s + .5, read as the side as ever); the painter lays it in quarter levels, whole art px (vox_style_fs.js)
+  const deep = (x, y) => { if (!(host.water && host.water(x, y))) return null; const c = host.column(x, y); return c && c.length ? Math.max(1, Math.min(4, (host.waterTop ? host.waterTop(x, y) : 0) - c[c.length - 1])) : null; };
+  const corner = (X, Y) => { let n = 0, s = 0; for (const [i, j] of CORNER) { const d = deep(X + i, Y + j); if (d !== null) { s += d; n++; } } return n ? s / n : 1; };
+  const CORNER = [[-1, -1], [0, -1], [-1, 0], [0, 0]];
+  const wq = (dst, q, lv, e, s = 0, oc = 0, still = false) => { const d = q.map((p) => s + (still ? corner(p[0], p[1]) : Math.max(1, Math.min(4, e))) / 10);
+    for (const t of TRI) { const p = q[t]; emit(dst, p[0], p[2] * H, p[1], d[t], oc, 1, 1, 3, lv, e); } };
   const SIDES = [[0, 1, 1, (x, y, a, b) => [[x, y + 1, a], [x + 1, y + 1, a], [x + 1, y + 1, b], [x, y + 1, b]]], [1, 0, 2, (x, y, a, b) => [[x + 1, y + 1, a], [x + 1, y, a], [x + 1, y, b], [x + 1, y + 1, b]]], [-1, 0, 3, (x, y, a, b) => [[x, y, a], [x, y + 1, a], [x, y + 1, b], [x, y, b]]]];
   const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
   function wetOf(x, y, col) {
@@ -34,10 +41,10 @@ const VoxLandWater = (host, emit, TRI) => {
     for (const [z, v] of w) { if (z < fromZ) continue; const full = w.has(z + 1), top = z - 1 + (full ? 1 : v / 8); let f = z; while (w.has(f - 1)) f--; const e = Math.max(1, Math.min(top - (f - 1), still ? Math.max(3, own) : 2));
       if (!full) { let oc = 0; [...nb, ...nd].forEach((o, i) => { if (!o) return; let c = z; if (!o.has(c)) { c = [...o.keys()].filter((k) => k > z).sort((a, b) => a - b)[0]; if (c === undefined) return; }
           oc += Math.max(0, Math.min(i < 3 ? 31 : 15, Math.round((surf(o, c) - top) * 8))) * (i < 3 ? 32 ** i : 32768 * 16 ** (i - 3)); });   // (south, east, west 5 bits each; south-east, south-west 4: 23 bits, whole in a float)
-        wq(dst, [[x, y, top], [x + 1, y, top], [x + 1, y + 1, top], [x, y + 1, top]], z + 1, e, 0, oc); n++; }
+        wq(dst, [[x, y, top], [x + 1, y, top], [x + 1, y + 1, top], [x, y + 1, top]], z + 1, e, 0, oc, still); n++; }
       SIDES.forEach(([dx, dy, s, q], i) => { const X = x + dx, Y = y + dy; if (solidAt(X, Y, z) || (still && !(host.flow && host.flow(X, Y)))) return;
         const o = nb[i], ov = o && o.get(z), b = Math.max(z - 1, ov ? (o.has(z + 1) ? z : z - 1 + ov / 8) : z - 1);
-        if (b < top - .01) { wq(dst, q(x, y, top, b), z + 1, e, s); n++; } }); }
+        if (b < top - .01) { wq(dst, q(x, y, top, b), z + 1, e, s, 0, still); n++; } }); }
     return n; }
   return waterFaces;
 };
