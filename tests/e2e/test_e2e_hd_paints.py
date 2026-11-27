@@ -47,9 +47,8 @@ def test_a_paint_asked_while_the_sheet_is_full_gets_a_place_of_its_own(browser, 
         g.page.close()
 
 
-# a land made one step a frame (HdLook.hold), and on the first frame it has a paint of its own (B, vox_style.js) it is held there
-TILL_ITS_OWN = """(() => { window.__mk = 0; HdLook.hold = 1; const f = () => { if (HdLook.paints.making) { HdLook.hold = 0; window.__mk = 1; }
-  else if (HdLook.busy) requestAnimationFrame(f); else window.__mk = -1; }; requestAnimationFrame(f); return 1; })()"""
+# the land being made, held (HdLook.hold = 0), stepped by the test (HdLook.step) till it has a paint of its own (B, vox_style.js): [has it, the steps]
+TILL_ITS_OWN = """(() => { let n = 0; while (!HdLook.paints.making && HdLook.step()) n++; return [HdLook.paints.making, n]; })()"""
 # two paints asked as a ghost asks them, between two of its steps: [their places, are they the shown land's or the one being made's, the sheet's overflows they made]
 GHOSTS = """(() => { const q = HdLook.paints, solid = (px, at, st) => { for (let j = 0; j < 16; j++) px.fill(0xff00ff00, at + j * st, at + j * st + 16); };
   const o = HdLook.work.overs, a = q.slot('test ghost c', solid), b = q.slot('test ghost d', solid); return [a, b, q.cap, q.held(a), q.held(b), HdLook.work.overs - o]; })()"""
@@ -59,8 +58,8 @@ def test_a_paint_asked_while_a_land_is_made_and_the_sheet_full_is_not_that_land_
     """A land being made over frames has a copy of the sheet's paints (B: the shown ones', A's, and its own new ones),
     and only its new ones are sent to the GPU when it is shown. A paint asked outside the making while the shown sheet
     is full took a place of A's that the land being made still held: the GPU had the ghost's px there, the land drew its
-    face with them once shown. Here the making stops between two of its steps (HdLook.hold: steps a frame, not ms),
-    once it has a paint of its own, the shown sheet is then filled, and two paints are asked: their places are neither
+    face with them once shown. Here the making is held (HdLook.hold) and stepped by the test (HdLook.step) in one call
+    till it has a paint of its own, the shown sheet is then filled, and two paints are asked: their places are neither
     land's. All of it by the steps of the making and the sheet's state: the same at 16 ms a frame as at 200."""
     g = hd(browser, server)
     try:
@@ -69,9 +68,8 @@ def test_a_paint_asked_while_a_land_is_made_and_the_sheet_full_is_not_that_land_
         g.js("HdLook.hold = 0")                              # (the next land is made only as the test steps it)
         g.stamp(-12, -6, ["M" + "." * 11 + "M" + "." * 11 + "M"])
         g.wait("HdLook.busy")
-        g.js(TILL_ITS_OWN)
-        g.wait("window.__mk !== 0")
-        assert g.js("window.__mk") == 1, "the land was made with no paint of its own"
+        own, steps = g.js(TILL_ITS_OWN)                      # (in one call: no frame between its steps)
+        assert own, f"the land was made in {steps} steps with no paint of its own"
         n, end, used, cap, free = g.js(FILL % 0)              # (now the shown sheet full, as a ghost would fill it)
         assert used >= cap and free == 0 and n < end, (n, end, used, cap, free)
         g.frames(2)                                          # (asked on a frame of their own: the fill asked for every place it has)
