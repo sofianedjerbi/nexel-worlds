@@ -170,6 +170,7 @@ def test_swimming_never_goes_tile_by_tile(game):
     assert game.pos() == (game.server()["x"], game.server()["y"])
 
 
+@pytest.mark.realtime   # (it holds the world's ticks back from the page on purpose, 220 ms lumps: in lockstep a page makes a frame only once the tick it asked for is in, so held back it stops)
 def test_late_ticks_do_not_stop_you(game):
     """The server's word comes late and in lumps (a phone, a slow line): you walk on at your own pace (you were only
     ever allowed a tile ahead of its last word: sprinting, you stopped at every tile), and you end where it has you."""
