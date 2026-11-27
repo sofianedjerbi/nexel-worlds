@@ -1,5 +1,6 @@
 """The interface: the bar and the inventory by keys, crafting cards, zoom, help, debug, hints, and that actions make sounds."""
 
+import pytest
 from waits import QUIET
 
 
@@ -255,6 +256,8 @@ def test_the_crafting_list_is_not_made_again_while_it_is_shut(game):
     assert "workbench" in game.js(LIT)
 
 
+# (stepped: the note's timer and Date.now() on one clock; paced at 1.1, 2500 ms were a timer fired at 2499.2, #367)
+@pytest.mark.stepped
 def test_what_the_game_says_shows_over_the_bar_not_in_the_chat_nor_at_the_top(game):
     """"'you're full' messages etc they could show up above the chat beautifully like item": while you play, a short
     word from the game shows a moment where the name of what you take in hand shows (red for a no, with its buzz), the

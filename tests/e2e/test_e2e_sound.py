@@ -24,7 +24,8 @@ def played(game) -> set:
 def test_every_file_loads_and_each_action_plays_its_own_sound(game):
     game.wait(ALL_LOADED, 60000)                      # joining was the first gesture: the cache warms in the background
     game.clear_area(4)                                # (flat grass, you on it: where you woke had a ledge and a bush east of it, or a hill under you: a fall and a rustle, no step)
-    game.hold(["d"], 700)
+    game.until("awake()")                             # (the browser lets the sound out: the gesture's resume answered)
+    game.hold(["d"], 700)                             # (two steps' worth: each foot down since the last frame drawn sounds, at any frame rhythm: characters.js)
     assert "step" in played(game)                     # walking on grass
 
     game.give(fence=1, rug=1, path=1)

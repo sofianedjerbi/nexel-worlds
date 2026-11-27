@@ -44,8 +44,16 @@ SHIM = """(() => { const K = %s; if (K === 1 || window.__pace) return; window.__
   P.real = pn;
   P.now = () => pn() * K;
   Date.now = () => d0 + (dn() - d0) * K;
-  window.setTimeout = (f, ms, ...a) => st(f, (ms || 0) / K, ...a);
-  window.setInterval = (f, ms, ...a) => si(f, (ms || 0) / K, ...a);
+  // (a timer of N ms of the page's time fires once BOTH of its clocks have gone N ms on: when its turn comes short of
+  // that (N / K real ms is no whole number of the machine's, and Date.now() is whole ms of it: at K 1.1 a 2500 ms note
+  // read gone 2499.2 ms after it showed, #367), it waits out what is left. Its id is the page's: the same through a wait)
+  const ct = window.clearTimeout, on = new Map(); let ids = 1e9;
+  window.setTimeout = (f, ms, ...a) => { if (typeof f !== "function") return st(f, Math.ceil((+ms || 0) / K), ...a);
+    const id = ++ids, N = +ms || 0, dD = Date.now() + N, dP = P.now() + N;
+    const go = () => { const left = Math.max(dD - Date.now(), dP - P.now()); if (left > 0) { on.set(id, st(go, Math.max(1, Math.ceil(left / K)))); return; } on.delete(id); f(...a); };
+    on.set(id, st(go, Math.ceil(N / K))); return id; };
+  window.clearTimeout = (id) => { const r = on.get(id); if (r === undefined) return ct(id); ct(r); on.delete(id); };
+  window.setInterval = (f, ms, ...a) => si(f, Math.ceil((ms || 0) / K), ...a);
   // (a frame's time: the page's clock when the frame began, the same for all that is called in it. Not its own time
   // multiplied: the browser moves that one by the rate its animations are given, below, and from when they were)
   let raw = -1, at = 0;
