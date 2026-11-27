@@ -26,7 +26,7 @@ def calm(g):
 def go(g, x, y, z=None, wait="!HdLook.busy"):
     g.rpc("dev_teleport", **({"x": x, "y": y} if z is None else {"x": x, "y": y, "z": z}))
     g.arrive()                                                  # (fails only if you stop getting there: a room 14 down with a fire draws seconds a frame on a runner's lavapipe, #67)
-    g.wait(wait, timeout=8000)
+    g.until(wait)
     g.sleep(700)                                                           # (the window's hold and the eye's tilt: 300 + 400 ms of the game's time, whichever way they go)
     g.rest()
     return g.js(STATE)
@@ -241,7 +241,7 @@ def test_under_a_roof_a_hen_on_the_land_over_you_is_not_drawn_a_hen_in_your_room
     g.rest()
     go(g, x, y, -4, "HdLook.win.a === 1 && !HdLook.busy && HdLook.cam.pitch > HdLook.steep - .1")
     down = g.spawn("chicken", 2, 0, still=60000)                           # at your level: in the room
-    g.wait(f"ents.has('chicken{up}') && HdLook.bodies().some((b) => b[0] === 'chicken' && b[1] === -4)", timeout=8000)
+    g.until(f"ents.has('chicken{up}') && HdLook.bodies().some((b) => b[0] === 'chicken' && b[1] === -4)")
     g.rest()
     where = g.js(f"[['chicken{up}', 'chicken{down}'].map((k) => {{ const q = ents.get(k); return q && [Math.round(q.x), Math.round(q.y), q.e.z]; }}), HdLook.winAt({x}, {y - 1})]")
     assert where[0] == [[x, y - 1, 0], [x + 2, y, -4]] and where[1], where       # one on the roof over the window's tile north of you, one on your floor
@@ -266,7 +266,7 @@ def test_the_ground_before_a_tunnel_s_mouth_has_no_shade_of_the_hole(browser, se
         assert not g.js(f"!!HdLook.winAt({x + 3}, {y})"), s                  # the tile before the mouth is under the open sky: not of the window (audit A8: the window on the open shaft you stepped out of drew its floor south of its rim)
         P = [[x + 3 + i / 4, y - 1 + j / 8, 0] for i in (1, 2) for j in range(-3, 8)]     # the meadow north of it, beside the hill
         on = [g.js(AT_, p) for p in P]
-        g.js("HdLook.nowin = true"); g.wait("HdLook.win.a === 0", timeout=4000); g.frames(2)
+        g.js("HdLook.nowin = true"); g.until("HdLook.win.a === 0"); g.frames(2)
         off = [g.js(AT_, p) for p in P]
         g.js("HdLook.nowin = false")
         bad = [(p, c, d) for p, c, d in zip(P, on, off) if any(abs(a - b) > 8 for a, b in zip(c, d))]
@@ -288,7 +288,7 @@ def test_behind_a_cliff_the_eye_looks_down_over_it_and_you_are_whole(browser, se
     GROUND = """([cx, cy]) => { let n = 0, gr = 0; const k = devicePixelRatio; for (let j = -14; j <= 0; j++) for (let i = -6; i <= 6; i++) { const a = HdLook.screenOf(cx + .5 + i / 8, cy + .5 + j / 8, 0), c = HdLook.read(Math.round(a[0] * k), Math.round(a[1] * k), 1, 1).data; n++; if (c[1] > c[0] + 15 && c[1] > c[2] + 40) gr++; } return gr / n; }"""
     try:
         s = go(g, x + 6, y - 2)
-        g.wait("HdLook.catSeen() > .9", timeout=4000)                      # (the disc opens over 120 ms)
+        g.until("HdLook.catSeen() > .9")                      # (the disc opens over 120 ms)
         s = g.js(STATE)
         assert 50 < s["pitch"] <= STEEP and s["seen"] > .9, s              # all of you, from above as far as STEEP; what still hides you cut
         assert g.js(GROUND, [x + 6, y - 2]) > .5                           # the meadow at your feet, seen as it is (through the disc it was a checker: .15)

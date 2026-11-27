@@ -39,7 +39,7 @@ def test_faces_are_painted_as_their_cells(browser, server, lv):
         g.rest()
         g.rpc("dev_teleport", x=x, y=y - 9, z=lv - 4)
         g.arrive()
-        g.wait("HdLook.win.a === 1 && !HdLook.busy", timeout=10000)
+        g.until("HdLook.win.a === 1 && !HdLook.busy")
         g.rest()
         floor = g.js(AT, [x + 1.5, y - 7.5, lv - 4])                # (a tile of the room's floor beside you, not under your body)
         seen = {"lv": lv, "top": top, "front": front, "riser": riser, "floor": floor}
