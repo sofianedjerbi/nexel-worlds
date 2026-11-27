@@ -21,6 +21,17 @@ def calm(g):
     g.js("(() => { WayShow.paint = () => {}; return 1; })()")
 
 
+def still(g, ticks=5):
+    """Until the running water is still: Flow's version the same over `ticks` world ticks (the server steps it four
+    times a second, flow.py), 60 of those at the most."""
+    for _ in range(60):
+        v = g.js("Flow.ver")
+        g.tick(ticks)
+        if g.js("Flow.ver") == v:
+            return
+    raise AssertionError(f"the water still runs: Flow.ver {g.js('Flow.ver')}")
+
+
 def tidy(g, x, y, r=12):
     """The meadow as it was round (x, y), and no water left there, running or poured (dev_creatures clear: flow.py
     clear_near): a puddle left behind swam the next test's player (test_e2e_swim.py) in the shared world."""
@@ -49,7 +60,7 @@ def test_a_hole_dug_beside_a_river_fills_a_layer_at_a_time_on_the_screen(browser
         g.js(f"(() => {{ window.__seen = []; window.__watch = setInterval(() => window.__seen.push([0, -1, -2].map((z) => Flow.at({X}, {Y}, z)).join()), 20); return 1; }})()")
         g.stamp(-5, -5, ["."], levels=["a"])                                         # the bank cut: the river comes in
         for i in range(1, 7):
-            g.sleep(400)
+            g.tick(4)
             shot(g, f"hole_{i}")
         g.wait(f"Flow.at({X}, {Y}, -1) === 8 && Flow.at({X}, {Y}, -2) === 8 && Flow.at({X}, {Y}, 0) > 0", 15000)
         g.rest()
@@ -119,7 +130,7 @@ def test_running_water_is_one_surface_stepping_down_with_no_seam_and_none_on_the
         bank = {(dx, -1): g.js(TILE, [x + dx, y - 1, 0]) for dx in range(-6, 5) if abs(dx) > 1}   # (the meadow along its south bank; not under you)
         g.stamp(-7, -8, ["~"] * 7, levels=["0"] * 7)                                  # a river at the plain's west end, a level up
         g.wait(f"Flow.at({x}, {y - 4}, 0) === 1 && Flow.at({x}, {y - 3}, 0) === 1", 15000)
-        g.sleep(1500)
+        still(g)                                                                     # (the river run its course)
         g.rest()
         shot(g, "plain")
         got = [g.js(f"[{','.join(f'Flow.at({x + dx}, {y + dy}, 0)' for dx in range(-6, 4))}]") for dy in rows]

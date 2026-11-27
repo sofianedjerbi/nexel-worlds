@@ -69,7 +69,7 @@ def test_every_picture_setting_changes_the_picture(browser, server):
                 g.rest()
                 if before:
                     g.js(before)
-                    g.frames(4)
+                    g.rest(frames=4)
                 pics.append(g.page.screenshot())
             if SHOTS:
                 for i, p in enumerate(pics):
