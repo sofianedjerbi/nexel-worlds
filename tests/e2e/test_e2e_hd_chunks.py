@@ -5,6 +5,8 @@ you dark, till the next land made it again (#106)."""
 
 import pytest
 
+from test_e2e_hd import PUT, ROOF
+from test_e2e_hd import hd as hd_house
 from test_e2e_hd_sun import hd, settled
 
 pytestmark = pytest.mark.e2e
@@ -47,4 +49,47 @@ def test_a_chunk_kept_and_lost_from_the_store_while_the_land_is_made_is_in_that_
         assert sum(abs(a - b) for a, b in zip(after, before)) < 12, f"the ground east of you went {before} -> {after}"
     finally:
         g.js("HdLook.hold = null")
+        g.page.close()
+
+
+# you there, on the server and drawn on that tile (arrive() waits for the land made too: held here, it never is)
+ON = "(() => { const p = ents.get('agent' + myId), s = myPos(); return !!p && !!s && s.x === %d && s.y === %d && p.x === %d && p.y === %d; })()"
+# the land being made, held, stepped (HdLook.step) till it has asked for the pieces of tile [x, y] (HdThings.at: what is
+# built there, its roof cut or not by where you stand): -> the steps taken, -1 if the land was made before it asked
+ASK = """([x, y]) => { const a0 = HdThings.at, k = x + ',' + y; let asked = false, n = 0;
+  HdThings.at = function (X, Y) { if (X + ',' + Y === k) asked = true; return a0.apply(this, arguments); };
+  try { while (!asked) { n++; if (!HdLook.step()) return -1; } return n; } finally { HdThings.at = a0; } }"""
+
+
+@pytest.mark.stepped
+def test_a_chunk_of_land_made_while_you_go_into_a_room_is_made_again(browser, server):
+    """(#358) The land is made a tile a step, a chunk over several frames. Its key (hd.js chunkKey: where you are,
+    what is built, the doors) was read when the chunk was done: a chunk begun with you on the door, the roof's front
+    row whole over it, and done once you were in the room had the room's key, and the next land kept it, the roof row
+    across you: 0.6 of you seen (test_a_built_house_has_its_roof_outside_and_is_open_inside, one run in ten). Now the
+    key is the one the chunk began with: made over a change, it is made again."""
+    g = hd_house(browser, server)
+    try:
+        x, y = g.pos()
+        x0, y0 = x - 1, y - 5
+        g.stamp(-1, -5, ["WWWW", "WnnW", "W+WW"])
+        g.rpc("dev_give", items={"roof": 12})
+        room = [[x0 + 1, y0 + 1, 0], [x0 + 2, y0 + 1, 0]]
+        assert g.js(PUT, [[[x0 + i, y0 + j, 3, "roof"] for j in (2, 1, 0) for i in range(4)], room]) == []
+        g.rpc("dev_teleport", x=x, y=y, z=0); g.arrive()
+        g.wait(f"({ROOF})([{x0 + 1}, {y0 + 1}]) && HdLook.win.a === 0", timeout=8000)
+        g.rest()
+        g.js("HdLook.hold = 0")                                  # (the next land is made only as the test steps it)
+        try:
+            g.rpc("dev_teleport", x=x0 + 1, y=y0 + 2, z=0); g.until(ON % (x0 + 1, y0 + 2, x0 + 1, y0 + 2), 600)   # on the door
+            steps = g.js(ASK, [x0 + 1, y0 + 2])
+            assert steps > 0, steps                              # (a land under way, its chunk with the door row begun, not done)
+            g.rpc("dev_teleport", x=x0 + 1, y=y0 + 1, z=0); g.until(ON % (x0 + 1, y0 + 1, x0 + 1, y0 + 1), 600)   # into the room, the land still held
+        finally:
+            g.js("HdLook.hold = null")
+        g.until("!HdLook.busy && HdLevel.place.ty === %d" % (y0 + 1), 2400)
+        g.rest()
+        seen = g.js("HdLook.catSeen()")
+        assert seen > .8, (seen, g.js("([x, y]) => [[x, y], [x, y + 1]].map(([a, b]) => (HdThings.at(a, b) || []).map((q) => [q.z, q.h]))", [x0 + 1, y0 + 1]))
+    finally:
         g.page.close()
