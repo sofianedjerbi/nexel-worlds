@@ -192,60 +192,6 @@ ready.then(() => { const im = IMG.slot; if (!im) return; (() => {   // (the fram
   const q = h.getImageData(0, 0, 30, 30), D = [91, 63, 54];
   for (let y = 0; y < 30; y++) for (let x = 0; x < 30; x++) if (x < 5 || y < 5 || x > 24 || y > 24) { const o = (y * 30 + x) * 4; for (let k = 0; k < 3; k++) q.data[o + k] = Math.round(q.data[o + k] * .45 + D[k] * .55); }
   h.putImageData(q, 0, 0); document.documentElement.style.setProperty("--slotdark", `url(${e.toDataURL()})`); })(); });
-// Hearts and food sit on the hotbar, ten of each, halves allowed: a heart is a tenth of full health, a piece a tenth
-// of full food (state.js: HP_MAX, FOOD_MAX; a part of a half shows as the half). Hearts are the UI pack's small hearts (full,
-// half, empty); food is an apple drawn here in the hearts' own palette (plum outline, rose, glint, a leaf; empty is
-// the bare outline colour, like an empty heart). Pixel-exact: every art pixel is a whole number of device pixels.
-const HEART = [4, 84, 9, 8];                     // full; half and empty are the next 16 px cells along
-const APPLE = ["....sg...", "...sgg...", ".aa.s.aa.", "abbabbbba", "abcbbbbba", "abbbbbbba", "abbbbbbda", ".abbbbda.", "..aaaaa.."];
-const APPLE_COL = {a: "#664165", b: "#c87c86", c: "#e8b5ac", d: "#a8606e", s: "#7a5236", g: "#7fae5a"};
-function pixelCanvas(cv, w, h, k = hudK) {       // sizes a canvas for art w x h at about k CSS px an art pixel
-  const SC = Math.max(1, Math.round(k * (window.devicePixelRatio || 1)));
-  if (cv.width !== w * SC || cv.height !== h * SC) {
-    cv.width = w * SC; cv.height = h * SC;
-    cv.style.width = w * SC / (window.devicePixelRatio || 1) + "px"; cv.style.height = h * SC / (window.devicePixelRatio || 1) + "px";
-  }
-  const g = cv.getContext("2d"); g.imageSmoothingEnabled = false; g.clearRect(0, 0, cv.width, cv.height);
-  return [g, SC];
-}
-function drawIcons(cv, icon, value, gain = 0) {   // gain: food points to preview (what eating would give back)
-  const N = 10, hearts = icon === "heart", iw = hearts ? HEART[2] : APPLE[0].length, ih = hearts ? HEART[3] : APPLE.length;
-  const one = (hearts ? HP_MAX : FOOD_MAX) / N;                // what an icon is worth
-  value = Math.ceil(value / (one / 2) - 1e-9) * (one / 2);
-  const step = iw + 1, sig = [icon, value, gain, window.devicePixelRatio || 1, hudK].join();
-  if (cv.dataset.sig === sig) return;
-  cv.dataset.sig = sig;
-  const [g, SC] = pixelCanvas(cv, step * (N - 1) + iw, 9);
-  for (let i = 0; i < N; i++) {
-    const x = i * step, full = value >= (i + 1) * one, half = !full && value >= i * one + one / 2, top = 9 - ih;
-    if (hearts) {
-      g.drawImage(IMG.hearts, (full ? 0 : half ? 1 : 2) * 16 + HEART[0], HEART[1], iw, ih, x * SC, top * SC, iw * SC, ih * SC);
-      continue;
-    }
-    const after = value + gain, fullA = after >= (i + 1) * one, halfA = !fullA && after >= i * one + one / 2;
-    APPLE.forEach((row, j) => [...row].forEach((c, k) => {
-      if (c === ".") return;
-      const lit = full || (half && k < 5), soon = !lit && (fullA || (halfA && k < 5));
-      g.fillStyle = lit ? APPLE_COL[c] : APPLE_COL.a;
-      g.fillRect((x + k) * SC, (top + j) * SC, SC, SC);
-      if (soon) { g.globalAlpha = .55; g.fillStyle = APPLE_COL[c]; g.fillRect((x + k) * SC, (top + j) * SC, SC, SC); g.globalAlpha = 1; }
-    }));
-  }
-  cv.classList.toggle("low", value <= one * 2.5);
-}
-// Holding food: the apples it would give back blink on the bar (every frame, from render; redrawn only on change).
-function foodPreview() {
-  if (!meObs) return;
-  const h = meObs.self.hunger, gain = selected && RULES.food[selected] && h < FOOD_MAX ? RULES.food[selected] : 0;
-  drawIcons($("foods"), "food", h, gain && Math.floor(performance.now() / 450) % 2 === 0 ? gain : 0);
-}
-function drawVitals(s) {
-  drawIcons($("hearts"), "heart", s.hp);
-  foodPreview();
-  const status = s.hunger <= 0 || (SPRINT_FOOD < 0 && s.hunger < 25) ? `Starving: eat something (${capOf("use")})` : s.hunger <= SPRINT_FOOD ? `Too hungry to sprint: eat something (${capOf("use")})` : "";
-  if (walking && walking.run !== sprinting()) syncWalk();          // (fed again, or not enough any more: the sprint follows)
-  $("status").textContent = status; $("status").style.display = status ? "block" : "none";
-}
 function useSelected(name = selected) {
   if (!name) return toast("Nothing selected.", true);
   if (FOODS.includes(name)) return act("eat", {item: name});

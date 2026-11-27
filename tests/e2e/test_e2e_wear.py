@@ -40,3 +40,35 @@ def test_dressing_up(game):
     game.until("(() => { const q = [...ents.values()].find((q) => q.e && q.e.kind === 'agent' && q.e.id === myId); return q && q.e.worn && !q.e.worn.head; })()")
     assert "head" not in me(game)["worn"] and game.server()["inventory"].get("straw_hat") == 1
     assert not game.errors
+
+
+# The rims round the hearts (ui.js drawArmor), read off #armor: per heart 2 (a whole rim), 1 (half: its left side), 0.
+RIMS = """(() => { const c = $('armor'), g = c.getContext('2d'), n = c.width / 103;
+  const any = (x, w) => { const d = g.getImageData(x * n, 0, w * n, c.height).data; for (let i = 3; i < d.length; i += 4) if (d[i]) return 1; return 0; };
+  return [...Array(10)].map((_, i) => { const l = any(2 + i * 10 + 1, 4), r = any(2 + i * 10 + 5, 3); return l && r ? 2 : l ? 1 : r ? -1 : 0; }); })()"""
+
+
+def test_armor_rims_count_what_you_wear_not_your_hits(game):
+    game.clear_area(6)
+    pieces = ["iron_helmet", "leather_boots", "gold_chestplate"]            # 10 + 5 + 8: 23%, four rims and a half
+    game.rpc("dev_give", items={n: 1 for n in pieces})
+    game.until(f"{pieces!r}.every((n) => (meObs.self.inventory[n] || 0) >= 1)")
+    assert game.js(RIMS) == [0] * 10, game.js("$('armor').dataset.sig")       # nothing worn: no rim
+    for item in pieces:
+        game.act("wear", item=item)
+        game.until(f"({QUIET})()")
+    game.until("meObs.self.armor === 23 && $('armor').dataset.sig.startsWith('4.5,')")     # (the server's armor, and drawn)
+    state = lambda: f"rims {game.js(RIMS)}, armor {game.js('meObs.self.armor')}, sig {game.js('$(\"armor\").dataset.sig')}, hp {game.js('meObs.self.hp')}"
+    assert game.js(RIMS) == [2, 2, 2, 2, 1, 0, 0, 0, 0, 0], state()
+    # a blow: the hearts go down, the rims stay as they were, to the pixel
+    before, hp, hearts = game.js("$('armor').toDataURL()"), game.js("meObs.self.hp"), game.js("$('hearts').dataset.sig")
+    game.rpc("dev_damage", n=6)
+    game.until(f"meObs.self.hp < {hp} && $('hearts').dataset.sig !== {hearts!r}")         # (the page has the hit, drawn)
+    assert game.js("$('armor').toDataURL()") == before, state()
+    assert game.js(RIMS) == [2, 2, 2, 2, 1, 0, 0, 0, 0, 0], state()
+    # a piece off: the rims follow (13%: two and a half)
+    game.js("document.querySelector('#wearing .slot[data-slot=head]').click()")
+    game.until(f"({QUIET})()")
+    game.until("meObs.self.armor === 13 && $('armor').dataset.sig.startsWith('2.5,')")
+    assert game.js(RIMS) == [2, 2, 1, 0, 0, 0, 0, 0, 0, 0], state()
+    assert not game.errors
