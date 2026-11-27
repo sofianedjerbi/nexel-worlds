@@ -83,6 +83,10 @@ SHOWN = "HdLook.live && !!HdView.el && HdView.el.style.display === 'block'"
 WHERE = """([x, y, z]) => { const a = HdLook.screenOf(x, y, z), el = HdView.el, cv = document.getElementById('c');
   const p = myPos(), m = p && HdLook.screenOf(p.x + .5, p.y + .5, myZ(p.x, p.y));
   return {at: a && a.map((v) => Math.round(v * devicePixelRatio)), me: p && [p.x, p.y], meAt: m && m.map((v) => Math.round(v * devicePixelRatio)), el: el && [el.width, el.height, el.style.display], cv: cv && [cv.width, cv.height], live: HdLook.live, lost: HdLook.lost, drew: HdLook.drew}; }"""
+# until `expr` holds on the page, `n` frames at the most -> the frames it took, -1 if it never did (counted in frames: the same at any frame length)
+UNTIL = """([expr, n]) => new Promise((ok) => { const f = new Function("return (" + expr + ")"); let k = 0; const g = () => { if (f()) ok(k); else if (++k > n) ok(-1); else requestAnimationFrame(g); }; g(); })"""
+# you as the page has you: your tile, where you are drawn, the walk, what you are doing
+STATE = "(() => { const p = ents.get('agent' + myId); return {pos: myPos(), at: p && [p.x, p.y, p.tx, p.ty], e: p && p.e && [p.e.x, p.e.y], walking: walking && walking.dir, pwalk: p && !!p.walking, act: myAction && myAction.tool, pred: !!pred, leap: Leap.on(), glide: Leap.gliding()}; })()"
 # the eye on you: your screen point across the middle of the screen (CSS px)
 ON_YOU = "(() => { const p = myPos(), m = p && HdLook.screenOf(p.x + .5, p.y + .5, myZ(p.x, p.y)); return !!m && Math.abs(m[0] - innerWidth / 2) < innerWidth * .15; })()"
 
@@ -110,7 +114,8 @@ def test_no_px_is_drawn_from_a_paint_that_is_not_there_on_ten_walks_down_the_sta
     # and were the shown land's paints lost (they cannot be now: a full sheet no longer wipes them): the counter sees it, and the land is its mean colour, not one earth brown
     # (back at the stair's top where the walk began, the walk ended: one read on main was 10 tiles off the screen's left
     # edge, [-211, 192] of 960 px: run 45895689042. And the eye on you there, else the view is not where you are: a bug of its own)
-    g.wait(f"myPos().x <= {x} && !walking && !myAction", timeout=8000)
+    k = g.js(UNTIL, [f"myPos().x <= {x} && !walking && !myAction", 600])   # (frames, not ms: at 200 ms frames the walk's end takes longer than at 16)
+    assert k >= 0, f"the walk back did not end at the stair's top (x <= {x}): {g.js(STATE)}"
     g.rest()
     spot = [x - 4.5, y + 2.5, 0]
     assert g.js(ON_YOU), ("the view is not on you", g.js(WHERE, spot))
