@@ -277,7 +277,7 @@ def test_what_the_game_says_shows_over_the_bar_not_in_the_chat_nor_at_the_top(ga
     game.js("(() => { new MutationObserver((m, o) => { if (!$('heldname').classList.contains('on')) { window.__goneAt = Date.now(); o.disconnect(); } }).observe($('heldname'), {attributes: true}); toast('You are full.'); return 1; })()")   # (when it first goes, the page's time)
     t0 = game.js("+$('heldname').dataset.t")
     assert game.js(over)[1] == "You are full."
-    game.frames(30)                                                                      # (≥ 0.5 s apart: a first timer not begun again would show plainly)
+    game.frames(2)                                                                       # (two frames: still well within the first note, at any rhythm short of 1.2 s a frame)
     game.js("(() => { toast('You are full.'); return 1; })()")                          # the same again: shown again from the start
     t1 = game.js("+$('heldname').dataset.t")
     assert t1 > t0
