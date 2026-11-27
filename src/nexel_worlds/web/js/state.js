@@ -111,7 +111,7 @@ setInterval(() => {
     const r0 = typeof HdLook !== "undefined" && HdLook.live && HdLook.reach, r = r0 && r0[0] < x + w && r0[2] > x && r0[1] < y + h && r0[3] > y ? r0 : null, ex =   // (a reach of another place, before a teleport, is not joined to this one: the server cut the two to 200 tiles, this place outside: no far land for it, views.py far_near)
       r ? Math.min(x, r[0] - 4) : x, ey = r ? Math.min(y, r[1] - 4) : y;
     const ew = (r ? Math.max(x + w, r[2] + 5) : x + w) - ex, eh = (r ? Math.max(y + h, r[3] + 5) : y + h) - ey, key = [Math.round(ex / 4), Math.round(ey / 4), ew, eh].join();
-    if (key !== lastWatch) { lastWatch = key; farOut.clear(); sendSpec({op: "watch", x: ex, y: ey, w: ew, h: eh}); } }
+    if (key !== lastWatch) { lastWatch = key; farOut.clear(); farWatchAt = performance.now(); sendSpec({op: "watch", x: ex, y: ey, w: ew, h: eh}); } }
   const now = performance.now();
   for (let by = Math.floor(y / B); by <= Math.floor((y + h) / B); by++)
     for (let bx = Math.floor(x / B); bx <= Math.floor((x + w) / B); bx++) {
