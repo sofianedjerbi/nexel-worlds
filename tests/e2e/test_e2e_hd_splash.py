@@ -64,3 +64,44 @@ def test_off_a_high_ledge_into_water_your_body_does_not_jump_up_the_screen(brows
     assert not jolts, str(jolts[:4])
     g.rest()
     assert g.server()["swimming"] and not g.errors, g.errors
+
+
+# every frame drawn: how you are drawn (BodyPlace mode), how far over your line (art px: below it, < 0), and how many of
+# your own px are on your picture's last row (its canvas, HdLook.art sprite: there is a tile of rows under your foot,
+# so a body that reaches that row is a body cut by it), your place
+EDGE = """(() => { window.__cut = []; const f = () => { if (!window.__cut) return; const a = HdLook.art(), c = a && a.sprite, q = ents.get('agent' + myId);
+  if (c && q) { const d = c.getContext('2d').getImageData(0, c.height - 1, c.width, 1).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 127) n++;
+    const pl = BodyPlace.of(q); window.__cut.push([pl.mode, pl.up, n, Math.round(q.x * 100) / 100, c.height]); }
+  requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; })()"""
+EDGED = "(() => { const l = window.__cut; window.__cut = null; return l; })()"
+
+
+@pytest.mark.stepped
+def test_off_a_ledge_into_a_pond_your_legs_are_drawn_all_the_way_down(browser, server):
+    """(#355) Off a ledge nine high into a pond, coming down, your legs went: the eye still high, you are drawn from the
+    level it is coming to (body_place.js up < 0: down to 20 art px under your line), and your picture's canvas had no
+    rows under your foot for that: the legs past its bottom were cut, in the air over the water, the bank behind you.
+    Now the canvas has as many rows under your foot as you are drawn under it (hd.js ent): no frame cuts you."""
+    g = hd(browser, server)
+    calm(g)
+    x, y = g.pos()
+    g.stamp(-3, -1, ["...."] * 3, levels=["9999"] * 3)                      # the ledge, you on its east end
+    g.stamp(1, -1, ["~~~~~"] * 3)                                            # the pond under it
+    g.rpc("dev_teleport", x=x, y=y, z=9)
+    g.arrive()
+    g.face(1, 0)
+    g.wait("!HdLook.busy", timeout=8000)
+    g.rest()
+    g.js(EDGE)
+    g.page.keyboard.down("d")
+    try:
+        g.wait("(() => { const q = ents.get('agent' + myId); return q && BodyPlace.of(q).mode === 'swim'; })()", 4000)
+    finally:
+        g.page.keyboard.up("d")
+    g.wait("(() => { const q = ents.get('agent' + myId); return q && !Leap.lift(q); })()", 4000)       # (the eye down at the water)
+    g.frames(2)
+    fr = g.js(EDGED)
+    low = [r for r in fr if r[1] <= -16]
+    assert low and {r[0] for r in low} >= {"jump"}, str(fr)               # (drawn a tile and more under your line, in the air: what cut you)
+    cut = [r for r in fr if r[2]]
+    assert not cut, str(cut)                                               # nothing of you on your picture's last row, jumping or swimming
