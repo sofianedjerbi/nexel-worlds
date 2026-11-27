@@ -26,7 +26,8 @@ WATCH = """(() => { if (window.__land) return 1; const L = window.__land = {fram
 # test hung to pytest's 300 s with nothing said. No frame in STALL_S s of the wall's: what its lockstep waits for
 STALL_S = 30
 STALLED = """([n, ms]) => { const P = performance, rest = (%s)([n, ms]); if (!window.__wallTimeout) return rest;
-  return Promise.race([rest, new Promise((ok) => { let T = P.now(), at = P.real(); const look = () => { if (P.now() !== T) { T = P.now(); at = P.real(); }
+  let done = false; rest.then(() => { done = true; });     // (and the watch ends with it: one left running at every rest)
+  return Promise.race([rest, new Promise((ok) => { let T = P.now(), at = P.real(); const look = () => { if (done) return; if (P.now() !== T) { T = P.now(); at = P.real(); }
     if (P.real() - at > STALL_S * 1000) ok({lockstep: window.__lockstepState ? __lockstepState() : null, tick: typeof clock === "object" ? clock.tick : null,
       watch: lastWatch, spec: spec && spec.readyState, agent: agentWs && agentWs.readyState}); else __wallTimeout(look, 1000); }; look(); })]); }""".replace("STALL_S", str(STALL_S))
 REST = """([n, ms]) => new Promise((ok) => { const L = window.__land, f0 = L.frame, t0 = performance.now(), hd = HdLook.live, w0 = Voxels.wver, c0 = clock;
