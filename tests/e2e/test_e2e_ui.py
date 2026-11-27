@@ -274,15 +274,15 @@ def test_what_the_game_says_shows_over_the_bar_not_in_the_chat_nor_at_the_top(ga
     game.give(dirt=1, bread=1)
     game.hold_item("dirt"); game.hold_item("bread")                                      # a newer event: an item's name in its place
     game.wait("$('heldname').textContent === label('bread') && $('heldname').className === 'on'")
-    game.js("(() => { toast('You are full.'); return 1; })()")
+    game.js("(() => { new MutationObserver((m, o) => { if (!$('heldname').classList.contains('on')) { window.__goneAt = Date.now(); o.disconnect(); } }).observe($('heldname'), {attributes: true}); toast('You are full.'); return 1; })()")   # (when it first goes, the page's time)
     t0 = game.js("+$('heldname').dataset.t")
-    game.until(f"Date.now() > {t0} + 1600")                                              # longer than a name (1.4 s): the name's timer cut nothing (from its own start, the page's time)
-    assert game.js("$('heldname').classList.contains('on')") and game.js(over)[1] == "You are full."
-    game.js("(() => { new MutationObserver((m, o) => { if (!$('heldname').classList.contains('on')) { window.__goneAt = Date.now(); o.disconnect(); } }).observe($('heldname'), {attributes: true}); toast('You are full.'); return 1; })()")   # the same again: shown again from the start
+    assert game.js(over)[1] == "You are full."
+    game.frames(2)                                                                       # (two frames: still well within the first note, at any rhythm short of 1.2 s a frame)
+    game.js("(() => { toast('You are full.'); return 1; })()")                          # the same again: shown again from the start
     t1 = game.js("+$('heldname').dataset.t")
     assert t1 > t0
-    game.until("window.__goneAt")                                                         # then it goes, when its own time is up:
-    assert game.js("__goneAt") >= t1 + game.js("BAR_NOTE_MS")                             # not at the first's end, t0 + 2.5 s (it began again)
+    game.until("window.__goneAt")                                                         # then it goes, when its own time is up: not at the
+    assert game.js("__goneAt") >= t1 + game.js("BAR_NOTE_MS")                             # name's end (1.4 s, its timer cut nothing) nor the first's (it began again)
     game.js("(() => { toast('What hides you: **Cut away** `V`'); return 1; })()")                 # a guide (a key in it) shows and goes:
     assert game.js("$('chatlog').children.length") == n and "Cut away" in game.toast()               # not kept in the chat (prompts.js)
     assert "Cut away" not in game.js("$('heldname').textContent")
