@@ -27,13 +27,10 @@ def test_random_play_keeps_screen_and_server_in_step(game):
     # (until the walk is over and the action done, a click's way there with them, then the screen and the world compared. A sleep
     # of 1.5 s read a click's walk half way on an 83 ms runner: "(7, -11) == (8, -10)", a tile on, as it went)
     game.wait("!walking && !pred && !myAction && (() => { const p = ents.get('agent' + myId); return !!p && p.e.x === Math.round(p.x) && p.e.y === Math.round(p.y); })()", 15000)
-    # (and until the world's own answer agrees: the page had caught up with the last place it was told while the world's walk
-    # to a click went on, "(-9, -11) == (-9, -10)". 15 s at the most: past that, the screen and the world disagree)
-    for _ in range(60):
-        here, s = game.pos(), game.server()
-        if here == (s["x"], s["y"]):
-            break
-        game.sleep(250)
+    # (and until the world's own answer agrees, asked once a frame: the page catches up with the world's walk to a click, or
+    # with a tick it missed by an observe (agent.js refresh, #329): "(-18, 2) == (-18, 3)", the page a tick short when read.
+    # 600 frames at the most, not ms: past that, the screen and the world never met)
+    game.until_world(lambda s: game.pos() == (s["x"], s["y"]), 600)
     # (the page's side of it, said if it disagrees: what it was last told of you, where it has you, its stop and its trail, the walk)
     mine = game.js("(() => { const p = ents.get('agent' + myId); return p && {e: [p.e.x, p.e.y, p.e.z, p.e.vn], at: [p.x, p.y, p.tx, p.ty], srv, pred, trail: trail.length, walking: !!walking, act: myAction && myAction.tool}; })()")
     ticks = game.js("[__tk.length, __tk.slice(-8), Math.round(performance.now())]")   # (the last ticks: their number, when they came, you in them or not)
