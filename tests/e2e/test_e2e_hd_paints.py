@@ -1,85 +1,86 @@
-"""The HD look's paints (vox_style.js: one sheet of the land's paints, each face names its place in it): what a land is
-drawn with is always its own. The owner saw, now and then, a meadow of grey and green squares, flat faces of the mean
-colour and black blades on the grass, a beige square on a ledge's corner: faces that named places of paints gone.
-Each test makes it happen at once, then asks the land to be the land made from none."""
+"""The HD look's paint sheet full (vox_style.js slot): a paint asked outside a land's making (a ghost, a moving shadow,
+the window's section) gets a place of its own, never one the land shown uses, nor one the land being made has, nor the one
+another such paint has."""
 
-import os
+import pytest
 
-from conftest import Game, new_name
+from test_e2e_hd_sun import hd, settled
 
+pytestmark = pytest.mark.e2e
 
-def hd(browser, server):
-    g = Game(browser.new_page(viewport={"width": 960, "height": 540}), server)
-    g.join(new_name(), 3)
-    g.js("setOpt('names', false); setOpt('hints', false); setOpt('clouds', 0); setOpt('rays', 0); setOpt('shimmer', 0)")
-    g.rpc("dev_creatures", clear=60)
-    g.clear_area(12)
-    g.rest()
-    return g
-
-
-# the land's picture as the screen shows it (hd_view.js read: no page element over it), kept; then the px of it that differ
-# from the one kept by more than 30 of 3 x 255: under the sky (its clouds drift), out of a box round you (you breathe,
-# and your shadow with you)
-KEEP = "(() => { window.__kept = HdLook.read(0, 0, innerWidth * devicePixelRatio, innerHeight * devicePixelRatio); return 1; })()"
-DIFF = """(me) => { const A = window.__kept, B = HdLook.read(0, 0, A.width, A.height), k = devicePixelRatio; let n = 0;
-  for (let i = 0; i < A.data.length; i += 4) { const p = i / 4, x = p % A.width / k, y = (p / A.width | 0) / k; if (y < innerHeight * .35 || (Math.abs(x - me[0]) < 72 && y - me[1] > -90 && y - me[1] < 50)) continue;
-    if (Math.abs(A.data[i] - B.data[i]) + Math.abs(A.data[i + 1] - B.data[i + 1]) + Math.abs(A.data[i + 2] - B.data[i + 2]) > 30) n++; } return n; }"""
-ME = "(() => { const p = ents.get('agent' + myId); return HdLook.screenOf(p.x + .5, p.y + .5, HdLook.level[2]); })()"
+# fill the shown land's sheet: paints asked as a ghost asks them, between two frames, till it has no place left
+FILL = """((left) => { const solid = (px, at, st) => { for (let j = 0; j < 16; j++) px.fill(0xff0000ff, at + j * st, at + j * st + 16); }; const end = HdLook.paints.cap + 1; let i = 0;
+  for (; i < end; i++) { const q = HdLook.paints; if (q.n >= q.cap - left && !q.free) break; q.slot('test fill ' + i, solid); }
+  const q = HdLook.paints; return [i, end, q.n, q.cap, q.free]; })(%d)"""
+# ...and on a later frame two more: [their places, the last place, are they the land's, the sheet's overflows they made, lands made from none]
+MORE = """(() => { const q = HdLook.paints, solid = (px, at, st) => { for (let j = 0; j < 16; j++) px.fill(0xff00ff00, at + j * st, at + j * st + 16); };
+  const o = HdLook.work.overs, a = q.slot('test ghost a', solid), b = q.slot('test ghost b', solid); return [a, b, q.cap, q.shown(a), q.shown(b), HdLook.work.overs - o, HdLook.work.wipes]; })()"""
+# your shadow under you: the px round your feet of the colour under you
+SHADOW = """(() => { const p = myPos(), a = HdLook.screenOf(p.x + .5, p.y + .92, topAt(p.x, p.y)), k = devicePixelRatio, X = Math.round(a[0] * k), Y = Math.round(a[1] * k);
+  window.__mid = window.__mid || HdLook.read(X, Y, 1, 1).data; const mid = window.__mid, d = HdLook.read(X - 24 * k, Y - 9 * k, 48 * k, 18 * k).data; let n = 0;
+  for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - mid[0]) + Math.abs(d[i + 1] - mid[1]) + Math.abs(d[i + 2] - mid[2]) < 12) n++; return n; })()"""
 
 
-def made(g):
-    """the land made (no making going on, nothing left to make for where you are) and drawn"""
-    g.wait("!HdLook.busy", 20000); g.rest(); g.wait("!HdLook.busy", 20000); g.frames(3)
-
-
-def against_none(g):
-    """-> (px of the mean colour on the screen, px that differ from the same land made again with its paints from none)"""
-    raw = g.js("HdLook.raw()"); g.js(KEEP); a = g.page.screenshot()
-    g.js("HdLook.forget()"); made(g)
-    off = g.js(DIFF, g.js(ME))
-    if os.environ.get("PAINTS_DUMP"):                        # (the two pictures, to look at: PAINTS_DUMP=/some/dir/prefix)
-        n = os.environ["PAINTS_DUMP"] + new_name("p")
-        open(n + "_a.png", "wb").write(a); g.page.screenshot(path=n + "_b.png")
-    return raw, off
-
-
-def test_the_land_wiped_while_one_is_made_is_drawn_with_its_own_paints(browser, server):
-    """The paints ran out (eng.lost: the land and its paints wiped) while a land was being made: that land's chunks were
-    kept, and the next land, made with its paints from none, drew them with the places of paints that were gone (the
-    owner's patchwork, in seed 12's caves at (-58, 47) after walking at a sprint)."""
+def test_a_paint_asked_while_the_sheet_is_full_gets_a_place_of_its_own(browser, server):
+    """The shown land's sheet full (all its places given, none free) and two paints asked outside a land's making,
+    on a frame after: two places, not the last one, not the land's. (They all took the last place: every such paint
+    drew the paint of the last one to ask, your shadow a block of another's paint, dark over you till the land was made
+    again from none: hd_sun's shadow lost all its px, #106.) All of it between frames, at the page's own pace: the same
+    at 16 ms a frame as at 200."""
     g = hd(browser, server)
     try:
-        x, y = g.pos()
-        g.stamp(-6, 2, ["............"] * 4, levels=["666666666666"] * 4)        # (a plateau of stone south, steps of earth north: tiles with paints of their own)
-        g.stamp(-6, -5, ["......"] * 3, levels=["222222", "333333", "444444"])
-        g.hour(.375, still=True)
-        made(g); g.js("HdLook.forget()")                          # (the whole land made again, a tile a step...)
-        g.page.wait_for_function("() => HdLook.busy && (HdLook.forget(), true)", timeout=20000)   # (...and wiped while it is being made)
-        made(g)
-        raw, off = against_none(g)
-        assert raw == 0 and off < 50, (raw, off)
+        g.hour(.9)                                           # (night: the shadow under you alone, no cloud, no sun)
+        g.wait("Math.abs((clock.phase || 0) - .9) < .02")
+        settled(g)
+        before = g.js(SHADOW)
+        n, end, used, cap, free = g.js(FILL % 0)       # (each new paint takes a place: cap + 1 asks fill it whatever the land holds)
+        assert used >= cap and free == 0 and n < end, (n, end, used, cap, free)
+        g.frames(2)
+        a, b, last, sa, sb, overs, wipes0 = g.js(MORE)
+        assert a != b and last not in (a, b) and not sa and not sb, (a, b, last, sa, sb)
+        assert overs == 2, overs                             # (both by the full sheet's way)
+        g.frames(4)
+        assert g.js("HdLook.work.wipes") == wipes0, "the land was made again from none"
+        after = g.js(SHADOW)
+        assert before > 60 and abs(after - before) <= 4, (before, after)
     finally:
         g.page.close()
 
 
-def test_the_things_sheet_emptied_in_the_middle_of_a_tile_leaves_none_of_its_pieces_with_another_paint(browser, server):
-    """The things' sheet (hd_things.js `room`: a rock's oval of shade, a wall's planks, the hour's shadows) is emptied when
-    full, under a new name. Pieces of a tile asked for before that moment kept their place in the old sheet and were
-    painted from the new one: another paint, or none (a shadow's black picture where a piece's own was)."""
+# the land being made, held (HdLook.hold = 0), stepped by the test (HdLook.step) till it has a paint of its own (B, vox_style.js): [has it, the steps]
+TILL_ITS_OWN = """(() => { let n = 0; while (!HdLook.paints.making && HdLook.step()) n++; return [HdLook.paints.making, n]; })()"""
+# two paints asked as a ghost asks them, between two of its steps: [their places, are they the shown land's or the one being made's, the sheet's overflows they made]
+GHOSTS = """(() => { const q = HdLook.paints, solid = (px, at, st) => { for (let j = 0; j < 16; j++) px.fill(0xff00ff00, at + j * st, at + j * st + 16); };
+  const o = HdLook.work.overs, a = q.slot('test ghost c', solid), b = q.slot('test ghost d', solid); return [a, b, q.cap, q.held(a), q.held(b), HdLook.work.overs - o]; })()"""
+
+
+def test_a_paint_asked_while_a_land_is_made_and_the_sheet_full_is_not_that_land_s(browser, server):
+    """A land being made over frames has a copy of the sheet's paints (B: the shown ones', A's, and its own new ones),
+    and only its new ones are sent to the GPU when it is shown. A paint asked outside the making while the shown sheet
+    is full took a place of A's that the land being made still held: the GPU had the ghost's px there, the land drew its
+    face with them once shown. Here the making is held (HdLook.hold) and stepped by the test (HdLook.step) in one call
+    till it has a paint of its own, the shown sheet is then filled, and two paints are asked: their places are neither
+    land's. All of it by the steps of the making and the sheet's state: the same at 16 ms a frame as at 200."""
     g = hd(browser, server)
     try:
-        x, y = g.pos()
-        g.stamp(-2, -3, ["M"])
-        g.hour(.3, still=True); made(g)
-        got = g.js("""([x, y]) => { const S = HdThings.sheet, W = S.w, put1 = (put) => put(0, 0, 0xff00ff00);
-          const paint = (b) => { let n = 0; for (let j = 0; j < b.d; j++) for (let i = 0; i < b.w; i++) if (S.px[(b.top[1] + (b.win ? b.win[1] : 0) + j) * W + b.top[0] + (b.win ? b.win[0] : 0) + i] >>> 24) n++; return n; };
-          const full = () => { for (let j = 0; ; j++) { const id = S.id, p = HdThings.room('full' + j + Math.random(), 16, 16, put1); if (S.id !== id) return false; if (p[0] + 32 > W && p[1] + 32 > W) return true; } };
-          for (let t = 0; t < 3; t++) { HdSun.key(); HdThings.at(x, y); if (full()) break; }                 // (the rock's oval and its shadow in the sheet, then the sheet filled to its last place)
-          clock.phase = .62; HdSun.key(); const id1 = S.id, out = HdThings.at(x, y) || [];                    // (another hour: a new shadow to put in a full sheet)
-          return [S.id !== id1, out.filter((b) => b.top).map((b) => [b.shade ? 'shade' : 'piece', b.w * b.d, paint(b)])]; }""", [x - 2, y - 3])
-        emptied, pieces = got
-        assert emptied and pieces, got                          # (the sheet was emptied by that very ask)
-        assert all(n > 0 for _, _, n in pieces), pieces
+        settled(g)
+        g.js(FILL % 300)                                     # (all but 300: the land to be made has room for its new paints)
+        g.js("HdLook.hold = 0")                              # (the next land is made only as the test steps it)
+        g.stamp(-12, -6, ["M" + "." * 11 + "M" + "." * 11 + "M"])
+        g.wait("HdLook.busy")
+        own, steps = g.js(TILL_ITS_OWN)                      # (in one call: no frame between its steps)
+        assert own, f"the land was made in {steps} steps with no paint of its own"
+        n, end, used, cap, free = g.js(FILL % 0)              # (now the shown sheet full, as a ghost would fill it)
+        assert used >= cap and free == 0 and n < end, (n, end, used, cap, free)
+        g.frames(2)                                          # (asked on a frame of their own: the fill asked for every place it has)
+        assert g.js("HdLook.paints.making && HdLook.busy"), "the making went on while held"
+        a, b, last, ha, hb, overs = g.js(GHOSTS)
+        assert overs == 2, overs                             # (both by the full sheet's way)
+        assert a != b and last not in (a, b) and not ha and not hb, (a, b, last, ha, hb)
+        wipes = g.js("HdLook.work.wipes")
+        g.js("HdLook.hold = null")
+        g.wait("!HdLook.busy")
+        assert g.js("HdLook.work.wipes") == wipes, "the land was made again from none"
     finally:
+        g.js("HdLook.hold = null")
         g.page.close()

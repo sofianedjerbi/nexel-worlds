@@ -59,7 +59,7 @@ def test_you_swim_across_water_of_every_depth_and_leave_a_wake(game):
     game.rpc("dev_stamp", x=s["x"] + 2, y=s["y"] - 3, rows=rows)
     game.rpc("dev_give", items={"straw_hat": 1})
     game.rpc("dev_race", race="bunny")
-    game.act("wear", item="straw_hat"); game.sleep(900)
+    game.act("wear", item="straw_hat"); game.rest()            # (answered when act() returns; then the pond drawn)
     assert not mine(game, "swimsAt(p, p.e)")
     layer = game.js("(() => { const b = [...blocks.values()].find((b) => b.water && b.water.any && b.water.foam.length > 0); return b ? [b.water.canvas.width, true] : null; })()")   # (the block the pond is in, not any block with water)
     assert layer == [512, True]                                # the water layer is built, with foam along the shore
@@ -85,8 +85,7 @@ def test_you_swim_across_water_of_every_depth_and_leave_a_wake(game):
 def test_a_page_older_than_the_servers_code_reloads_itself(game):
     stamp = game.js("webStamp")
     assert stamp > 0                                           # the server said when its client code last changed
-    game.js("spec.onmessage({data: JSON.stringify({type: 'hello', web: webStamp})})")
-    game.sleep(300)
+    game.js("spec.onmessage({data: JSON.stringify({type: 'hello', web: webStamp})})")   # (its reload is decided in the handler: nothing to wait for)
     assert game.js("myId") is not None                         # the same code: nothing happens
     with game.page.expect_navigation():                        # newer code after a reconnect: the page loads it
         game.js("spec.onmessage({data: JSON.stringify({type: 'hello', web: webStamp + 1})})")
@@ -97,16 +96,17 @@ def test_swimming_sounds_like_swimming_not_like_walking(game):
     game.clear_area(8)
     s = game.server()
     game.rpc("dev_stamp", x=s["x"] + 1, y=s["y"] - 2, rows=["~~((==))"] * 5)
-    game.sleep(600)
+    game.rest()
     game.wait("sounds.manifest && Object.values(sounds.manifest.sounds).flatMap((s) => s.files).every((f) => sounds.buffers.get(f) instanceof AudioBuffer)", 20000)
-    game.hold(["d"], 400)                                      # in: one splash
+    game.hold_until(["d"], "swimsAt(ents.get('agent' + myId), ents.get('agent' + myId).e)")                             # in: one splash (in the water: a state, not 400 ms)
     game.js("sounds.lastAt = {}")
-    game.hold(["d"], 800)                                      # swimming on
+    x1 = game.js("ents.get('agent' + myId).x")
+    game.hold_until(["d"], f"ents.get('agent' + myId).x >= {x1 + 2}")               # swimming on, two tiles
     heard = set(game.js("Object.keys(sounds.lastAt)"))
     assert "swim" in heard and not heard & {"step", "wade", "water"}, sorted(heard)
-    game.sleep(600)                                            # (the stroke that carries you onto the tile you were entering)
+    game.still()                                               # (the stroke that carries you onto the tile you were entering)
     game.js("sounds.lastAt = {}")
-    game.sleep(1200)                                           # treading water: nothing
+    game.sleep(1200)                                           # treading water: nothing (a window in which nothing sounds: so at any frame's length)
     assert not set(game.js("Object.keys(sounds.lastAt)")) & {"swim", "step", "wade", "water"}
     assert not game.errors
 
@@ -120,17 +120,19 @@ def test_a_sprint_in_the_water_is_twice_as_fast_and_leaves_a_longer_wake(game):
     s = game.server()
     game.rpc("dev_needs", hp=20, hunger=20)
     game.rpc("dev_stamp", x=s["x"] + 1, y=s["y"] - 4, rows=["(" * 40] * 9)
-    game.sleep(600)
-    game.hold(["d"], 600)                                      # in, and swimming
+    game.rest()
+    game.hold_until(["d"], "swimsAt(ents.get('agent' + myId), ents.get('agent' + myId).e)")                             # in, and swimming
     assert mine(game, "swimsAt(p, p.e)") and game.js("SWIM_SPRINT") is True
     game.js(TRACK)
-    game.hold(["d"], 1000)
+    x1 = game.js("ents.get('agent' + myId).x")
+    game.hold_until(["d"], f"ents.get('agent' + myId).x >= {x1 + 3}")               # (three tiles swum: its frames whatever their length; 1 s held was 5 frames at 200 ms)
     swum, slow = pace(game), gaps(mine(game, "p.wake.filter((w) => !w.dash).map((w) => w.t)"))
     game.page.keyboard.down("Shift")
     game.js(TRACK)
     game.js("(() => { window.__fr = []; window.__frOn = true; const f = (now) => { __fr.push(now); if (__frOn) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; })()")
+    x2 = game.js("ents.get('agent' + myId).x")
     game.page.keyboard.down("d")
-    game.sleep(1000)
+    game.wait(f"ents.get('agent' + myId).x >= {x2 + 5}", 8000)                      # (five tiles at a sprint: a place, not a second)
     ran = mine(game, "p.running")                              # (asked while still at it: asked after the keys were let go, it was sometimes over)
     game.page.keyboard.up("d")
     dashed, marks = pace(game), gaps(mine(game, "p.wake.filter((w) => w.dash).map((w) => w.t)"))
@@ -164,8 +166,10 @@ def test_a_sprints_wake_thins_out_to_nothing_at_its_end_and_is_not_cut(game):
     s = game.server()
     game.rpc("dev_needs", hp=20, hunger=20)
     game.rpc("dev_stamp", x=s["x"] + 1, y=s["y"] - 4, rows=["(" * 40] * 9)
-    game.sleep(600)
-    game.hold(["d"], 600)
+    game.rest()
+    # (two tiles into the water before the sprint, a swim's wake behind them: the wake's end in the water, where it can thin
+    #  out. As soon as it was in, the end was the shore, the wake cut there by the land: "37 <= 39.0", main's run on #320)
+    game.hold_until(["d"], f"swimsAt(ents.get('agent' + myId), ents.get('agent' + myId).e) && ents.get('agent' + myId).x >= {s['x'] + 3}")
     game.page.keyboard.down("Shift")
     game.page.keyboard.down("d")
     # until the first sprint mark has lived its whole life, in the page's own time (the wake is whole, its end thinning). A
@@ -198,14 +202,14 @@ def test_letting_go_of_the_key_in_the_water_you_swim_on_into_place_not_walk(game
     s = game.server()
     game.rpc("dev_needs", hp=20, hunger=20)
     game.rpc("dev_stamp", x=s["x"] + 1, y=s["y"] - 4, rows=["(" * 40] * 9)
-    game.sleep(600)
-    game.hold(["d"], 1500)                                     # in, and swimming
+    game.rest()
+    game.hold_until(["d"], f"swimsAt(ents.get('agent' + myId), ents.get('agent' + myId).e) && ents.get('agent' + myId).x >= {s['x'] + 3}")   # in, and swimming
     glide = []
     for ms in (700, 550, 820, 640):                            # (let go wherever the walk is: a walk that ends on the world's own tile has no glide)
         game.js("""(() => { window.__sw = []; const f = (now) => { const p = ents.get('agent' + myId); __sw.push([now, p.x, walking && p.walking ? 1 : 0]);
           if (__sw.length < 150) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; })()""")
-        game.hold(["d"], ms)
-        game.sleep(1300)
+        game.hold(["d"], ms)                                   # (let go at these lengths: the input under test)
+        game.still()                                           # (glided into place: not 1.3 s)
         rec = game.js("__sw")
         glide += [(b[1] - a[1]) / min(.1, (b[0] - a[0]) / 1000) for a, b in zip(rec, rec[1:]) if not a[2] and not b[2] and b[0] > a[0] and b[1] != a[1]]
         if len(glide) >= 5:

@@ -39,6 +39,10 @@ try { Object.assign(OPT.v, JSON.parse(localStorage.getItem("nexel-options") || "
 for (const [k, was] of Object.entries(OPT_WAS)) if (Object.prototype.hasOwnProperty.call(was, OPT.v[k])) OPT.v[k] = was[OPT.v[k]];
 for (const k of Object.keys(OPT.v)) if (!(k in OPT_DEFAULT) || typeof OPT.v[k] !== typeof OPT_DEFAULT[k]) { if (k in OPT_DEFAULT) OPT.v[k] = OPT_DEFAULT[k]; else delete OPT.v[k]; }
 const opt = (k) => OPT.v[k];
+// LESS MOTION, as the player's system asks for it (prefers-reduced-motion: reduce; live): no glide, no slide, no eased
+// follow; what moves goes where it goes at once (style.css, zoom.js, goals.js, render.js). The browser tests ask for it too,
+// so nothing is read half way through a transition (tests/e2e/pages.py motion, #289)
+const LESS_MOTION = matchMedia("(prefers-reduced-motion: reduce)");
 function setOpt(k, v) {
   OPT.v[k] = v;
   optSave();

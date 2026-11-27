@@ -29,7 +29,7 @@ def go(g, key, done, jump=False):
     g.wait(done, timeout=8000)
     g.page.keyboard.up(key)
     g.wait("!walking && !pred && !HdLook.busy", timeout=6000)
-    g.sleep(500); g.frames(5)                                # (settled: half a second and five frames. Five frames alone read the window open at the top)
+    g.frames(5)
 
 
 @pytest.mark.realtime
@@ -39,20 +39,21 @@ def test_up_and_down_a_ladder_in_the_open_nothing_of_the_light_or_the_window_cha
     ladder's foot and a cliff top by its top are as light as when you stand at the foot or at the top."""
     g = hd(browser, server)
     x, y = g.pos()
-    g.stamp(-4, -6, ["........."] * 3, levels=["666666666"] * 3)
+    g.stamp(-4, -6, ["........."] * 3, levels=["999999999"] * 2 + ["666666666"])   # (the top a row deep, land 3 higher north of it: the held key's walk stops on it, however many frames go by before the key is up. Three rows deep, a slow frame's walk went over them and off the north edge, under the cliff)
     g.rpc("dev_stamp", x=x, y=y - 3, rows=["l"])
     g.rest()
     tiles = [[x + 2, y - 2, 0], [x + 2, y - 4, 6]]
     for phase in (.3, .9):
         g.hour(phase, still=True)
-        g.rpc("dev_teleport", x=x, y=y - 3, z=0); g.arrive(); g.rest(); g.sleep(400); g.frames(5)
-        g.js(REC, tiles); g.sleep(300); g.wait("__r.length >= 5", 8000)   # (0.3 s standing at the foot, and five frames of it)
+        g.rpc("dev_teleport", x=x, y=y - 3, z=0); g.arrive(); g.rest(); g.frames(5)
+        g.js(REC, tiles); g.wait("__r.length >= 5", 8000)   # (five frames standing at the foot, not 0.3 s)
         foot = g.js(STOP)
         g.js(REC, tiles)
         go(g, "ArrowUp", "myAt.z === 6 && !Climb.climbOf(ents.get('agent' + myId))")
         up = g.js(STOP)
-        g.js(REC, tiles); g.sleep(300); g.wait("__r.length >= 5", 8000)
+        g.js(REC, tiles); g.wait("__r.length >= 5", 8000)
         stood = g.js(STOP)
+        assert g.js("[myAt.y, myAt.z]") == [y - 4, 6]                     # (on the cliff's top, by the ladder's)
         g.js(REC, tiles)
         go(g, "ArrowDown", "myAt.z === 0 && !Climb.climbOf(ents.get('agent' + myId))")
         down = g.js(STOP)
@@ -105,7 +106,7 @@ def test_into_a_dug_room_and_a_tunnel_mouth_the_window_opens_once_and_shuts_once
         "room": ("ArrowRight", "ArrowLeft", f"myPos().x >= {x + 6}", f"myPos().x <= {x} && myAt.z === 0", True),
         "tunnel": ("ArrowUp", "ArrowDown", f"myPos().y <= {y - 8}", f"myPos().y >= {y}", False),
     }.items():
-        g.rpc("dev_teleport", x=x, y=y, z=0); g.arrive(); g.rest(); g.sleep(400)
+        g.rpc("dev_teleport", x=x, y=y, z=0); g.arrive(); g.rest(); g.still()
         g.js(REC, [])
         go(g, k_in, done_in)
         go(g, k_out, done_out, jump)

@@ -2,7 +2,7 @@
 // engine's own (vox_engine.js: column, paintTop, paintFront, rock, water, waterTop; chunkKey(x0, y0, n): what stands in a chunk hangs on; sunk(x, y, f): a tile under the open sky, its floor at f, is in a hole of the land and hidden from the eye: the window is on it).
 // Drawn at the art's own size (one px of the canvas = one art px; the page shows that canvas zoom times bigger),
 // every face painted from the tileset: a top by paintTop, a side by paintFront (its cfg.up rows, never stretched).
-//   VoxStyle.create(host, cfg) -> {build(x, y, L, o), steps(...) (the same over frames), touch(x, y), draw(view) -> canvas, win, cost, faces, fresh, calls}
+//   VoxStyle.create(host, cfg) -> {build(x, y, L, o), steps(...) (the same over frames), touch(x, y), draw(view) -> canvas, win, cost, faces, fresh, calls, paints: the shown sheet's {n, free, cap, shown(place), held(place): the shown land or the one being made has it, making, slot(key, paint)}}
 //   o (build): {r: tiles round, rx, rs: columns across and rows south shown, deep: levels under your feet, sea: the far sea's level,
 //              win: {reach}: land hides you: your space is looked for, and the boxes of the x-ray window on it (vox_style_land.js), or none}
 //   view: {w, h, cam: {kind: "persp"|"iso"|"obl", pitch, fov, yaw}, at: [x, y, z], bend, dep: levels of land over your floor, light: {amb, lr, day,
@@ -37,14 +37,21 @@ const VoxStyle = (() => {
     // and far patches made with them are let go (land.evicted). Not all wiped and the whole land made again from none: that comes every second or so walking: 4096 places, a land some 2000)
     // (CAP: the places the land's paints may take; the last one, CAP itself, is kept for a paint asked for when the sheet shown is full
     //  (overs): it took the last place a face of the land shown still named, drawn with another paint until the land was made again)
-    const CAP = SL * SL - 1; let wipes = 0, spills = 0, overs = 0, A = {slots: new Map(), px: new Uint32Array(AW * AW), n: 0, free: []}, B = null, spare = new Uint32Array(AW * AW), fromNone = false, used = new Set();
+    const CAP = SL * SL - 1; let wipes = 0, spills = 0, overs = 0, A = {slots: new Map(), px: new Uint32Array(AW * AW), n: 0, free: []}, B = null, spare = new Uint32Array(AW * AW), fromNone = false, used = new Set(), shown = new Set(), asked = new Map(), fno = 0;   // (shown: the places the land shown uses; asked: the frame each place was last asked for outside a land's making)
     function evict() { land.farKeep(); for (const [k, v] of B.slots) if (!used.has(v)) B.slots.delete(k); B.free = []; for (let i = CAP - 1; i >= 0; i--) if (!used.has(i)) B.free.push(i); B.full = true; land.evicted((v) => used.has(v)); }   // (the far patches of this land kept with their places: vox_style_land.js farKeep)
+    // (a place for a paint asked outside a land's making (a ghost, a moving shadow, the window's section) while the shown sheet is full: one the
+    // shown land does not use and no other such paint was given this frame. They all took the last place: every one drew the paint of the last to
+    // ask, your shadow under you a block of another's paint, dark over you till the land was made again from none (hd_sun, #106). None: undefined.
+    // Nor one the land being made (B, over frames) uses; and if it holds that paint too, it lets it go there, to its free ones: the making would use it later with
+    // the ghost's px on the GPU, never sent again at the swap (only B.add is). The place is the land's or the ghost's, never both)
+    const loose = (S) => { for (const [k, v] of S.slots) if (v !== CAP && !shown.has(v) && !used.has(v) && asked.get(v) !== fno) { S.slots.delete(k); if (B && B.slots.get(k) === v) { B.slots.delete(k); B.free.push(v); } return v; } };
+    const wipeAt = (S, s) => { const at = (s / SL | 0) * C * AW + (s % SL) * C; for (let j = 0; j < C; j++) S.px.fill(0, at + j * AW, at + j * AW + C); };
     function slot(key, paint) {
       if (mk && !B) { const s0 = fromNone ? undefined : A.slots.get(key); if (s0 !== undefined) { used.add(s0); return s0; }
         if (fromNone) { spare.fill(0); B = {slots: new Map(), px: spare, add: [], full: true, n: 0, free: []}; } else { spare.set(A.px); B = {slots: new Map(A.slots), px: spare, add: [], full: false, n: A.n, free: A.free.slice()}; } }
-      const S = mk ? B : A; let s = S.slots.get(key); if (s !== undefined) { if (mk) used.add(s); return s; }   // (mk: the land being made is asking)
+      const S = mk ? B : A; let s = S.slots.get(key); if (s !== undefined) { if (mk) used.add(s); else asked.set(s, fno); return s; }   // (mk: the land being made is asking)
       if (S.n >= CAP && !mk && S.free.length) { s = S.free.pop(); const at = (s / SL | 0) * C * AW + (s % SL) * C; for (let j = 0; j < C; j++) S.px.fill(0, at + j * AW, at + j * AW + C); }   // (a place given again: see evict)
-      else if (S.n >= CAP && !mk) { overs++; s = CAP; for (const [k0, v0] of S.slots) if (v0 === s) { S.slots.delete(k0); break; } if (!over) over = lost = true; }   // (the sheet of the land now SHOWN is full, and a paint is asked for outside a land's making (the window's section, a ghost): it takes the last place, and the land is made again from none behind the picture (lost). Its paints are not all wiped at once: every face of the land shown would read an empty paint for the second the making takes, painted one earth brown: "the whole meadow brown, seen once")
+      else if (S.n >= CAP && !mk) { overs++; s = loose(S); if (s !== undefined) wipeAt(S, s); else { s = CAP; for (const [k0, v0] of S.slots) if (v0 === s) { S.slots.delete(k0); break; } if (!over) over = lost = true; } }   // (the sheet of the land now SHOWN is full, and a paint is asked for outside a land's making (the window's section, a ghost): it takes the last place, and the land is made again from none behind the picture (lost). Its paints are not all wiped at once: every face of the land shown would read an empty paint for the second the making takes, painted one earth brown: "the whole meadow brown, seen once")
       else { if (S.n >= CAP && !S.free.length) evict();
         if (S.n < CAP) s = S.n++; else if (S.free.length) { s = S.free.pop(); const at = (s / SL | 0) * C * AW + (s % SL) * C; for (let j = 0; j < C; j++) S.px.fill(0, at + j * AW, at + j * AW + C); }
         else { spills++; S.slots.clear(); S.px.fill(0); S.n = 0; spill = true; B.full = true; s = S.n++; } used.add(s); }   // (the land being made uses all 4096: its own paints go, never the shown land's; it is made again, steps)
@@ -85,6 +92,7 @@ const VoxStyle = (() => {
       if (start()) { fill(bufs.land, cat(q.main, q.model), far); fill(bufs.shade, q.shade, new Float32Array(0)); fill(bufs.water, cat(q.water, q.sea), new Float32Array(0)); }
       Object.assign(cnt, {main: q.main.length / N, model: q.model.length / N, far: far.length / N, shade: q.shade.length / N, water: (q.water.length + q.sea.length) / N});
       if (B) { spare = A.px; if (B.full || B.add.length > 500) stale = true; else dirty.push(...B.add); A = {slots: B.slots, px: B.px, n: B.n, free: B.free}; B = null; over = false; }   // (only the paints this land added are sent)
+      shown = used;   // (the places this land uses: a paint asked outside a making never takes one, loose)
       again = true; lastG = lastD = null; cost = performance.now() - t0; units.send = Math.max(units.send || 0, performance.now() - tS);
     }
     // the camera: px of the canvas a tile is across at the eye's target = 16 (one art px a px)
@@ -111,6 +119,7 @@ const VoxStyle = (() => {
     const SPR = VoxStyleSprites.create({projTo, PJ, up: cfg.up, get wmap() { return wmap; }, get wrim() { return wrim; }});
     const GLOW = VoxStyleGlow.create({get gl() { return gl; }, get stx() { return stx; }, near, sameN, get space() { return space; }});
     function draw(v) {
+      fno++;
       if (!start()) return was ? false : null; GLOW.light(v.t || 0, v.way || null);   // (false: lost, none given yet: the host keeps its last picture, hd.js lost; null: no WebGL 2 at all)
       const t0 = performance.now(), L = v.light, RW = v.w, RH = v.h, W = v.water, sized = el.width !== RW || el.height !== RH;
       if (sized) { el.width = RW; el.height = RH; }
@@ -193,7 +202,7 @@ const VoxStyle = (() => {
     return {build, steps, start, touch: land.touch, touchBox: land.touchBox, wet: land.wet, get water() { return cnt.water; }, draw, forget() { wipe = true; land.clear(); }, get lost() { const l = lost; lost = false; return l; }, get cost() { return cost; }, cut: (x, y) => (cutM ? cutM.get(x * 1048576 + y) : undefined),   // (the land's cut under it: its cells over that height not drawn, vox_style_land.js)
       get win() { return {n: W_ ? W_.n : 0, a: wxr, tiles: W_ ? W_.tiles : []}; },   // (the x-ray window: its boxes [x, y, lo, hi], how open it is 0..1)
       spaceAt(x, y) { const sp = space, i = sp ? x - sp.x : -1, j = sp ? y - sp.y : -1; return sp && i >= 0 && j >= 0 && i < sp.D && j < sp.D && sp.cls[j * sp.D + i] && sp.lvl[j * sp.D + i] !== -32768 ? [sp.lvl[j * sp.D + i], sp.cls[j * sp.D + i]] : null; },   // (tests: a tile of your space: [its floor's level, 1 walked to | 2 dropped to | 3 dropped from])
-      get stamp() { return land.stamp; }, get work() { return {wipes, spills, overs, fars: land.fars, forgot: land.forgot, fresh: land.fresh}; }, get part() { return land.part; },   // (work: lands made again from none, far patches made: tests)
+      get stamp() { return land.stamp; }, get work() { return {wipes, spills, overs, fars: land.fars, forgot: land.forgot, fresh: land.fresh}; }, get paints() { return {n: A.n, free: A.free.length, cap: CAP, shown: (s) => shown.has(s), held: (s) => shown.has(s) || used.has(s) || (!!B && [...B.slots.values()].includes(s)), making: !!B, slot}; }, get part() { return land.part; },   // (work: lands made again from none, far patches made: tests)
       get made() { return made; }, get fresh() { return fresh; }, get calls() { return calls; }, get why() { return why; }, units,
       bare(y0) { const w = el ? el.width : 0, h = el ? el.height - y0 : 0; if (!gl || w <= 0 || h <= 0) return 0; const b = new Uint8Array(w * h * 4); gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, b); let n = 0; for (let i = 3; i < b.length; i += 4) if (!b[i]) n++; return n; },   // (tests: px of the picture from row y0 down where no land is drawn: the backdrop shows there)
       raw() { const w = el ? el.width : 0, h = el ? el.height : 0; if (!gl || w <= 0 || h <= 0) return 0; const b = new Uint8Array(w * h * 4); gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, b); let n = 0; for (let i = 3; i < b.length; i += 4) if (b[i] > 235 && b[i] < 255) n++; return n; }, blank() { A.px.fill(0); stale = true; },   // (tests: px of the picture drawn from a paint that is not there (the painter marks them: vox_style_glsl.js `raw`); blank: the shown land's paints taken away, as a lost sheet would be)

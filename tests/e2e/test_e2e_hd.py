@@ -244,12 +244,12 @@ def test_the_aim_goes_round_the_piece_as_it_is_drawn(browser, server):
         g.stamp(1, -1, ["C"]); g.stamp(-2, -1, ["W"]); g.rest()
         z = g.js("zoom")
         p = g.js("([x, y]) => { const s = objectSprite('C', x, y, 0), c = HdThings.card('C', x, y, s), f = HdLook.screenOf(x + .5, y + c.y, 0); return [f[0], f[1] - 5 * zoom, c.b]; }", [x + 1, y - 1])
-        g.page.mouse.move(p[0], p[1]); g.sleep(600)
+        g.page.mouse.move(p[0], p[1]); g.until(f"(() => {{ const r = HdLook.aim; return !!r && r.x - {z} <= {p[0]} && {p[0]} <= r.x + r.w + {z} && r.y - {z} <= {p[1]} && {p[1]} <= r.y + r.h + {z}; }})()")   # (the aim round what the pointer is on)
         r, b = g.js("HdLook.aim"), p[2]
         assert r and abs(r["w"] - (b[2] - b[0] - 1) * z) <= z and abs(r["h"] - (b[3] - b[1] - 1) * z) <= z, (r, b)
         assert r["x"] - z <= p[0] <= r["x"] + r["w"] + z and r["y"] - z <= p[1] <= r["y"] + r["h"] + z, (r, p)
         q = g.js("([x, y]) => HdLook.screenOf(x + .5, y + .6, 1)", [x - 2, y - 1])
-        g.page.keyboard.down("Shift"); g.page.mouse.move(q[0] + 1, q[1]); g.page.mouse.move(q[0], q[1]); g.sleep(600)      # (Shift: take it down: the wall itself is aimed at)
+        g.page.keyboard.down("Shift"); g.page.mouse.move(q[0] + 1, q[1]); g.page.mouse.move(q[0], q[1]); g.until(f"(() => {{ const a = aimedTile(); return !!a && a.p.x === {x - 2} && a.p.y === {y - 1}; }})()")      # (Shift: take it down: the wall itself is aimed at)
         r = g.js("HdLook.aim"); g.page.keyboard.up("Shift")
         assert g.js("([x, y]) => { const a = aimedTile(); return a && a.p.x === x && a.p.y === y; }", [x - 2, y - 1]), "the pointer on a wall's front names the wall"
         assert r and 5 * z <= r["w"] <= 8 * z and 12 * z <= r["h"] <= 22 * z and r["x"] - z <= q[0] <= r["x"] + r["w"] + z, (r, q)

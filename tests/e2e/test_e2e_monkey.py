@@ -9,6 +9,7 @@ def test_random_play_keeps_screen_and_server_in_step(game):
     rnd = random.Random(7)
     game.give(wood=20, stone=10, fiber=10, fence=5, seed=3, hoe=1, axe=1, berries=5, torch=1, path=4)
     game.stamp(-4, -4, ["T.b.M.f.Q", ".........", "f..T..b..", ".........", "M...#...T"])
+    game.js("""(() => { const o = onTick; window.__tk = []; onTick = (d) => { const me = (d.entities || []).find((e) => e.kind === 'agent' && e.id === myId); __tk.push([d.tick, Math.round(performance.now()), me ? [me.x, me.y] : null]); if (__tk.length > 300) __tk.shift(); return o(d); }; return 1; })()""")   # (each tick: its number, when it came, where it has you (null: not in it); said if the page and the world disagree)
     for i in range(60):
         r = rnd.random()
         if r < .55:
@@ -33,7 +34,10 @@ def test_random_play_keeps_screen_and_server_in_step(game):
         if here == (s["x"], s["y"]):
             break
         game.sleep(250)
-    assert game.pos() == (game.server()["x"], game.server()["y"])
+    # (the page's side of it, said if it disagrees: what it was last told of you, where it has you, its stop and its trail, the walk)
+    mine = game.js("(() => { const p = ents.get('agent' + myId); return p && {e: [p.e.x, p.e.y, p.e.z, p.e.vn], at: [p.x, p.y, p.tx, p.ty], srv, pred, trail: trail.length, walking: !!walking, act: myAction && myAction.tool}; })()")
+    ticks = game.js("[__tk.length, __tk.slice(-8), Math.round(performance.now())]")   # (the last ticks: their number, when they came, you in them or not)
+    assert game.pos() == (game.server()["x"], game.server()["y"]), (game.server(), mine, "ticks", ticks, "page errors", game.errors[:5])
     m = game.rpc("metrics")["metrics"]
     # the world's tick in its last 250: the usual one is quick, and no key or click made one run away. (A ceiling of 60 ms
     # on the slowest measured the machine: on a runner's two cores, shared with Chrome drawing on the CPU, it was 83.)

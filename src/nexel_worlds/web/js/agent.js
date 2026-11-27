@@ -54,12 +54,14 @@ async function refresh() {
   refreshing = false;
   if (!r.ok || t0 < hurtAt) return;
   meObs = r.obs; const s = meObs.self;
-  const p = ents.get("agent" + myId);                          // far from where the server has you (another level,
-  // (the tile you stopped on, its time gone: not a guess any more. It is dropped as a tick has you (walk.js myTick), but moved
-  // far as you let go, no tick may have you again (they tell of what is round the screen): it would stay, and you with it, for good)
-  if (pred && performance.now() > pred.until) { pred = null; trail.length = 0; }
-  if (p && !pred && !(walking && p.walking) && Math.abs(p.tx - s.x) + Math.abs(p.ty - s.y) > 4) {   // a teleport): be there
-    p.x = p.tx = s.x; p.y = p.ty = s.y; cam.x = camT.x = s.x; cam.y = camT.y = s.y;
+  // (your own place, as a tick that has you sets it (walk.js myTick: the world's word, your trail drained by vn, your stop dropped): a page
+  // that misses those ticks still comes to where the world has you, an observe later. Standing, your tile is the world's; far
+  // (another level, a teleport), you are put there at once. Not an answer older than the last tick here: the ticks come on
+  // their own socket (/spectate), and one can pass it: it would put you back a tile, a tick long)
+  const p = ents.get("agent" + myId), now = performance.now();
+  if (p && !(clock && r.obs.tick < clock.tick) && !myTick(p, s, now) && (p.tx !== s.x || p.ty !== s.y)) {
+    if (Math.abs(p.tx - s.x) + Math.abs(p.ty - s.y) > 4) { p.x = s.x; p.y = s.y; cam.x = camT.x = s.x; cam.y = camT.y = s.y; }
+    p.tx = s.x; p.ty = s.y; p.moved = now;
   }
   $("mode").textContent = `${s.name} · ${s.x}, ${s.y}${s.sheltered ? " · sheltered" : ""}`;
   drawVitals(s);

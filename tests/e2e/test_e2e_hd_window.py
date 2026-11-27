@@ -171,7 +171,7 @@ def test_the_aim_on_a_cave_s_wall_is_on_the_cell_you_hit(browser, server):
     AIM = "HdLook.aim && aimedTile() && aimedTile().it && aimedTile().it.cell === 2"
     g.hold(["ArrowLeft"], 250)
     try:
-        g.wait(AIM, timeout=4000)
+        g.until(AIM)
     except Exception:                                                      # (what the page has when the aim is not there: it failed "under load" with nothing said)
         raise AssertionError(g.js(STATE)) from None
     # the aim and the wall's cell at your level (its top, one level over your floor), read in the one frame while it is shown: two
@@ -191,23 +191,24 @@ def test_turning_to_a_wall_puts_the_shown_way_out_away_and_the_wall_is_aimed_at(
     x, y = room(g)
     g.give(pickaxe=1)
     g.rpc("dev_teleport", x=x - 3, y=y, z=1)
-    g.wait("HdLook.win.a === 1 && !HdLook.busy", timeout=8000)
+    g.until("HdLook.win.a === 1 && !HdLook.busy")
     g.hold_item("pickaxe")
-    g.wait("WayShow.cur && !WayShow.led && !aimedTile()", timeout=12000)
+    g.until("WayShow.cur && !WayShow.led && !aimedTile()")
     AIM = "!WayShow.cur && HdLook.aim && aimedTile() && aimedTile().it && aimedTile().it.cell === 2"
     # the server's answer to the step comes after the key is let go (a slow link; a short tap): it is still a turn to the
     # wall (walk.js dropped it as a walk replaced by the stop: the way out stayed, nothing aimed, at a fitted pace of 2.1)
     g.js("(() => { const o = rpc; rpc = (op, d) => op === 'act' && d && d.tool === 'walk' ? o(op, d).then((r) => new Promise((ok) => setTimeout(() => ok(r), 400))) : o(op, d); return 1; })()")
     g.hold(["ArrowLeft"], 250)
     try:
-        g.wait(AIM, timeout=4000)
+        g.until(AIM)
     except Exception:
         raise AssertionError(g.js(STATE)) from None
     g.hold(["ArrowLeft"], 500)
-    g.sleep(2600)                                                          # (time that has to pass in the game: longer than the two seconds that show the way)
+    g.until("WayShow.stood > 2600")                                        # (stood longer than the two seconds that show the way: counted from when you stood, the page's own)
+    g.frames(2)                                                            # (and a frame looked at it since)
     assert g.js(AIM), g.js(STATE)
     g.hold(["ArrowRight"], 250)
-    g.wait("WayShow.cur", timeout=12000)                                   # walked and stood: shown again
+    g.until("WayShow.cur")                                                 # walked and stood: shown again
 
 
 def test_a_block_put_down_is_drawn_as_what_it_is(browser, server):

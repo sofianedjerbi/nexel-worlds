@@ -28,7 +28,7 @@ def shaft(game):
 def at(game, dx, lv, h):
     """the build cursor in your column (dx 0) or before you, lv levels over your body's cell (-1: the block under you)"""
     game.js(f"(() => {{ const s = myPos(); Build.S.at = {{x: s.x + {dx}, y: s.y}}; Build.S.plane = {h + lv + 1}; Build.S.deep = null; return 1; }})()")
-    game.frames(4)
+    game.rest(frames=4)
 
 
 def test_the_selected_box_in_your_own_column_is_drawn_whole_over_you_or_under_your_feet(game):
@@ -125,7 +125,7 @@ def test_you_turn_to_the_selected_cell_and_the_keys_keep_their_facing(game):
     south: us; your own column keeps the facing. Only the drawn facing: the tile the keys act on (p.fx, p.fy) is not turned."""
     h = well(game)
     for dx, dy, row in ((1, 0, 2), (-1, 0, 3), (0, -1, 1), (0, 1, 0), (1, 0, 2), (0, 0, 2)):
-        game.frames(10)                                              # (a turn holds 150 ms: no flicker)
+        game.until("(() => { const p = ents.get('agent' + myId); return !!p && performance.now() - (p.turnT || 0) >= 150; })()")   # (a turn holds 150 ms: no flicker, characters.js)
         at2(game, dx, dy, 0, h)
         ok = f"(() => {{ const p = ents.get('agent' + myId); return p && DIR_ROW(p) === {row} && p.fi === (ANIM.aim + {row}) * 8 + AimArt.COL[Target.aim]; }})()"
         game.wait(ok, 3000)
@@ -152,7 +152,7 @@ def test_the_cell_beside_you_in_the_wall_has_its_whole_box(game):
     sizes = {}
     for dx, dy in ((1, 0), (-1, 0), (0, 1)):
         at2(game, dx, dy, 0, h)
-        game.frames(3)
+        game.rest(frames=3)
         d = game.js(FRONT, [dx, dy, h + 1])
         assert len(d["sel"]) == 1, (dx, dy, d)
         sizes[(dx, dy)] = (d["sel"][0]["area"], d["sel"][0]["line"], d["rows"], d["cols"])
@@ -175,7 +175,7 @@ def test_no_red_box_over_you_where_you_merely_stand(game):
     h = well(game)
     for lv in (0, 1):
         at2(game, 0, 0, lv, h)
-        game.frames(3)
+        game.rest(frames=3)
         d = game.js("Target.drew.filter((d) => d.over).map((d) => ({far: d.far, dots: d.dots || 0, line: d.line || 0}))")
         assert len(d) == 1 and d[0]["far"] and d[0]["dots"] > 0 and d[0]["line"] == 0, (lv, d)
         assert game.js(RED, [""]) < 4, lv

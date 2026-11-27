@@ -75,7 +75,7 @@ def test_down_a_covered_stair_the_window_is_open_on_every_frame_and_your_body_is
     # and back up: one tilt back, near the top
     r = walk(g, "ArrowLeft", f"myPos().x <= {x}", jump=True)
     assert not [v for v in r if v[2] and not v[3]] and turns(r) == 0
-    g.wait("HdLook.cam.pitch < 36.1", timeout=4000)                               # (back to the surface's: the last step, a level under the land round it, is seen from above too: the tilt eases after it)
+    g.until("HdLook.cam.pitch < 36.1")                                           # (a tilt is 12 frames at the least, whatever their length: hd_eye.js steps it .034 s a frame. Back to the surface's: the last step, a level under the land round it, is seen from above too: the tilt eases after it)
     back = next(v[0] for v in r if v[1] < 57.9)
     assert back < x + 2.6, back - x                                              # the eye stays over the stair until its last steps
 
@@ -94,17 +94,17 @@ def test_a_shaft_and_its_way_out_are_one_view(browser, server):
         g.rpc("dev_col", tiles=[[x + i, y]], col=[-6 + i])                       # the stair cut out of it, open to the sky
     g.rpc("dev_teleport", x=x, y=y, z=-6)
     g.arrive()
-    g.wait("HdLook.cam.pitch > HdLook.steep - .1 && HdLook.win.a === 1 && !HdLook.busy", timeout=8000)      # (its south wall hides you whole: the x-ray window, as under a roof, hd_level.js hides)
+    g.until("HdLook.cam.pitch > HdLook.steep - .1 && HdLook.win.a === 1 && !HdLook.busy")      # (its south wall hides you whole: the x-ray window, as under a roof, hd_level.js hides)
     for i, steep in ((2, True), (4, True), (5, True)):                           # levels -4, -2, -1: walls beside you as tall as you or more (a level is your height)
         g.rpc("dev_teleport", x=x + i, y=y, z=-6 + i)
         g.arrive()
-        g.wait(f"HdLook.cam.pitch {'> 57.9' if steep else '< 36.1'}", timeout=8000)
+        g.until(f"HdLook.cam.pitch {'> 57.9' if steep else '< 36.1'}")
     g.stamp(3, -4, ["...", "...", "..."], levels=["555", "555", "555"])          # a block of land five high, on the meadow: stand at its foot, south of it, then west
     g.rest()
     for dx, dy in ((4, -1), (2, -3)):
         g.rpc("dev_teleport", x=x + dx, y=y + dy)
         g.arrive()
-        g.sleep(900)
+        g.until("!HdLook.busy && Math.abs(HdLook.cam.pitch - HdLook.cam.want) < .01")   # (the eye at rest where it is going: a tilt it would take is taken)
         assert g.js("HdLook.cam.pitch") < 36.1, (dx, dy)
 
 

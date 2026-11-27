@@ -25,7 +25,7 @@ def test_a_bridges_last_planks_step_down_to_the_bank(game):
 def test_models_cost_little_of_a_frame(game):
     """With a bridge in view, a frame's own work stays small."""
     pond(game)
-    game.sleep(500)
+    game.rest()
     ms = game.js("new Promise((ok) => { const out = [], of = window.frame; window.frame = (now) => { const a = performance.now(); of(now); out.push(performance.now() - a); if (out.length >= 90) { window.frame = of; ok(out); } }; })")
     ms.sort()
     assert ms[len(ms) // 2] < 6 and ms[int(len(ms) * .95)] < 12, ms[-5:]

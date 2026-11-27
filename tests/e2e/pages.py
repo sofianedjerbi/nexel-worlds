@@ -28,6 +28,19 @@ SHOTS = Path(os.environ["E2E_SHOTS"]) if os.environ.get("E2E_SHOTS") else None
 taken = []          # (test, png) of this test's pages, as they were shut
 quiet = False       # (shutting a passed test's pages: no picture)
 
+# Animations off (#289): every page asks for less motion (`prefers-reduced-motion: reduce`), the switch a player has too,
+# and the game honours it (style.css, zoom.js, goals.js, render.js): no transition, no glide, no eased follow, so a test
+# never reads the page half way through one (#287: the zoom's glide raced the read). A test of an animation itself is
+# marked `animated` (conftest.py `motion`) and its pages have it as a player who asked for nothing does. A page given its
+# own `reduced_motion` keeps it (test_e2e_loading.py). It is live: a page made ahead is set again when it is taken.
+motion = "reduce"
+
+
+def moving(kw):
+    """The options of a new page or context, with the motion of the test that is running unless they say their own."""
+    kw.setdefault("reduced_motion", motion)
+    return kw
+
 
 def test_name():
     return os.environ.get("PYTEST_CURRENT_TEST", "test").rsplit(" ", 1)[0]
@@ -78,12 +91,12 @@ class Pages:
         return getattr(self._inner, name)
 
     def new_page(self, **kw):
-        page = kept(clock.paced(self._inner.new_page(**kw)))
+        page = kept(clock.paced(self._inner.new_page(**moving(kw))))
         self.made.append(page)
         return page
 
     def new_context(self, **kw):
-        ctx = Context(self._inner.new_context(**kw))
+        ctx = Context(self._inner.new_context(**moving(kw)))
         self.made.append(ctx)
         return ctx
 
@@ -110,7 +123,7 @@ class Pages:
         """Ask now for the page the next test will play on: `make(page)` -> what take() will hand over."""
         if self.next is None and clock.AHEAD and clock.coming:
             try:
-                page = clock.paced(self._inner.new_page(viewport={"width": 1200, "height": 800}), clock.coming)
+                page = clock.paced(self._inner.new_page(**moving({"viewport": {"width": 1200, "height": 800}})), clock.coming)
                 self.next = (clock.coming, page, make(page))
             except Exception:  # noqa: BLE001 - not this time: the next test makes its own
                 self.next = None
@@ -123,6 +136,7 @@ class Pages:
         if pace != clock.now or page.is_closed():
             page.close()
             return None
+        page.emulate_media(reduced_motion=motion)       # (asked for before this test's marks were known)
         self.made.append(kept(page))
         return made
 

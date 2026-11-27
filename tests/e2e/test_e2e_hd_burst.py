@@ -45,8 +45,8 @@ def test_walking_a_stair_and_dropping_into_the_room_at_its_foot_the_window_stays
     g.page.keyboard.down("ArrowLeft")
     g.wait(f"myPos().x <= {x - 10}", timeout=8000)
     g.page.keyboard.up("ArrowLeft")
-    g.wait("!HdLook.busy", timeout=6000)
-    g.sleep(500)
+    g.until("!HdLook.busy")
+    g.rest()
     r = g.js("(() => { __on = false; return __r; })()")
     assert g.pos()[0] <= x - 10 and g.js("HdLook.level[0]") == z - 10
     # the window after the drop is the window before it (it was another space, another hole: a quarter of the picture in one frame)

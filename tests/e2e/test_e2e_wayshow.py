@@ -30,7 +30,7 @@ def test_behind_a_ridge_the_way_is_faint_and_through_the_window_it_is_whole(brow
     assert n[1] >= 20 and n[0] <= 3, n                                      # (the last tiles of the tunnel, past the window: behind the ridge)
     g.js("HdLook.nowin = true")
     g.wait("HdLook.win.a === 0", 4000)
-    g.frames(3)
+    g.rest(frames=3)
     n = g.js("[WayShow.hidden, WayShow.dots]")
     assert n[0] >= n[1] - 4, n                                              # (all but the last steps, out past the ridge's end)
     assert not g.errors
@@ -124,7 +124,7 @@ def test_in_a_tunnel_open_at_its_end_the_way_out_is_along_it_from_the_first_fram
     if sprint:
         g.hold(["Shift", "ArrowRight"], 700)
     else:
-        g.frames(6)
+        g.rest(frames=6)
     rec = [r for r in g.js("window.__first") if not r[6] and r[1] == y and x <= r[0] <= x + 5]      # (from the frame the end is open, in the tunnel)
     assert len(rec) >= 3, rec
     assert all(r[3] == "E" and r[4] == 0 and r[5] == "E" for r in rec), [r for r in rec if r[3] != "E" or r[4] or r[5] != "E"]            # (the way: east, along the tunnel, nothing to break; and so it is shown)

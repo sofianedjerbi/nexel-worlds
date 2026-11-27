@@ -2,6 +2,7 @@
 of that cave", "It looks like we can get out but no evident way or block to break !!"."""
 
 import pytest
+from clock import stepped_wait
 from test_e2e_hd_sun import hd
 
 SLOT = "(n) => String((slots.indexOf(n) + 1) % 10)"
@@ -41,7 +42,7 @@ def test_at_the_bottom_of_your_own_shaft_the_way_out_is_drawn_and_following_it_g
         game.wait(f"myAt && myAt.z === {-depth} && !myAction", 8000)
     game.face(-1, 0)                                               # (looking west: the way goes east)
     game.wait("WayShow.cur && WayShow.cur.now && !WayShow.busy", 5000)
-    game.frames(3)
+    game.rest(frames=3)
     c = game.js(CUR)
     assert c["trapped"] and c["now"] == "up" and c["cap"] == "R" and c["way"] == "E", c
     assert c["digs"][0] == [x + 1, y, -2, "up"] and len(c["digs"]) == 5, c    # the first step's block (the sky is over you), then two a layer; the last layer is a hop
@@ -65,11 +66,11 @@ def test_at_the_bottom_of_your_own_shaft_the_way_out_is_drawn_and_following_it_g
                 game.hold([KEYS[c["way"]]], 90)
             game.wait(f"myAt && (myAt.x !== {at[0]} || myAt.y !== {at[1]}) && !walking", 4000)
         game.wait("!WayShow.busy", 4000)
-        game.frames(2)
+        game.rest(frames=2)
     s = game.server()
     assert s["z"] == 0 and s["hp"] == 20 and presses <= 12, (s["z"], presses)       # five blocks and the steps between, the last open ones too: shown until you stand on the grass
     assert jumps >= 3, jumps                                                        # (each step up of the stair: its cap the jump key)
-    game.frames(3)
+    game.rest(frames=3)
     c = game.js(CUR)
     assert not c["shown"] and c["cap"] == "" and not game.errors, c
 
@@ -102,7 +103,7 @@ def test_in_a_cave_with_a_way_out_on_foot_nothing_is_drawn_until_you_stand_still
     game.wait("myAt && topAt(myAt.x, myAt.y) <= myAt.z", 15000)
     game.page.keyboard.up("ArrowRight")
     game.wait("myAt && topAt(myAt.x, myAt.y) <= myAt.z && !walking", 8000)
-    game.frames(3)
+    game.rest(frames=3)
     assert not game.js(CUR)["shown"] and not game.errors
 
 
@@ -120,7 +121,7 @@ def test_in_the_hd_picture_the_next_block_has_its_dashed_box_and_its_key_on_it(b
         g.wait(f"myAt && myAt.z === {-depth} && !myAction", 8000)
     g.face(-1, 0)
     g.wait("WayShow.cur && WayShow.cur.now && !WayShow.busy && !HdLook.busy", 6000)
-    g.frames(4)
+    g.rest(frames=4)
     c = g.js(CUR)
     assert c["trapped"] and c["cap"] == "R" and c["digs"][0] == [x + 1, y, -1, "up"], c
     assert 12 < abs(c["off"][0]) <= 90 and -50 <= c["off"][1] <= 60 and not g.js(ON_ME), c            # the key: beside that block, not on it, nor on you or your name
@@ -147,13 +148,13 @@ def test_shut_in_with_a_plank_in_hand_or_with_nothing_the_shown_key_gets_you_out
     game.rpc("dev_teleport", x=x, y=y)
     game.arrive()
     game.wait("myAt && myAt.z === -3 && WayShow.cur && WayShow.cur.now && !WayShow.busy", 6000)
-    game.frames(3)
+    game.rest(frames=3)
     assert game.js("inHand()") == (hands if hands == "plank" else None)
     assert game.js(CAP) == "R" and not game.js(ON_ME) and game.js("$('prompts').innerText.trim()") == "" and game.js("$('actions').innerText.replace(/\\s+/g, '')") == "RDigastep", (game.js(CAP), game.actions())
     presses, seen = 0, []
     for _ in range(20):
         game.wait("!WayShow.busy && !myAction && !pendingAct && !walking", 6000)
-        game.frames(3)
+        game.rest(frames=3)
         cap = game.js(CAP)
         if cap is None:
             break
@@ -223,6 +224,6 @@ def test_swimming_in_a_gorge_that_goes_on_shows_nothing_and_one_closed_at_both_e
         return
     res = game.js("(() => { const r = WayShow.res; return r && {out: r.out, trapped: r.trapped, path: !!r.path}; })()")
     assert res == {"out": False, "trapped": False, "path": False}, res       # (in the gorge, not out; no trap; no stair looked for)
-    game.sleep(3000)                                                          # (the game's time: standing still in it)
-    game.frames(2)
+    stepped_wait(game.page, 3000)                                                          # (the game's time: standing still in it)
+    game.rest(frames=2)
     assert not game.js(CUR)["shown"] and game.js(CAP) is None and not game.errors

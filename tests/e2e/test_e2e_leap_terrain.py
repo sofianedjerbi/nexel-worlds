@@ -99,7 +99,7 @@ def test_off_a_high_ledge_the_fall_is_smooth_on_the_screen(game, how):
             game.wait(f"myPos().x >= {x - .3}", 3000); game.page.keyboard.press("Space")
         # (till down on the ground under the ledge, and its landing's squash and settle drawn: 1 s held was a runner's few frames, #47)
         game.wait("!!myAt && myAt.z === 0 && !Leap.on() && !Leap.gliding()", 8000)
-        game.frames(6)
+        game.wait("!jumping(ents.get('agent' + myId), lastT)", 4000)          # (its landing's squash and settle over: not six frames, which on 16 ms frames were a tenth of it)
         game.page.keyboard.up("d"); game.page.keyboard.up("Shift")
     try:
         rec = frames(game, act, z0=0)
@@ -133,10 +133,19 @@ def test_walking_off_a_high_ledge_into_water_the_jump_s_fall_takes_you_down(game
         # (__lp: how long the jump's fall drew you, ms. It counted frames, more than 10: on the runners a frame is 70 to
         # 130 ms, and a fall of six layers four of them)
         game.js("(() => { window.__lp = 0; let t = null; const f = (n) => { if (Leap.on()) { if (t !== null) __lp += n - t; t = n; } if (myAt.z > 5.5 || Leap.on()) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; })()")
-        game.page.keyboard.down("d"); game.wait("myAt.z < .5", 4000); t = game.js("performance.now()")
+        # (what the bug was, asked of what the page told the world: the screen made no jump of the fall, and the world waited
+        #  at the edge a second for one (sim/movement.py at_ledge). Now: the page says the fall as a jump, `leap` with where
+        #  it lands (the pond, level 0), and the world takes it and has you down. A bound on the time was a bound on frames:
+        #  the world waits at the edge for the page's word, later the longer a frame, 15 ticks at 150 ms frames)
+        game.js("""(() => { window.__lt = []; const o = rpc; rpc = function (op, d) { const r = o(op, d);
+          if (op === 'act' && d.tool === 'leap' && d.args && d.args.land !== undefined) r.then((a) => __lt.push([d.args.land, a.ok, a.result && a.result.z]));
+          return r; }; return 1; })()""")
+        game.page.keyboard.down("d"); game.wait("myAt.z < .5", 4000)
         game.page.keyboard.up("d")
-        game.wait("meObs.self.z < .5", 1500)                                # (the world down too, soon after)
-        assert game.js("performance.now()") - t < 1500 and game.js("__lp") > 160, game.js("__lp")
+        game.wait("__lt.length > 0", 8000)                                   # (the world's answer to the landing)
+        down = game.until_world(lambda s: s["z"] < .5)
+        lt = game.js("__lt")
+        assert lt[0][0] == 0 and lt[0][1] and down["z"] < .5 and game.js("__lp") > 160, (lt, down["z"], game.js("__lp"))
     finally:
         game.js("setOpt('shake', 1)")
     game.rest()

@@ -19,6 +19,7 @@ def test_a_wheel_notch_is_one_level_and_a_trackpad_swipe_is_not_a_dozen(game):
     assert game.js("localStorage.getItem('nexel-zoom')") == str(z)      # kept for the next visit
 
 
+@pytest.mark.animated                                  # (the zoom's glide and the sign's nod: not with less motion, pages.py)
 def test_a_level_glides_and_the_sign_shows_where_you_are_and_where_it_stops(game):
     game.js("zoom = 3")
     # (the glides, counted as they start: a glide is ZOOM.ms, 140 ms, a quarter of it on the tests' clock: 35 ms. Read after
@@ -50,7 +51,7 @@ def test_the_keys_of_the_main_row_zoom_on_any_layout_and_for_a_watcher_too(game,
     assert abs(sign[0] - 600) < 2 and 0 < sign[2] - sign[1] < 20, sign          # the sign: in the middle, just over the hearts
     game.press("t", 200)                                       # typing a dash in the chat is not a zoom
     game.page.keyboard.type("a-b=c")
-    game.sleep(300)
+    game.until("!ZOOM.busy"); game.frames(2)
     assert game.js("zoom") == 3
     game.page.keyboard.press("Escape")
     page = browser.new_page(viewport={"width": 1000, "height": 700})            # someone who only watches

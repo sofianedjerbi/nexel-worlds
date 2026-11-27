@@ -144,7 +144,8 @@ class GameServer(Views):
                     continue
                 if op == "region":
                     a = (int(msg["x"]), int(msg["y"]), int(msg.get("w", 64)), int(msg.get("h", 48)))
-                    out = {"later": True, "x": a[0], "y": a[1]} if msg.get("far") and not (self.far_near(self.spectators.get(q), *a) and self.far_ready(*a)) else self.region(*a)   # (views.py far_near, far_ready)
+                    near = not msg.get("far") or self.far_near(self.spectators.get(q), *a)
+                    out = self.region(*a) if near and (not msg.get("far") or self.far_ready(*a)) else {"later": True, "x": a[0], "y": a[1], "out": not near}   # (views.py far_near, far_ready. out: past what this page is given far: it never comes, state.js farLeft)
                 elif op == "metrics":
                     out = self.metrics()
                 elif op == "who" and self.gate:                # the name this account already plays here, if any

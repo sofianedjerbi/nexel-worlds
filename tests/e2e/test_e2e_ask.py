@@ -2,6 +2,8 @@
 "turn the command that could be turned into UI (signs, naming mobs) into ui. As example Signs = write when placing.
 Naming mobs = naming tag required." """
 
+from waits import QUIET
+
 ASKING = "$('ask').style.display === 'block' && document.activeElement === $('asktext')"
 
 
@@ -16,7 +18,7 @@ def test_a_sign_is_written_as_it_goes_up(game):
     at = game.pos()
     game.page.keyboard.press("Enter")
     game.wait("$('ask').style.display === 'none'")
-    game.sleep(900)
+    game.until(f"combAt({at[0]}, {at[1] - 1}) === '?' && ({QUIET})()")     # (the sign up on the page, the place answered)
     assert game.tile(0, -1) == "?" and game.pos() == at and game.inv("sign") == 1
     game.hold_item(None)
     game.face(0, -1)
@@ -27,7 +29,7 @@ def test_a_sign_is_written_as_it_goes_up(game):
     game.press("e", 300)
     game.wait(ASKING)
     game.page.keyboard.press("Escape")
-    game.sleep(600)
+    game.until(f"$('ask').style.display === 'none' && ({QUIET})()"); game.tick()   # (nothing asked of the world and a tick after: a sign put up would be on the page)
     assert game.js("$('ask').style.display") == "none" and game.tile(1, 0) != "?" and game.inv("sign") == 1
 
 
@@ -43,6 +45,6 @@ def test_an_animal_is_named_with_a_name_tag(game):
     game.page.keyboard.type("Daisy")
     game.page.keyboard.press("Enter")
     game.wait("[...ents.values()].some((p) => p.e && p.e.kind === 'cow' && p.e.name === 'Daisy')", 6000)
-    game.sleep(900)
+    game.until(f"!meObs.self.inventory.name_tag && $('heldname').textContent.includes('Its name is') && ({QUIET})()")   # (the tag gone from the bag, and said)
     assert game.inv("name_tag") == 0 and cow                   # the tag stays on her
     assert "Its name is Daisy" in game.js("$('heldname').textContent")      # (said over the bar: ui.js toast)

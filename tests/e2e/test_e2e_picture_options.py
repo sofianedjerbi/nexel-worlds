@@ -7,6 +7,8 @@ it only took the sky away, the land stayed bent. Shake on a hard fall moved a ca
 import base64
 import os
 
+import pytest
+
 from test_e2e_hd_sun import hd
 
 SHOTS = os.environ.get("PICTURE_SHOTS")      # (a folder: each setting's pictures are kept there, to be looked at)
@@ -24,7 +26,10 @@ FX = "(() => { const p = myPos(); burst(p.x + 3, p.y - 1, 'hit', 30); smoke(p.x 
 # (words held a third of a second into their rise: they last 1.4 s, and a slow machine's frames and screenshot took longer)
 FLOAT = "(() => { const p = myPos(), f = {x: p.x, y: p.y, text: '+5 wood', color: '#fff1a8'}; Object.defineProperty(f, 't', {get: () => performance.now() / 1000 - .3}); floats.push(f); return 1; })()"
 QUAKE = "(() => { window.__fs = window.__fs || FALL.shake[1]; FALL.shake[1] = 60; fallQuake = opt('shake') ? {t0: performance.now() - 100, amp: 40} : null; return 1; })()"   # (a shake held a minute: on the picture whenever it is read)
-ZOOMING = "(() => { zoomBy(1); return 1; })()"
+# (the glide held half way: it is the canvas's own animation, 140 ms of the browser's clock, over before a slow
+#  machine's frames come; held, it is on the picture whenever it is read, as the shake and the words are)
+ZOOMING = "(() => { zoomBy(1); for (const a of [cv, HdView.el].filter(Boolean).flatMap((e) => e.getAnimations())) { a.pause(); a.currentTime = ZOOM.ms / 2; } return 1; })()"
+UNGLIDE = "(() => { for (const a of [cv, HdView.el].filter(Boolean).flatMap((e) => e.getAnimations())) a.finish(); return 1; })()"   # (let go: the zoom goes on to its end)
 # each setting: [its key, one value, the other, what is done before each picture (js), the hour, where it is read (tiles from you; None: all of it),
 # by how much a px differs (a channel, 0..255: the water's moving light is faint by design, 6)].
 # The hour: .3 morning (long shadows), .9 night. POND: the pond's tiles; SPOT: where the particles fly, east of you; HEAD: where the words rise over you (not you: you breathe); WALLS: the walls and stones and their shadows
@@ -45,6 +50,7 @@ CASES = [
 ]
 
 
+@pytest.mark.animated                                  # (the Smooth zoom setting: its glide is what changes the picture: not with less motion, pages.py)
 def test_every_picture_setting_changes_the_picture(browser, server):
     """Each setting of the Picture page (Zoom is the zoom: the other tests'), on a scene with all they act on: walls
     and stones (shadows, depth), a pond with a bed (clear water, shimmer), the land north (view distance, curved world),
@@ -66,8 +72,10 @@ def test_every_picture_setting_changes_the_picture(browser, server):
                 g.rest()
                 if before:
                     g.js(before)
-                    g.frames(4)
+                    g.rest(frames=4)
                 pics.append(g.page.screenshot())
+                if before == ZOOMING:
+                    g.js(UNGLIDE)
             if SHOTS:
                 for i, p in enumerate(pics):
                     open(os.path.join(SHOTS, f"{key}_{['a', 'a2', 'b', 'b2'][i]}.png"), "wb").write(p)

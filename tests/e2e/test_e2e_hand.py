@@ -103,7 +103,7 @@ def test_the_hand_is_a_slot_even_an_empty_one(game):
     game.wait("ents.get('agent' + myId).e.held === 'bread'")
     game.act("drop", item="bread", n=1)
     game.wait("!meObs.self.inventory.bread")
-    game.frames(2)
+    game.tick()                                               # (the next observation: the hand slot re-taken from it, ui.js handSync)
     assert game.js("[handSlot, selected]") == [b, None]                       # gone: the slot stays, the hands are empty
     game.wait("!ents.get('agent' + myId).e.held", 4000)                         # (and the others see empty paws)
     game.give(stone=1)

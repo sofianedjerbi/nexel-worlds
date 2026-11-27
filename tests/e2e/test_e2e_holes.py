@@ -10,6 +10,7 @@ land a moment before, and was not asked for again. Seen: 5400 px of a 600 x 400 
 import os
 
 import pytest
+from clock import stepped_wait
 from game import Game, new_name
 
 pytestmark = pytest.mark.realtime                 # (it times how long a block is missing, in ms of the page's own clock)
@@ -42,11 +43,11 @@ def test_land_you_come_to_is_asked_for_at_once_though_it_was_asked_for_as_far_la
             g.rpc("dev_teleport", x=x0 + dx, y=-x0 + dy)
             g.wait("HdLook.live && !HdLook.held", 15000)
             g.js(HUNT)
-            g.page.wait_for_timeout(400)                  # (the far land asked for meanwhile, four blocks a tenth of a second)
+            stepped_wait(g.page, 400)                     # (the far land asked for meanwhile, four blocks a tenth of a second)
             g.page.keyboard.press("Minus")
             g.wait("zoom === 3", 5000)                     # (the first step taken, not 200 ms (a press in its glide carries on: zoom.js ZOOM.to): #47)
             g.page.keyboard.press("Minus")                # (4 -> 2: the picture twice as wide)
-            g.page.wait_for_timeout(3500)                 # (a far ask's answer comes 3 s on: a block missing that long shows in this window)
+            stepped_wait(g.page, 3500)                    # (a far ask's answer comes 3 s on: a block missing that long shows in this window)
             g.wait("window.__holes.frames > 30", 15000)  # (and frames enough to have watched it: a runner's 133 ms frames drew 23 in 3.5 s)
             h = g.js("(() => { const H = window.__holes; return {frames: H.frames, worst: Math.round(H.worst), unasked: Math.round(H.unasked), at: H.at}; })()")
             assert g.js("zoom") == 2, g.js("zoom")
