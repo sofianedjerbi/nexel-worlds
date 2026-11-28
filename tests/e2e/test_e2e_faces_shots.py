@@ -74,3 +74,16 @@ def test_riser_shots(browser, server, hill):
     g.frames(8)
     shot(g, f"stair-{hill}", x, y - 2, lv - 4, 160, 120)
     g.page.close()
+
+
+def test_fence_shots(browser, server):
+    """A fenced pen with a gate on its west side (#4: a fence's posts, rails and gate, hd_fences.js), from the south."""
+    g = hd(browser, server)
+    g.js("setOpt('names', false); setOpt('hints', false); setOpt('clouds', 0); setOpt('rays', 0); setOpt('shimmer', 0)")
+    g.hour(.3, still=True)
+    x, y = g.pos()
+    g.stamp(-2, -6, ["#####", "#...#", "g...#", "#...#", "#####"])
+    g.rest()
+    g.frames(6)
+    shot(g, "fence-pen", x, y - 4, 0, 120, 90)
+    g.page.close()
