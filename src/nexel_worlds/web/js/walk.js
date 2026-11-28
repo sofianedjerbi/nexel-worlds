@@ -13,6 +13,7 @@ let silkUntil = 0;           // pinned in a redknee's silk until then (performan
 const trail = [];            // {x, y, n}: tiles you turned or stopped at that the server hasn't made yet
 let trailN = 0, srv = null;  // srv: the server's last step for you {x0, y0, x, y, t, ms} (from, to, when, how long its steps take)
 const LEAD = [2, 4];         // tiles ahead of the server: from the first you slow down, at the second you wait for it
+const WAY_FAR = LEAD[1] + 12;   // tiles from the server to a tile of your way at the most: your lead and a flight (sim/leaping.py LEAP_TILES)
 
 function mark(x, y) { const n = ++trailN; trail.push({x, y, n}); return [x, y, n]; }
 
@@ -101,7 +102,7 @@ function syncWalk() {
     // replaced by a newer walk: that one says. By letting go (a stop): a tap at a wall that was let go before the server
     // answered (a slow link, a short tap) is still a turn to the wall (else the way out stays shown and nothing is aimed)
     if (walking !== mine && !(walking === null && wall && n === walkN)) return;
-    if (walking === mine) { walking = null; if (p) p.walking = false; }    // it ended (a wall, a fall that hurt): the next tick says where you are
+    if (walking === mine) { walking = null; if (p) p.walking = false; trail.length = 0; }    // it ended (a wall, a fall that hurt, woken elsewhere): the next tick says where you are, and no tile of that way is left to make
     if (wall) { const q = ents.get("agent" + myId); if (q) { BodyPlace.face(q, dx, dy); if (q.tx + "," + q.ty === from) WayShow.mine(); } }
     // (you turned to a wall where you stand: you are at work on it: the shown way out is put away, as at a key of your own: while it is shown nothing you face is offered (standing two seconds in a cave you can walk out of, then facing a wall: no bracket, no key, for good)
   });
@@ -185,7 +186,9 @@ function myTick(p, e, now) {
   const lane = DIRV[walking.dir][0] ? e.y : e.x;
   // moved away (woken elsewhere), or it lost you: be where it has you. (Not while it has tiles of your way to make: it is coming, and
   // a way it gives up it says made (sim/movement.py via_drop). A tick read late on a page whose frames starve its messages had it at
-  // the edge you jumped off, you landed 6 tiles on and walking: put back on the edge, and off it again, hurt twice)
+  // the edge you jumped off, you landed 6 tiles on and walking: put back on the edge, and off it again, hurt twice.
+  // A tile it is further from than a way goes (WAY_FAR) it will never make: woken elsewhere, or a tile it never kept: the trail is void)
+  if (trail.length && Math.abs(trail[0].x - e.x) + Math.abs(trail[0].y - e.y) > WAY_FAR) trail.length = 0;
   if (!trail.length && Math.abs(p.x - e.x) + Math.abs(p.y - e.y) > LEAD[1] + 2) {
     p.x = p.tx = e.x; p.y = p.ty = e.y; walking.lane = lane; walking.at = null; trail.length = 0;
   } else if (!trail.length && !walking.at && lane !== walking.lane) walking.lane = lane;   // it couldn't follow you round the corner: walk where it does

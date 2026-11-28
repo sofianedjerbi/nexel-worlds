@@ -32,7 +32,7 @@ function joinGame(name) {
     }
     const f = pending[d.id]; if (f) { delete pending[d.id]; f(d); }
   };
-  agentWs.onclose = (e) => { if (me) toast((e && e.reason) || "Disconnected", true); me = null; myId = null; meObs = null; $("mode").textContent = "watching"; ["hud", "craft", "help", "goals", "bag"].forEach((id) => $(id).style.display = "none"); $("joinbox").style.display = "block"; document.body.classList.remove("playing", "tab"); };
+  agentWs.onclose = (e) => { if (me) toast((e && e.reason) || "Disconnected", true); me = null; trail.length = 0; myId = null; meObs = null; $("mode").textContent = "watching"; ["hud", "craft", "help", "goals", "bag"].forEach((id) => $(id).style.display = "none"); $("joinbox").style.display = "block"; document.body.classList.remove("playing", "tab"); };
 }
 function rpc(op, extra) {
   return new Promise((res) => {
