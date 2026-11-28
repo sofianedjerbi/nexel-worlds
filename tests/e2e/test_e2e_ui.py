@@ -53,7 +53,7 @@ def test_the_recipe_you_are_on_says_what_it_takes_and_what_you_have(game):
     game.press("c", 400)
     assert game.js("$('craft').style.display") == "block" and game.js("craftTab") == "Basics"
     assert game.js(KIND, "Tools") == "Tools"
-    for _ in range(3):                                                                 # (wood's axe and pickaxe, stone's axe: tools go by tier)
+    for _ in range(4):                                                                 # (wood's axe, pickaxe and sword, stone's axe: tools go by tier, #393)
         game.press("ArrowDown", 150)
     assert game.js("craftFocus") == "pickaxe" and game.js("document.querySelector('#craftdetail .cname').textContent") == "Pickaxe"
     assert game.js("document.querySelector('#craftdetail .cblurb').textContent") == game.js("BLURB.pickaxe") != ""
