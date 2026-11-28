@@ -27,10 +27,12 @@ function matching(list, typed) {
   if (t) starts.sort((a, b) => a.put.length - b.put.length);
   return [...starts, ...has.filter((it) => !starts.includes(it))];
 }
-// Who is near, nearest first: [entity, tiles away]
+// Who is near, nearest first: [entity, tiles away]. Near: on the land made round you (HdLook.box), not on the far land
+// past it to the horizon, whose creatures the page is told of too (#387): a cow 60 rows off was offered to milk
 function nearby(pick) {
   const s = myPos(); if (!s) return [];
-  return [...ents.values()].filter((p) => p.e && !(p.e.kind === "agent" && p.e.id === myId) && pick(p.e))
+  const b = typeof HdLook !== "undefined" && HdLook.live && HdLook.box, on = (p) => !b || (p.x >= b[0] && p.x <= b[2] + 1 && p.y >= b[1] && p.y <= b[3] + 1);
+  return [...ents.values()].filter((p) => p.e && !(p.e.kind === "agent" && p.e.id === myId) && pick(p.e) && on(p))
     .map((p) => [p.e, Math.round(Math.hypot(p.x - s.x, p.y - s.y))]).sort((a, b) => a[1] - b[1]);
 }
 // What an argument can be: [{put, hint}] (none: it is yours to write: a number, a text)
