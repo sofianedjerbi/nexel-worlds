@@ -22,7 +22,7 @@ const tileOf = (c) => RULES.tiles[c] || {};                 // what the world sa
 // A tool's kind and tier (ores.py TOOLS: a wood, a stone, an iron, a titanium axe or pickaxe): what the world asks of
 // a tool is its kind, any tier; a dig is done with the best of a kind in your pack
 const toolKind = (item) => (item && RULES.tools[item] ? RULES.tools[item][0] : item);
-const toolArt = (item) => item && item.replace(/^(?:wood|iron|titanium)_(?=(?:axe|pickaxe|sword)$)/, "");   // (the picture it is held and swung as: its kind's, any tier: hold_art.js)
+const toolArt = (item) => item && item.replace(/^(?:wood|stone|copper|iron|titanium)_(?=(?:axe|pickaxe|sword)$)/, "");   // (the picture it is held and swung as: its kind's, any tier: hold_art.js)
 const bestTool = (kind) => { const inv = meObs ? meObs.self.inventory : {}; let best = null;
   for (const [t, [k, i]] of Object.entries(RULES.tools)) if (k === kind && inv[t] > 0 && (!best || i > RULES.tools[best][1])) best = t;
   return best; };

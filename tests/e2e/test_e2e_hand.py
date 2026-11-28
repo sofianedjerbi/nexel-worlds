@@ -148,7 +148,7 @@ def test_a_tool_in_hand_is_gripped_the_hand_over_its_handle_and_the_hand_on_the_
     game.wait("wornReady(agentTint(me), ents.get('agent' + myId).e.worn, ents.get('agent' + myId).e.race, ents.get('agent' + myId).e.bot)")
 
     floating = []
-    for item in ("sword", "axe", "pickaxe", "hoe", "spear", "torch", "watering_can"):
+    for item in ("iron_sword", "axe", "pickaxe", "hoe", "spear", "torch", "watering_can"):
         for face in ([0, 1], [1, 0], [-1, 0], [0, -1]):
             r = game.js(TOOL, [item, face, None])
             tool = [(x, y) for x, y, c, _ in r["px"] if c not in r["body"]]
@@ -177,7 +177,7 @@ def test_a_sword_and_a_spear_have_one_pose_standing_aiming_and_walking_and_sway_
         tool = [(x, y) for x, y, c, _ in r["px"] if c not in r["body"]]
         ring = [(x, y) for x, y, c, on in r["px"] if c == r["hand"][0] and any(abs(x - u) <= 2 and abs(y - v) <= 2 for u, v in tool)]
         return (sum(x for x, _ in ring) / len(ring), sum(y for _, y in ring) / len(ring) - r["btop"]) if len(ring) >= 3 else None
-    for item in ("sword", "spear"):
+    for item in ("iron_sword", "spear"):
         for face in ([0, 1], [1, 0], [-1, 0]):
             stand = game.js(TOOL, [item, face, None])
             h0 = hand(stand)

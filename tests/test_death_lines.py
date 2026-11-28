@@ -43,11 +43,11 @@ def test_every_line_is_one_short_line_in_the_chat():
 
 def test_a_death_s_lines_are_its_situation_s():
     pools = lambda **s: {p for p, _, _ in fitting(**s, **RULES)}      # noqa: E731
-    assert pools(code="bitten", kind="tusker", held="sword", water=True, night=True) == {"bitten", "tusker", "hand_weapon", "water", "night"}
+    assert pools(code="bitten", kind="tusker", held="iron_sword", water=True, night=True) == {"bitten", "tusker", "hand_weapon", "water", "night"}
     assert pools(code="killed") == {"killed", "hand_none"}
     assert pools(code="fell") == {"fell"}
     assert pools(code="starvation", held="bread", dropped={"wood": 3, "bread": 2}) == {"starvation", "fed"}
-    assert pools(code="dev", held="sword") == {"struck"}
+    assert pools(code="dev", held="iron_sword") == {"struck"}
     assert {i for p, _, i in fitting(code="starvation", dropped={"bread": 2}, **RULES) if p == "fed"} == {"bread"}
     assert say("fed", 1, name="Ash", item="cooked_meat") == "Ash saved the cooked meat for later. No later."
 
@@ -65,14 +65,14 @@ def test_the_server_picks_one_line_for_the_death_the_same_for_all(world):
     bob = sim.login("Bob", "tok2")
     seen = []
     for _ in range(6):
-        bob.held = "sword"; bob.inventory["sword"] = 1
+        bob.held = "iron_sword"; bob.inventory["iron_sword"] = 1
         bob.hp = 1
         sim.damage(bob, 2, "killed", by=ash)
         died = last(bob, "death")
         heard = last(ash, "death")
         assert (heard["line"], heard["item"]) == (died["line"], died["item"])      # (one event, one line, for all who hear it)
         pool, i = died["line"]
-        assert pool in {"killed", "hand_weapon"} and died["item"] == ("sword" if pool == "hand_weapon" else None)
+        assert pool in {"killed", "hand_weapon"} and died["item"] == ("iron_sword" if pool == "hand_weapon" else None)
         assert "Bob" in say(pool, i, name=died["name"], who=died["who"]["name"], item=died["item"])
         seen.append(died["line"])
     assert all(a != b for a, b in zip(seen, seen[1:]))

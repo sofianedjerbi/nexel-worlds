@@ -17,10 +17,10 @@ FLAMES = """([x, y]) => { const a = HdLook.screenOf(x, y + 1, floorAt(x, y)), b 
 
 def test_a_hit_shows_its_hearts_over_the_cow(game):
     cow = game.spawn("cow", 2, 0, still=10 ** 6)
-    game.give(sword=1)
+    game.give(iron_sword=1)
     game.wait(f"ents.has('cow{cow}')", 4000)
     c = game.js(COW_AT, cow)                                     # (where it stands when it is hit: hit, it may run)
-    game.js(f"act('attack', {{target: {cow}, with: 'sword'}})")
+    game.js(f"act('attack', {{target: {cow}, with: 'iron_sword'}})")
     game.wait("typeof HdFx !== 'undefined' && HdFx.last.floats.some((f) => f[0].startsWith('-'))", 4000)
     f = game.js("HdFx.last.floats.find((f) => f[0].startsWith('-'))")
     u = game.js("zoom")
@@ -29,9 +29,9 @@ def test_a_hit_shows_its_hearts_over_the_cow(game):
 
 def test_a_hens_drops_hop_out_and_land(game):
     game.lucky()
-    game.give(sword=1)
+    game.give(iron_sword=1)
     hen = game.spawn("chicken", 3, 1, still=10 ** 6)
-    game.js(f"act('attack', {{target: {hen}, with: 'sword'}})")
+    game.js(f"act('attack', {{target: {hen}, with: 'iron_sword'}})")
     game.wait("loot.length > 0 && HdFx.last.loot > 0", 4000)      # drawn while they hop
     game.wait("loot.length === 0 && HdFx.last.loot === 0", 4000)  # and they land
 
@@ -76,8 +76,8 @@ def test_a_creature_killed_flashes_white_and_lifts_before_it_is_gone(browser, se
     (effects.js dying). Only the classic picture drew that: in the HD look the body was gone in one frame."""
     g = hd(browser, server)
     g.hour(.3, still=True)
-    g.give(sword=1)
-    g.hold_item("sword")
+    g.give(iron_sword=1)
+    g.hold_item("iron_sword")
     x, y = g.pos()
     cow = g.spawn("cow", 1, 0, still=10 ** 6)
     g.face(1, 0)

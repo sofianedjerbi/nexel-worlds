@@ -111,7 +111,7 @@ def test_the_tools_have_no_white_edge(game):
     count = """(n) => { const d = iconCanvas(n).getContext('2d').getImageData(0, 0, 16, 16).data; let white = 0, solid = 0;
       for (let o = 0; o < d.length; o += 4) if (d[o + 3] >= 128) { solid++; if (Math.min(d[o], d[o + 1], d[o + 2]) > 225) white++; }
       return [white, solid]; }"""
-    for tool in ("axe", "pickaxe", "hoe", "watering_can", "sword", "spear"):
+    for tool in ("axe", "pickaxe", "hoe", "watering_can", "iron_sword", "spear"):
         white, solid = game.js(count, tool)
         assert white == 0 and solid >= 20, tool
     assert game.js(count, "wood")[0] > 20

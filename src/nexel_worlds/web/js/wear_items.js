@@ -36,7 +36,7 @@ const WearItems = (() => {
     if (big) { g.fillRect(Math.round(x) - 1, Math.round(y), 3, 1); g.fillRect(Math.round(x), Math.round(y) - 1, 1, 3); } g.globalAlpha = 1; }
   const mix = (h, k, to = [70, 48, 66]) => "#" + rgb(h).map((v, i) => Math.round(v * (1 - k) + to[i] * k).toString(16).padStart(2, "0")).join("");
   const GEM = {sparkle: "#ffe07a", fireflies: "#b8e86a", leaves: "#6fbb62", hearts: "#f2788a", flame: "#f59a4a", frost: "#9ad4f2", halo: "#fff3b8", spores: "#d9d77a", flowers: "#f29aa8"};
-  const ARMOR = ["iron", "gold", "moss"], LOW = ["red", "blue", "moss"], SKIRT = ["robe", "moss"];
+  const ARMOR = ["copper", "iron", "gold", "titanium", "moss"], LOW = ["red", "blue", "moss"], SKIRT = ["robe", "moss"];
   HEADS.find((h) => h.id === "flowers").icon = (put) => { for (let i = 0; i < 14; i++) { const a = i * Math.PI / 7;
     put(Math.round(Math.cos(a) * 5), Math.round(Math.sin(a) * 3.4), ["#f29aa8", "#6fbb62", "#ffe07a", "#6fbb62", "#fff6de", "#6fbb62", "#c9a8f2"][i % 7]); } };
   HEADS.find((h) => h.id === "bandana").icon = (put) => { for (let y = 0; y < 5; y++) for (let x = -5 + y; x <= 5 - y; x++) put(x, y, y === 0 ? "#f39a86" : "#e0635a");

@@ -130,8 +130,8 @@ def test_hit_a_chicken_while_walking_and_it_runs(game):
 
 def test_killing_leaves_a_poof_and_drops(game):
     game.lucky()
-    game.give(sword=1)
-    game.hold_item("sword")
+    game.give(iron_sword=1)
+    game.hold_item("iron_sword")
     hen = game.spawn("chicken", 1, 0, still=10 ** 6)
     game.wait(f"ents.has('chicken{hen}')", 4000)
     game.face(1, 0)
@@ -201,11 +201,11 @@ def test_loot_next_to_you_comes_to_you(game):
     game.lucky()                                              # (what a hen leaves is by chance: here, all of it. This test was missed when it became so, and failed four times in ten)
     game.rpc("dev_creatures", clear=6)
     hen = game.spawn("chicken", 1, 1, still=10 ** 6)
-    game.give(sword=1)
-    game.hold_item("sword")
+    game.give(iron_sword=1)
+    game.hold_item("iron_sword")
     game.wait(f"ents.has('chicken{hen}')", 4000)
     x, y = game.pos()
-    game.js(f"act('attack', {{target: {hen}, with: 'sword'}})")
+    game.js(f"act('attack', {{target: {hen}, with: 'iron_sword'}})")
     game.wait("magnets.length > 0", 4000)                     # the meat and egg slide over
     game.until_world(lambda s: s["inventory"].get("meat", 0) == 1)
     game.still()

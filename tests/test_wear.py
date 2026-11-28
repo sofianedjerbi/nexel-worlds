@@ -47,7 +47,7 @@ def test_death_drops_what_you_wore_and_the_save_keeps_what_you_wear(world):
 
 
 def test_every_piece_has_a_recipe_and_the_client_draws_exactly_the_same_pieces():
-    assert set(WEAR) <= set(RECIPES) and set(ARMOR) <= set(WEAR) and len(WEAR) == 43
+    assert set(WEAR) <= set(RECIPES) and set(ARMOR) <= set(WEAR) and len(WEAR) == 52      # (#393: a cap, and copper and titanium sets of four)
     js = (Path(__file__).parent.parent / "src/nexel_worlds/web/js/wear.js").read_text()
     table = re.search(r"const LOOK = \{(.*?)\n\};", js, re.S).group(1)      # (a look for each piece; its slot is the world's: rules.py)
     assert set(re.findall(r'(\w+): "\w+"', table)) == set(WEAR)
