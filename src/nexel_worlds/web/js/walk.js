@@ -9,6 +9,7 @@
 
 let walking = null;          // {dir, run, lane, at}: lane: the row (column) you walk along; at: the tile you turn at, until you're on it
 let walkN = 0;               // walks started: a late answer counts only for the last one (syncWalk)
+const TAP_S = .1;            // the time a tap let go before any frame walks you: half a stride, into the next tile
 let silkUntil = 0;           // pinned in a redknee's silk until then (performance.now; state.js): no step, as the server has it (sim/redknee.py)
 const trail = [];            // {x, y, n}: tiles you turned or stopped at that the server hasn't made yet
 let trailN = 0, srv = null;  // srv: the server's last step for you {x0, y0, x, y, t, ms} (from, to, when, how long its steps take)
@@ -62,6 +63,7 @@ function syncWalk() {
   // (let go before a frame walked you: a tap on a page whose frames are slow, its down and its up both handled between two
   // frames, was a stop where you stood. The walk goes on for that one frame, as if held across it, and lets go after it)
   if (!want && !prev.walked && p && p.walking) { prev.letGo = true; return; }
+  if (want) want.t0 = prev && p && p.walking ? prev.t0 : now;   // (when you set off: a turn walks on)
   walking = want;
   if (!want) {                                   // let go: you finish the tile you're entering, and the server comes to it
     const args = {};
@@ -139,6 +141,11 @@ const onWater = (x, y, p) => { const t = tile(x, y); return (!SWIM_SPRINT && !!t
 // it through the air without slowing (leap.js: "it stops the velocity and does an up-block animation"), down one you
 // drop at the walk's pace (jump.js). It catches up when you stop, and on a long climb you slow down smoothly, by how far ahead of it you are (LEAD).
 function walkOn(p, dt, now) {
+  // (none of a frame's time from before you set off: a slow page's first frame walks the time the key is down for, not its whole
+  // length, so the screen never walks longer than the key is held: a tap is a tile at any frame's length. A tap let go before
+  // any frame walks one frame of TAP_S at the most: into the next tile, never past it)
+  dt = Math.min(dt, walking.letGo ? TAP_S : Math.max(0, now - walking.t0) / 1000);
+  if (dt <= 1e-5) return;                                    // (no time yet: no frame walks you, and a key let go now still gets its one)
   if (performance.now() < silkUntil) return;                 // pinned: the server holds you there (your `ready`), and so does your screen
   const [wx, wy] = DIRV[walking.dir], s = wx || wy, side = wx ? "y" : "x", along = wx ? "x" : "y", lead = leadOf(p, now);
   let t = dt * (lead < -1 ? 1.25 : lead <= LEAD[0] ? 1 : Math.max(0, (LEAD[1] - lead) / (LEAD[1] - LEAD[0])));   // the time you walk in
