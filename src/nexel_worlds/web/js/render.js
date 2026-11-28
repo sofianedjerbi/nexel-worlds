@@ -5,6 +5,7 @@
 //  Frame
 // =====================================================================================
 let lastT = performance.now(), arrivingNow = true;
+const FRAME_S = .5;   // (a frame moves the world by its own time, up to half a second (a hidden tab's return past that). At 0.1 s a runner's 200 ms frame walked you at half the server's pace: let go, tiles behind it, snapped)
 const LAND_MS = 3 * (window.__pace || 1), HOLD_MS = 2500;      // (__pace: only in the browser tests, whose pages' clocks run faster, tests/e2e/clock.py: the land's share of a frame is the machine's time, not the game's)
 let goodAt = 0;                // when the land where you are was last all there (a frame drawn whole)
 const WATCH = {x: 0, y: 0, z: 0, free: true};      // (the eye of who watches: render.js, hd.js)
@@ -18,7 +19,7 @@ function frame(now) {
 }
 function update(now) {
   const began = performance.now();
-  const dt = Math.max(0, Math.min(.1, (now - lastT) / 1000)); lastT = now;   // (never back in time: a frame stamped before the last one moved every body standing still by 0/0, for good)
+  const dt = Math.max(0, Math.min(FRAME_S, (now - lastT) / 1000)); lastT = now;   // (never back in time: a frame stamped before the last one moved every body standing still by 0/0, for good)
   const t = now / 1000;
   for (const p of ents.values()) {
     if (p.e && p.e.kind === "agent" && p.e.id === myId && Leap.on()) { Leap.frame(p, dt, now); continue; }   // you in the air (leap.js)
@@ -37,7 +38,9 @@ function update(now) {
     //  ticks come unevenly (a scared cow's tiles 261 to 333 ms apart for its 300): half a tile behind, the next tile
     //  can make it 1.53 off, and at 8 tiles a second past 1.5 that is .8 of a tile in a frame, a snap every few tiles: "it teleported")
     const mine = p.e && p.e.kind === "agent" && p.e.id === myId, far = d > (mine ? LEAD[1] + 2 : 2.5);   // (you, a few tiles behind where the world has you as your walk ends: walked there, a little quicker. Not 8 tiles a second: at the foot of the cave stairs, a teleport)
-    const step = (far ? d * 8 : Math.min(pace, jp) * (d > (mine ? 1.5 : 1) ? 1.3 : 1.05)) * dt;
+    // (the little quicker: a quarter of a tile in a frame at the most, however long the frame. By the frame's whole time, a tusker 1.3 tiles
+    //  behind its charge went 1.3 tiles in a frame of 100 ms, .3 further than a charge goes in it, and more in a longer one: drawn as a jump)
+    const own = Math.min(pace, jp) * dt, step = far ? d * 8 * dt : own + Math.min(.25, own * (d > (mine ? 1.5 : 1) ? .3 : .05));
     if (d <= step) { p.x = p.tx; p.y = p.ty; Leap.after(p); if (walking && p.walking && step > d) walkOn(p, dt * (1 - d / step), now); }   // (there with time left in the frame, the walk on again: it walks that time. Else the rest of a runner's 100 ms frame is lost at each landing: 7.4 tiles a second of 10)
     else if (far) { p.x += dx / d * step; p.y += dy / d * step; }    // far behind (lag, teleport): straight there
     else if (Math.abs(dx) > 1e-3 && Math.abs(dy) > 1e-3) {              // on the grid, one axis at a time: line up first

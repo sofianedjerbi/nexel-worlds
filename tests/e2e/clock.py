@@ -14,11 +14,14 @@ server for each second of its own.
 
 import json
 import os
+import re
+from pathlib import Path
 
 import clock_sound
 
 PACE = max(1.0, float(os.environ.get("E2E_PACE", "4")))
-# (a frame is 0.1 s of the game's time at the most: what moves in a longer one is cut there (render.js update), as on a
+FRAME_MS = 1000 * float(re.search(r"const FRAME_S = ([\d.]+)", (Path(__file__).parents[2] / "src/nexel_worlds/web/js/render.js").read_text())[1])
+# (a frame is FRAME_MS of the game's time at the most: what moves in a longer one is cut there (render.js update), as on a
 # machine that cannot keep up. On the fast clock a frame of the machine's is PACE times as long to the game: Chrome
 # drawing on the CPU (the runners, ci.yml) takes 70 to 100 ms a frame, 0.3 to 0.4 s of the game's at 4, and the walk went
 # at a third of its pace, every jump short. The pace is fitted to the machine (`fit`, conftest.py `machine`): a frame
@@ -56,7 +59,7 @@ SHIM = """(() => { const K = %s; if (K === 1 || window.__pace) return; window.__
 
 # STEPPED (a test marked `stepped`, #47): the page's time is its own, 1/60 s a frame, whatever the machine. A test of how
 # a move looks frame by frame (a jump's arc, the eye's easing, a sprint's speed) gets the same frames on a runner drawing
-# a frame in 100 ms as on one drawing it in 16: what moves in a frame is never cut (render.js: 0.1 s at the most), a
+# a frame in 100 ms as on one drawing it in 16: what moves in a frame is never cut (render.js: FRAME_S at the most), a
 # jump's top is never between two frames. performance.now() and Date.now() say T; a frame asked for (rAF) runs at the
 # next of the machine's, with T a 60th of a second on; a timer runs when T reaches it. The world keeps the machine's
 # clock: twice a second of T the page tells it how fast T goes (dev_pace), so it stays with the page (the walk's LEAD).

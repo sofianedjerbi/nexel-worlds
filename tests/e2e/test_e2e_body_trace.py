@@ -25,11 +25,13 @@ pytestmark = pytest.mark.realtime      # (the page's clock is set by hand here: 
 # steps: [frames, keys to press down before them, keys to let go before them]; a key: "d", " ", "Shift", ...
 PLAY = """(steps) => { const p = ents.get('agent' + myId), x0 = Math.round(p.x), y0 = Math.round(p.y), CODE = {' ': 'Space', Shift: 'ShiftLeft', ArrowUp: 'ArrowUp'}, out = [];
   const T0 = 1e9; let T = T0, f = 0, shift = false; performance.now = () => T;   // (a clock of its own, the same in every run: the first frame's step and every rounding with it)
+  lastT = T0 + 1000 / 60 - 100;   // (the first frame 0.1 s, as the traces were made: the jump to T0 was cut at the old cap)
   requestAnimationFrame = () => 0;
   rpc = () => new Promise(() => {}); srv = null;
   const key = (type, k) => { if (k === 'Shift') shift = type === 'keydown'; dispatchEvent(new KeyboardEvent(type, {key: k, code: CODE[k] || 'Key' + k.toUpperCase(), shiftKey: shift, bubbles: true, cancelable: true})); };
   const r = (v) => Math.round(v * 1000) / 1000;
   for (const [n, down, up] of steps) { for (const k of up || []) key('keyup', k); for (const k of down || []) key('keydown', k);
+    if (!f && walking) walking.off = lastT;   // (the first frame's 0.1 s walked whole, as the traces were made: a key down since its start)
     for (let i = 0; i < n; i++) { T = T0 + ++f * 1000 / 60; frame(T); const b = BodyPlace.of(p); out.push([r(b.z), r(b.ground), b.mode, b.air ? 1 : 0, r(b.line), b.tx - x0, b.ty - y0, b.fx, b.fy]); } }
   return out; }"""
 

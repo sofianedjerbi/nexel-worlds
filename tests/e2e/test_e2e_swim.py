@@ -2,6 +2,7 @@
 
 import pytest
 import os
+from clock import FRAME_MS
 from conftest import needs_sounds
 
 SHOT = os.environ.get("WILD_SHOTS")
@@ -37,12 +38,12 @@ TRACK = """(() => { window.__sw = []; window.__swOn = true; const f = (now) => {
 
 
 def pace(game):
-    """tiles a second you went, as drawn, in the game's own time since TRACK (a frame is 0.1 s of it at the most,
+    """tiles a second you went, as drawn, in the game's own time since TRACK (a frame is FRAME_MS of it at the most,
     render.js: frames of a runner's 10 a second lost some, and the swim measured 1.8), while the key had you walking
     (not the glide into place and the stop after it), its first 300 ms left out (setting off)"""
     rec = game.js("(() => { __swOn = false; return __sw; })()")
     rec = [r for r in rec if r[2] and r[0] >= rec[0][0] + 300]
-    t = sum(min(100, b[0] - a[0]) for a, b in zip(rec, rec[1:]))
+    t = sum(min(FRAME_MS, b[0] - a[0]) for a, b in zip(rec, rec[1:]))
     return (rec[-1][1] - rec[0][1]) / t * 1000 if len(rec) > 2 and t > 0 else None
 
 
@@ -138,10 +139,10 @@ def test_a_sprint_in_the_water_is_twice_as_fast_and_leaves_a_longer_wake(game):
     dashed, marks = pace(game), gaps(mine(game, "p.wake.filter((w) => w.dash).map((w) => w.t)"))
     game.page.keyboard.up("Shift")
     frame = gaps(game.js("(() => { __frOn = false; return __fr; })()"))
-    # 2.5 tiles a second, then five. (pace() counts a frame as 100 ms at the most, as the game moves a body; on frames longer than
+    # 2.5 tiles a second, then five. (pace() counts a frame as FRAME_MS at the most, as the game moves a body; on frames longer than
     # that the body still keeps up with the server, and the pace reads up to frame / 100 over: a runner's 117 ms frames read
     # a sprint 6.25. The lower bounds stand: the cap only makes it read faster)
-    over = max(1, frame / 100)
+    over = max(1, frame / FRAME_MS)
     assert swum and dashed and 2 <= swum <= 3 * over and 4 <= dashed <= 6 * over and game.js("SWIM_PACE") == 2, (swum, dashed, frame)
     assert ran is True and slow and marks and slow >= 110 and 45 <= marks <= 45 + 1.5 * frame and (marks < slow or frame >= 100), (slow, marks, frame)   # (its wake: a mark every 45 ms, not every 110: the first frame past it, a mark a frame at most. Counted in a second it was the machine's frames a second. A mark is dropped as a frame is drawn: frames as long as the swim's own 110 ms drop both a mark a frame, 123 and 133 ms on a runner's 117 ms frames, and only the frame's own rule says anything)
     assert game.server()["swimming"] and not game.errors
