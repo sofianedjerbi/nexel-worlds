@@ -20,7 +20,7 @@ const PCOL = {T: ["#6b4b35", "#8f6a45", "#7fb069", "#5e8c4f"], H: ["#5e8c4f", "#
   M: ["#8a8f8c", "#b6bab1", "#5d6260"], "*": ["#8a8f8c", "#f5d77a", "#b6bab1"], Q: ["#c0504a", "#f4f0e6"],
   w: ["#e0c35a", "#7fb069"], "\"": ["#7fb069"], "#": ["#a8775a", "#6b4a3a"], "%": ["#8a8f8c", "#b6bab1"], o: ["#b48b5c", "#8c6a44"],
   C: ["#a8775a", "#c8a45c"], "&": ["#a8775a", "#6b4a3a"], dust: ["#e9d9b4", "#d8c59c"], water: ["#bfe9f7", "#8fd3f4", "#ffffff"], spark: ["#fff1a8", "#ffd36a", "#ffffff"],
-  hit: ["#ffffff", "#ffd0cc"], rage: ["#f0503f", "#ffb347", "#fff1a8", "#f0503f"], food: ["#c0504a", "#e0c35a", "#fff1a8"], blood: ["#d9473a", "#ffffff"]};
+  hit: ["#ffffff", "#ffd0cc"], rage: ["#f0503f", "#ffb347", "#fff1a8", "#f0503f"], food: ["#c0504a", "#e0c35a", "#fff1a8"], blood: ["#d9473a", "#ffffff"], silk: ["#f4f1ea", "#dcd6ec", "#ffffff"]};
 // Chips knocked off a block: its own colours, popping out low, landing around its foot and settling.
 function debris(x, y, spr, n, opts = {}) {
   const cols = spr ? spriteColors(spr) : PCOL[opts.kind] || PCOL.dust;

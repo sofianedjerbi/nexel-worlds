@@ -9,6 +9,7 @@
 
 let walking = null;          // {dir, run, lane, at}: lane: the row (column) you walk along; at: the tile you turn at, until you're on it
 let walkN = 0;               // walks started: a late answer counts only for the last one (syncWalk)
+let silkUntil = 0;           // pinned in a redknee's silk until then (performance.now; state.js): no step, as the server has it (sim/redknee.py)
 const trail = [];            // {x, y, n}: tiles you turned or stopped at that the server hasn't made yet
 let trailN = 0, srv = null;  // srv: the server's last step for you {x0, y0, x, y, t, ms} (from, to, when, how long its steps take)
 const LEAD = [2, 4];         // tiles ahead of the server: from the first you slow down, at the second you wait for it
@@ -138,6 +139,7 @@ const onWater = (x, y, p) => { const t = tile(x, y); return (!SWIM_SPRINT && !!t
 // it through the air without slowing (leap.js: "it stops the velocity and does an up-block animation"), down one you
 // drop at the walk's pace (jump.js). It catches up when you stop, and on a long climb you slow down smoothly, by how far ahead of it you are (LEAD).
 function walkOn(p, dt, now) {
+  if (performance.now() < silkUntil) return;                 // pinned: the server holds you there (your `ready`), and so does your screen
   const [wx, wy] = DIRV[walking.dir], s = wx || wy, side = wx ? "y" : "x", along = wx ? "x" : "y", lead = leadOf(p, now);
   let t = dt * (lead < -1 ? 1.25 : lead <= LEAD[0] ? 1 : Math.max(0, (LEAD[1] - lead) / (LEAD[1] - LEAD[0])));   // the time you walk in
   for (let i = 0; i < 4 && t > 1e-5; i++) {

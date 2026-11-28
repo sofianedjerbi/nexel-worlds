@@ -6,7 +6,7 @@
 - Animals belong to the land: when a chunk is generated, a meadow may get a herd (persistent; they never despawn),
   about one chunk in twenty. Every PASSIVE_EVERY, a player with fewer than PASSIVE_CAP animals around may get one more.
 - Wild enemies (WILD_SPAWNS): a tusker now and then by day on a meadow, a pincer on a shore; one at a time per player.
-  A gustling or a snapbloom, rarely, by day on open grass; a grumblestump, rarely, at night; a skeleton at night on open ground (gone at dawn: skeleton.py). The strawman, the wisp, the wyrm and Old Mossback (with its sporelings)
+  A gustling or a snapbloom, rarely, by day on open grass; a grumblestump, rarely, at night; a skeleton at night on open ground (gone at dawn: skeleton.py); a redknee at night by the woods or in a cave (gone at dawn: redknee.py). The strawman, the wisp, the wyrm and Old Mossback (with its sporelings)
   never spawn by themselves (for now).
 - Tuskers and pincers despawn when far from everyone (at once past DESPAWN_FAR, by chance past DESPAWN_NEAR).
 - Every spawn is out of sight (SPAWN_MIN tiles from everyone, and on no screen) and inside a ticking chunk; caps are
@@ -39,8 +39,9 @@ WILD_SPAWNS = {"tusker": dict(every=sec(120), cap=1, day=True, tries=1), "pincer
                "gustling": dict(every=sec(420), cap=1, day=True, tries=1),     # (one try every seven minutes: rare)
                "snapbloom": dict(every=sec(480), cap=1, day=True, tries=1),
                "grumblestump": dict(every=sec(300), cap=1, night=True, tries=2),     # (night: only at night)
-               "skeleton": dict(every=sec(180), cap=1, night=True, tries=2)}
-ROAMING = ("tusker", "pincer", "gustling", "snapbloom", "grumblestump", "skeleton")   # these come and go; the rest stay where they are
+               "skeleton": dict(every=sec(180), cap=1, night=True, tries=2),
+               "redknee": dict(every=sec(240), cap=1, night=True, tries=8)}         # (by woods or in a cave: spawn_spot_ok)
+ROAMING = ("tusker", "pincer", "gustling", "snapbloom", "grumblestump", "skeleton", "redknee")   # these come and go; the rest stay where they are
 RARE = ("strawman", "wisp", "wyrm", "mossback", "sporeling", "nyxwing", "hob")   # never counted, never gone (a hob is somebody's)
 LIMITS = ((PASSIVE, 6), (ROAMING, 2))   # the most of these there may be around one player (CAP_R)
 CULL_EVERY, CULL_MAX = sec(1), 20       # how often the ones over a limit go, and how many at most at a time
@@ -49,6 +50,7 @@ HOUSE_R = 6                      # an animal this close to a coop or a trough is
 RULES = 3                        # the spawn rules' version: a world saved under older ones is thinned once (thin_wild)
 HOME_R, KEEP_ONE_IN = 24, 5      # ...sparing animals this close to anyone or their bed, and one in five of the rest
 DESPAWN_NEAR, DESPAWN_FAR = 32, 64
+RK_WOODS = 3                     # tiles: a redknee comes out within this of two trees
 
 
 class Spawning:
@@ -162,11 +164,18 @@ class Spawning:
     def spawn_spot_ok(self, kind: str, x: int, y: int, fresh=False) -> bool:
         if not fresh and not self.loaded_around(x, y):
             return False
-        if not self.stand(x, y) or self.entity_at(x, y) is not None or (not fresh and self.sheltered(x, y)):
+        if not self.stand(x, y) or self.entity_at(x, y) is not None:
+            return False
+        if kind == "redknee":                                # by the woods (two trees within RK_WOODS), or in a cave
+            return self.world.block(x, y) == "none" and (self.world.roof(x, y) > 0 or self.woods(x, y))
+        if not fresh and self.sheltered(x, y):
             return False
         if kind == "pincer":
             return self.shore(x, y)
         return self.world.ground(x, y) == "grass" and self.world.block(x, y) == "none"
+
+    def woods(self, x: int, y: int) -> bool:
+        return sum(self.world.block(x + dx, y + dy) == "tree" for dx in range(-RK_WOODS, RK_WOODS + 1) for dy in range(-RK_WOODS, RK_WOODS + 1)) >= 2
 
     def spawn_pack(self, kind: str, near: Agent) -> int:
         """One attempt, as the classics do it: a random spot in the ring around a player, then a pack around it."""

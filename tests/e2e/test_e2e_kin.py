@@ -1,5 +1,7 @@
 """The grumblestump, the snapbloom and the hob in Chrome: drawn, warning before they hurt, and the hob on your side."""
 
+import json
+
 from test_e2e_wild import kind, shot
 
 WINDUP = "[...ents.values()].some((q) => q.e && q.e.kind === '{}' && q.e.act === 'windup')"
@@ -94,4 +96,31 @@ def test_the_skeleton_walks_up_rattles_and_swipes_who_stays(game):
     shot(game, "skeleton_rattles")
     game.until("meObs.self.hp < 20")                           # we stood beside it: swiped
     shot(game, "skeleton_swipes")
+    assert not game.errors
+
+
+def test_the_redknee_rears_up_pounces_and_pins_you_in_silk(game):
+    game.clear_area(8)
+    game.rpc("dev_needs", hp=20, hunger=17)
+    game.rpc("dev_time", phase=.85)                           # night: it is out
+    game.spawn("redknee", 3, 0)
+    game.until("IMG.redknee && IMG.redknee.complete && IMG.redknee.naturalWidth === 62 * 28")   # (its sheet: idle, walk, the act)
+    # it rears up, aimed at where we stand; its act plays from the warning (world_decor.js: windAt, set as it is drawn)
+    game.until(WINDUP.format("redknee") + " && [...ents.values()].find((q) => q.e && q.e.kind === 'redknee').windAt > 0")
+    shot(game, "redknee_rears")
+    at = game.pos()
+    # every frame while the silk holds, where the screen has us and where the world does (a frame of 16 ms or of 200 ms,
+    # each one is looked at: none can slip by between two of the test's own looks)
+    game.js("""(() => { window.__pinned = []; const look = () => { if (performance.now() < silkUntil) { const p = myPos();
+      __pinned.push([p.x, p.y, meObs.self.x, meObs.self.y]); } if (!window.__pinDone) requestAnimationFrame(look); }; requestAnimationFrame(look); })()""")
+    game.until("meObs.self.hp < 20 && silkUntil > performance.now()")     # we stayed: bitten, and pinned
+    shot(game, "redknee_pinned")
+    game.page.keyboard.down("a")                               # pinned: holding a walk key takes us nowhere...
+    try:
+        game.until("performance.now() >= silkUntil && __pinned.length > 0")
+        seen = game.js("(() => { window.__pinDone = true; return JSON.stringify(__pinned); })()")
+        assert all((x, y) == at and (sx, sy) == at for x, y, sx, sy in json.loads(seen)), f"at {at}: {seen}"
+        game.until(f"myPos().x <= {at[0] - 1}")                # ...until the silk lets go
+    finally:
+        game.page.keyboard.up("a")
     assert not game.errors

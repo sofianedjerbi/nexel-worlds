@@ -1835,6 +1835,39 @@ def _(c):
     return y
 
 
+@sfx("redknee_warn", "Creatures", "warning: the redknee rears up, fangs bared: a dry rising hiss over the rasp of its hairy legs", 1, 0.32, seed="redknee_warn_A", change="new")
+def _(c):
+    n = N(0.8)
+    x = tt(n) / 0.8
+    hiss = norm(fft_filter(c.noise(n), bp(2500, 9000))) * np.clip(x / 0.7, 0, 1) ** 1.5 * np.clip((1 - x) / 0.08, 0, 1)
+    rasp = texture(c, n, 900, 4000, 6, 30, 0.6) * np.sin(np.pi * x) ** 0.8
+    return 0.65 * hiss + 0.45 * rasp
+
+
+@sfx("redknee_pounce", "Creatures", "the pounce lands: a scrabble of eight feet, then a soft heavy thump", 1, 0.46, seed="redknee_pounce_A", change="new")
+def _(c):
+    n = N(0.5)
+    y = np.zeros(n)
+    for k, at in enumerate((0.0, 0.025, 0.05, 0.075, 0.1, 0.12)):
+        place(y, (0.18 + 0.03 * k) * strike(c, N(0.04), "dirt", size=0.5, hard=0.8), at)
+    place(y, strike(c, N(0.3), "body", size=1.2, hard=1.0), 0.14)
+    return y
+
+
+@sfx("redknee_hurt", "Creatures", "the redknee is hit: a sharp short hiss and a click of fangs", 1, 0.3, seed="redknee_hurt_A", change="new")
+def _(c):
+    n = N(0.3)
+    y = norm(fft_filter(c.noise(n), bp(3000, 10000))) * env(n, 0.004, 0.08)
+    return place(y, 0.6 * _crack(c, N(0.03), 2, 0.012), 0.02)
+
+
+@sfx("silk", "Creatures", "you are pinned in its silk: a sticky stretch, threads drawn tight", 1, 0.3, seed="silk_A", change="new")
+def _(c):
+    n = N(0.55)
+    x = tt(n) / 0.55
+    return sweep(c, n, 2400, 900, 0.3, curve=x) * np.sin(np.pi * x) ** 0.6 + 0.3 * texture(c, n, 1000, 3500, 4, 50, 0.7)
+
+
 @sfx("hob_lit", "Creatures", "it is set down and catches: kindling pops twice, a soft roar settles in", 1, 0.38, seed="hob_lit_B", change="new")
 def _(c):
     n = N(0.9)
