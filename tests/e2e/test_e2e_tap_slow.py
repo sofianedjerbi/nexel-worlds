@@ -6,9 +6,9 @@ import pytest
 
 pytestmark = pytest.mark.e2e
 
-# every frame 150 ms of work; when each key was handled; what the page asked the world
-SLOW = """() => { const raf = requestAnimationFrame; window.__slow = true; window.__keys = []; window.__acts = [];
-  const spin = () => { const t = performance.now(); while (performance.now() - t < 150); if (__slow) raf(spin); }; raf(spin);
+# every frame 150 ms of work; when each key was handled; what the page asked the world; each frame
+SLOW = """() => { const raf = requestAnimationFrame; window.__slow = true; window.__keys = []; window.__acts = []; window.__frames = [];
+  const spin = (now) => { const t = performance.now(), e = ents.get('agent' + myId); __frames.push([Math.round(now), Math.round(t), e ? +e.y.toFixed(2) : null]); while (performance.now() - t < 150); if (__slow) raf(spin); }; raf(spin);
   for (const ty of ['keydown', 'keyup']) addEventListener(ty, (e) => __keys.push([ty, Math.round(e.timeStamp), Math.round(performance.now())]), true);
   const r = rpc; rpc = (op, a) => { if (op === 'act') __acts.push([Math.round(performance.now()), a.tool, JSON.stringify(a.args || {})]); return r(op, a); }; return 1; }"""
 
@@ -33,8 +33,8 @@ def test_a_tap_on_a_slow_page_is_one_tile_in_the_world_too(game, where, hold):
     game.page.wait_for_timeout(600)                                     # (the world's last ticks in)
     game.js("__slow = false")
     s = game.server()
-    said = {"page": game.pos(), "world": (s["x"], s["y"]), "from": (x, y), "z": s["z"], "keys": game.js("__keys"), "acts": game.js("__acts")}
-    assert (s["x"], s["y"]) == (x, y - 1) and game.pos() == (x, y - 1), said
+    said = {"page": game.pos(), "world": (s["x"], s["y"]), "from": (x, y), "z": s["z"], "keys": game.js("__keys"), "acts": game.js("__acts"), "frames": game.js("__frames.slice(-12)")}   # (frames: each one's stamp, when it ran, your y)
+    assert (s["x"], s["y"]) == (x, y - 1) and game.pos() == (x, y - 1), str(said)   # (a string: pytest cuts a dict short)
 
 
 @pytest.mark.parametrize("where", ["meadow", "step"])
