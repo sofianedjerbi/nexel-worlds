@@ -183,7 +183,10 @@ function myTick(p, e, now) {
   if (pred && (!trail.length || now > pred.until)) { pred = null; trail.length = 0; }     // it's where you stopped (or never will be)
   if (!walking || !p.walking) return !!pred;
   const lane = DIRV[walking.dir][0] ? e.y : e.x;
-  if (Math.abs(p.x - e.x) + Math.abs(p.y - e.y) > LEAD[1] + 2) {                           // moved away (woken elsewhere), or it lost you: be where it has you
+  // moved away (woken elsewhere), or it lost you: be where it has you. (Not while it has tiles of your way to make: it is coming, and
+  // a way it gives up it says made (sim/movement.py via_drop). A tick read late on a page whose frames starve its messages had it at
+  // the edge you jumped off, you landed 6 tiles on and walking: put back on the edge, and off it again, hurt twice)
+  if (!trail.length && Math.abs(p.x - e.x) + Math.abs(p.y - e.y) > LEAD[1] + 2) {
     p.x = p.tx = e.x; p.y = p.ty = e.y; walking.lane = lane; walking.at = null; trail.length = 0;
   } else if (!trail.length && !walking.at && lane !== walking.lane) walking.lane = lane;   // it couldn't follow you round the corner: walk where it does
   return true;
