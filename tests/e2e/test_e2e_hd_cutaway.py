@@ -95,6 +95,7 @@ def test_what_stands_on_the_cut_land_goes_and_comes_back_with_it_on_the_same_fra
     g.until(f"HdLook.cut({x - 2}, {y - 2}) === undefined && HdLook.cut({x + 2}, {y - 2}) === undefined && !HdLook.busy", 600)
     g.rest()
     rec = g.js("(() => { frame = window._f0; return window._oc; })()")
+    g.rpc("dev_creatures", clear=40)                                            # (its hen stood still: no later test's page is told of it)
     cut = [f for f in rec if any(r[1] is not None and r[1] < 4 for r in f[1])]
     assert cut, f"the land over the room never cut: {len(rec)} frames, last {json.dumps(rec[-1:])}"
     on = lambda r: r[1] is not None and r[1] < 4                                   # (its land cut under it: the cut's height under the meadow's top)
