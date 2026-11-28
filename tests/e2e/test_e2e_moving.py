@@ -2,9 +2,8 @@
 
 import math
 
-from clock import FRAME_MS
-
 import pytest
+from clock import FRAME_MS
 
 
 def game_s(a, b):
