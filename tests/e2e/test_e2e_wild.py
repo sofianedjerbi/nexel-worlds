@@ -142,14 +142,15 @@ def test_a_tusker_is_where_it_is_when_it_paws_charges_and_stands_dazed(game):
     paw the ground, or stood dazed, most of a tile from its place and slid there meanwhile. Now it keeps the world's
     pace: a quarter of a second into a warning or a daze it is on its tile, and its drawn place never jumps."""
     game.rpc("dev_needs", hp=20, hunger=17)
-    game.spawn("tusker", -3, -2)                               # off its line: it trots into line, paws, charges, hits, is dazed
+    boar = game.spawn("tusker", -3, -2)                        # off its line: it trots into line, paws, charges, hits, is dazed
     # (a jump: further in a frame than a charge, a tile a tick, goes in that frame's time. It was further than 0.6 of a
     # tile in a frame, which a charge goes in a frame of 60 ms: on the runners, frames of 70 to 110 ms, it "jumped" 0.7 and 1.1)
-    seen = game.js("""(hz) => new Promise((ok) => {
+    # (this one, by its id: the page is told of the far land's creatures too (#387), an earlier test's tusker among them)
+    seen = game.js("""([hz, id]) => new Promise((ok) => {
       const out = {acts: [], worst: 0, late: 0, t0: performance.now()}; let last = null, act = '', since = 0;
       const tick = (now) => {
-        const p = [...ents.values()].find((q) => q.e && q.e.kind === 'tusker');
-        if (p) {
+        const p = ents.get('tusker' + id);
+        if (p && p.e) {
           const a = p.e.act || '';
           if (a !== act) { act = a; since = now; out.acts.push(a); }
           if (last) out.worst = Math.max(out.worst, Math.hypot(p.x - last.x, p.y - last.y) - hz * (now - last.t) / 1000);
@@ -159,7 +160,7 @@ def test_a_tusker_is_where_it_is_when_it_paws_charges_and_stands_dazed(game):
         if (performance.now() - out.t0 < 7000) requestAnimationFrame(tick); else ok(out);
       };
       requestAnimationFrame(tick);
-    })""", TICK_HZ)
+    })""", [TICK_HZ, boar])
     assert {"windup", "charge", "stun"} <= set(seen["acts"]), seen
     assert seen["worst"] < 0.3 and seen["late"] < 0.02, seen    # (no jump; in its place while it paws and while it is dazed)
 

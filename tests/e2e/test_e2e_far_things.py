@@ -57,6 +57,10 @@ def test_a_far_hill_past_the_land_round_you_has_its_trees_and_hens_on_every_fram
         bad = [r for r in rec if r[3] or r[4]]
         assert not bad, f"{len(bad)} of {len(rec)} frames with the hill's land drawn and a tree or hen on it not: " + json.dumps(bad[:6])
     finally:
+        try:
+            g.rpc("dev_creatures", clear=120)              # (its hens and cows stood still on the far land, which a later test's page is told of too: drawn there, a phone's frame drew once more)
+        except Exception:
+            pass
         ctx.close()
 
 
@@ -108,4 +112,8 @@ def test_what_stands_past_the_horizon_is_drawn_from_the_first_frame_its_top_show
         bad = [r for r in rec if r[2]]
         assert not bad, f"{len(bad)} of {len(rec)} frames with a top over the land in front and what it is the top of not drawn: " + json.dumps(bad[:6])
     finally:
+        try:
+            g.rpc("dev_creatures", clear=120)              # (its hens and cows stood still on the far land, which a later test's page is told of too: drawn there, a phone's frame drew once more)
+        except Exception:
+            pass
         ctx.close()
