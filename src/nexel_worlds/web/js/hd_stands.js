@@ -5,13 +5,13 @@
 
 "use strict";
 const HdStands = (K) => {
-  let cand = null, candKey = "";   // (what stands round you, looked for again when you or the land move: ck)
-  const lads = new Map(), piles = new Map(), stoodOf = new Map();   // (a ladder's picture, a pile's, a thing's last entry)
+  let cand = null, candKey = "", far = [], farKey = "", eyeWas = null;   // (what stands round you, looked for again when you or the land move: ck)
+  const lads = new Map(), piles = new Map(), stoodOf = new Map(), FAR = 64, TALL = 96;   // (a ladder's picture, a pile's, a thing's last entry)
   // things and furniture round you, and a ladder about to be put (its standing face where it will stand)
   function things(F) {
     const {p, tx, ty, L, Lf, w, h, now, dt, list, roof, wet, H0, fill, until} = F;
     let {left, nw} = F;
-    const {api, eng, ent, seen, solidAt, south, sprs, standAt, thing, topAt, warm, R, gen, EDGE, byY, cutOff, winMap, winRect} = K;
+    const {api, eng, ent, seen, solidAt, south, sprs, standAt, thing, topAt, warm, R, gen, EDGE, byY, cutOff, winMap, winRect, SEA_L} = K;
     const stood = (c, x, y, z, gh, m) => {      // a thing that stands: furniture as its card (hd_things.js: px for px, its top leaning with where it is on the screen), the rest a billboard
       if (c === "l") { const k = [x, y, z, landVer, Floors.ver].join(), ln = Climb.lean(x, y, z); let lc = lads.get(k); if (!lc) { if (lads.size > 60) lads.clear(); const LH = Math.ceil((shOf(ln ? ln.top - z : 2) + 48) / 16) * 16, R0 = LH - 32, a = HdThings.painted(48, LH, () => Climb.drawLadder(x, y, z, (X) => 16 + (X - x) * 16, (Y) => R0 + (Y - y) * 16 + shOf(z), 16, 1)); lc = document.createElement("canvas"); lc.width = 48; lc.height = LH;
         const q = lc.getContext("2d"); q.drawImage(a, 0, 0, 48, R0 - 10, 0, 12, 48, R0 - 10); q.drawImage(a, 0, R0 + 2, 48, LH - R0 - 2, 0, R0 + 2, 48, LH - R0 - 2); lads.set(k, lc); }   // (the game's picture of it runs 12 px on, a tile's depth in the classic picture: here it stood over the rim. Three rungs taken out of its middle; its canvas as tall as the wall it leans on: a deep shaft's ladder was cut at 128 px)   // (a ladder: a standing face of the land, a px of it a px of the land's own fronts: as tall as the wall it leans on at any pitch. Upright px for px it stood three tiles over the rim of a shaft)
@@ -25,11 +25,20 @@ const HdStands = (K) => {
     };
     const memo = (c, x, y, z) => { const k = c + "," + x + "," + y + "," + z; let o = stoodOf.get(k); if (!o) { if (stoodOf.size > 6000) stoodOf.clear(); stoodOf.set(k, o = {}); } return o; };   // (a thing's last entry, found when what stands is looked for, not each frame)
     const ck = [tx, ty, L, landVer, Floors.ver, api.builds, !!gen, Math.floor(now / 250)].join();   // (what stands: looked for four times a second and when you or the land move, not on 2400 tiles every frame)
+    // ...and past it, on the far land drawn to its horizon (HdLook.far): what grows there (each block's objs, tiles.js) whose foot is on the picture, FAR px off it at the most (a step's
+    // walk before the next look), and not sunk past the horizon (the sea's line, the lowest the land in front of it shows: TALL px under it, all of it under the land there). A far hill comes
+    // up over the horizon with its trees (#380); the ones sunk past it are not drawn (400 more each frame, 3 ms of a desk's)
     if (ck !== candKey) { candKey = ck; cand = []; for (let y = ty - R; y <= ty + south; y++) for (let x = tx - R; x <= tx + R; x++) {
       const c = combAt(x, y), up = Floors.any(x, y) ? HdThings.loose(x, y) : null; if (up) for (const [ch, z] of up) if (!cutOff(x, y, z)) cand.push([ch, x, y, z, memo(ch, x, y, z)]);   // (what stands on a built block)
       if (c && isObject(c) && !HdThings.is(c, x, y)) { const z = standAt(c, x, y); if (!cutOff(x, y, z)) cand.push([c, x, y, z, memo(c, x, y, z)]); }      // (not the boxes of the land: hd_things.js)
     } }
-    { const wmp = winMap(); HdEase.frame(now); for (const [c, x, y, z, m] of cand) { const n0 = list.length, a = z > floorAt(x, y) ? HdEase.of(m.ek || (m.ek = x + "," + y), !wmp.has(m.ek)) : 1; if (a > 0) { if (fill && warm < 2 && !m.it && (warm < 1 || (nw && performance.now() > until))) left = true; else { nw += fill && !m.it ? 1 : 0; stood(c, x, y, z, false, m); } } if (a < 1) for (let i = n0; i < list.length; i++) list[i].fade = a; } }   // (what grows on ground the window leaves out is left out with it: one px in two of a flower hung over your room's floor; it goes and comes over 120 ms, hd_ease.js: a tree over your room was gone in one frame)
+    const fb = api.far, fk = [tx, ty, L, landVer, Floors.ver, api.builds, fb, w, h].join();   // (the far land's: looked for when you or the land move, not four times a second: 2.6 MB a still 3.5 s, #387)
+    if (fk !== farKey) { farKey = fk; far = [];
+      if (fb) { let hy = 1e9, hd = 0; for (let d = 0; d <= ty - fb[1]; d++) { const a = eng.at(tx + .5, ty - d + .5, SEA_L); if (a && a[1] < hy) { hy = a[1]; hd = d; } }
+        for (let by = Math.floor(fb[1] / B); by <= Math.floor(fb[3] / B); by++) for (let bx = Math.floor(fb[0] / B); bx <= Math.floor(fb[2] / B); bx++) { const b = blocks.get(bkey(bx, by)); if (b) for (const [i, c] of b.objs) {
+          const x = bx * B + i % B, y = by * B + (i / B | 0); if (x < fb[0] || x > fb[2] || y < fb[1] || y > fb[3] || (y >= ty - R && y <= ty + south && x >= tx - R && x <= tx + R) || HdThings.is(c, x, y)) continue;
+          const z = standAt(c, x, y), a = eng.at(x + .5, y + .5, z); if (a && a[0] >= -FAR && a[0] <= w + FAR && a[1] >= -FAR && a[1] <= h + FAR && !(ty - y > hd && a[1] - TALL >= hy) && !cutOff(x, y, z)) far.push([c, x, y, z, memo(c, x, y, z)]); } } } }
+    { const wmp = winMap(); HdEase.frame(now); for (const part of [cand, far]) for (const [c, x, y, z, m] of part) { const n0 = list.length, a = z > floorAt(x, y) ? HdEase.of(m.ek || (m.ek = x + "," + y), !wmp.has(m.ek)) : 1; if (a > 0) { if (fill && warm < 2 && !m.it && (warm < 1 || (nw && performance.now() > until))) left = true; else { nw += fill && !m.it ? 1 : 0; stood(c, x, y, z, false, m); } } if (a < 1) for (let i = n0; i < list.length; i++) list[i].fade = a; } }   // (what grows on ground the window leaves out is left out with it: one px in two of a flower hung over your room's floor; it goes and comes over 120 ms, hd_ease.js: a tree over your room was gone in one frame)
     // a ladder that would be put (the aim's, on your own tile in a shaft; build mode's plans): the ladder's own standing face where it will stand, as tall as its wall, pale (it was an upright picture laid over the frame: at 68 degrees two tiles over the shaft's rim, and not where the ladder comes)
     { const a = Build.on ? Build.aim() : aimedTile(), it = a && a.it, q = it && (it.own || a.p); if (q && it.ghost === "ladder" && it.z !== undefined && it.ok !== false && !it.info) stood("l", q.x, q.y, it.z, true);
       if (Build.on) for (const j of Build.S.plans.values()) if (j.item === "ladder" && !j.take && j.state !== "bad") stood("l", j.x, j.y, j.z, true); }
@@ -55,10 +64,13 @@ const HdStands = (K) => {
     const wmB = winMap(), wr = wmB.size ? winRect() : null;   // UNDER A ROOF nobody up on the land over you is seen: over the window, or over the land round it (in the window's box on the screen); only who is in your space (like Minecraft: no mob through the ceiling)
     // (who is drawn: whoever's feet are on the picture, or EDGE art px off it (in view a step before it comes in), where it stands as the land is drawn: the bend sinks both alike, so past the horizon the land in front
     //  hides it as it hides its land. It was a box: 16 across, then the land's; 12 rows north whatever the screen: on a hill's side 26 rows off, on a phone held upright 17, a mob went out of being in view)
+    // (eng.at is the last frame's picture: this one is it moved as far as your own place moves on it (the eye follows you): at 300 ms frames a sprint moves you a tile and more a
+    //  frame: a hen 1 px into this picture's top edge is 34 px off the last one's, #387)
+    const e1 = seen ? eng.at(p.x + .5, p.y + .5, Lf) : null, e0 = e1 && eyeWas ? eng.at(eyeWas[0], eyeWas[1], eyeWas[2]) : null, mx = e0 ? e1[0] - e0[0] : 0, my = e0 ? e1[1] - e0[1] : 0; eyeWas = [p.x + .5, p.y + .5, Lf];
     for (const q of ents.values()) if (q.x !== undefined && Math.abs(q.x - p.x) <= R + 40 && q.y - p.y >= -R - 40 && q.y - p.y <= south + 8) {
       if (fill && warm < 2) continue; if (fill && !sprs.has(q) && nw && performance.now() > until) { left = true; continue; } if (fill && !sprs.has(q)) nw++;   // (the first screen's people: after what stands, 8 ms of new ones a frame)
       const qx = Math.round(q.x), qy = Math.round(q.y), pl = BodyPlace.of(q), z = q === p ? Lf : Floors.standOf(q, qx, qy);   // (the ground of the tile it is drawn on, as the game has it (floors.js standOf): on a built floor, in a cave, off a hill's foot. They were put on the land's top: a friend in your room stood on the grass over it)
-      if (q !== p && seen) { const a = eng.at(q.x + .5, q.y + .5, z); if (!a || a[0] < -EDGE || a[0] > w + EDGE || a[1] < -EDGE || a[1] > h + 2 * EDGE) continue; }
+      if (q !== p && seen) { const a = eng.at(q.x + .5, q.y + .5, z); if (!a || a[0] - mx < -EDGE || a[0] - mx > w + EDGE || a[1] - my < -EDGE || a[1] - my > h + 2 * EDGE) continue; }
       if (q !== p && z < topAt(qx, qy)) { const c = H0.column(qx, qy), b = winMap().get(qx + "," + qy); let over = false; for (let zz = z + 1; zz <= topAt(qx, qy) && !over; zz++) over = solidAt(c, zz); if (over && !(b && z >= b[0] - 1 && z <= b[1])) continue; }
       if (q !== p && wmB.size) { const b = wmB.get(qx + "," + qy), a = !b && eng.at(q.x + .5, q.y + .5, z); if (!(b ? z >= b[0] - 1 && z <= b[1] : Math.abs(z - L) <= 1) && (b || (a && wr && a[0] + 6 > wr[0] && a[0] - 6 < wr[2] && a[1] > wr[1] && a[1] - 14 < wr[3]))) continue; }   // (not in your space: on the window's tile at another level, or its body in the window's box: hidden, its name with it. It was drawn, the ground under its feet kept one px in two: a hen over your head read as in the cave with you)   // (under land the window is not on: not seen, nor their name)
       const [bx, by] = HdLevel.foot("body", q.x, q.y), s = ent(q, now, z);   // (another: its body on its own line (body_place.js), its ground the tile it is nearest. The server's level for it came at once, a level up as a step began)

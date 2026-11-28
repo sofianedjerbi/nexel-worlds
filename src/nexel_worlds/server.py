@@ -137,7 +137,7 @@ class GameServer(Views):
                 msg = json.loads(raw)
                 op = msg.get("op")
                 if op == "watch":
-                    self.spectators[q] = (int(msg["x"]), int(msg["y"]), min(int(msg["w"]), 200), min(int(msg["h"]), 200))
+                    self.spectators[q] = (int(msg["x"]), int(msg["y"]), min(int(msg["w"]), 256), min(int(msg["h"]), 256))
                     continue
                 if op == "me":
                     self.players[q] = msg.get("id")
