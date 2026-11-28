@@ -9,7 +9,6 @@
 
 let walking = null;          // {dir, run, lane, at}: lane: the row (column) you walk along; at: the tile you turn at, until you're on it
 let walkN = 0;               // walks started: a late answer counts only for the last one (syncWalk)
-const TAP_S = .1;            // the time a tap let go before any frame walks you: half a stride, into the next tile
 let silkUntil = 0;           // pinned in a redknee's silk until then (performance.now; state.js): no step, as the server has it (sim/redknee.py)
 const trail = [];            // {x, y, n}: tiles you turned or stopped at that the server hasn't made yet
 let trailN = 0, srv = null;  // srv: the server's last step for you {x0, y0, x, y, t, ms} (from, to, when, how long its steps take)
@@ -63,7 +62,8 @@ function syncWalk() {
   // (let go before a frame walked you: a tap on a page whose frames are slow, its down and its up both handled between two
   // frames, was a stop where you stood. The walk goes on for that one frame, as if held across it, and lets go after it)
   if (!want && !prev.walked && p && p.walking) { prev.letGo = true; return; }
-  if (want) want.t0 = prev && p && p.walking ? prev.t0 : now;   // (when you set off: a turn walks on)
+  // (off: when you set off. tile: the walk's first tile, walkOn. A turn walks on, with both)
+  if (want) { const on = prev && p && p.walking; want.off = on ? prev.off : now; want.tile = on && prev.tile === null ? null : undefined; }
   walking = want;
   if (!want) {                                   // let go: you finish the tile you're entering, and the server comes to it
     const args = {};
@@ -141,14 +141,13 @@ const onWater = (x, y, p) => { const t = tile(x, y); return (!SWIM_SPRINT && !!t
 // it through the air without slowing (leap.js: "it stops the velocity and does an up-block animation"), down one you
 // drop at the walk's pace (jump.js). It catches up when you stop, and on a long climb you slow down smoothly, by how far ahead of it you are (LEAD).
 function walkOn(p, dt, now) {
-  // (none of a frame's time from before you set off: a slow page's first frame walks the time the key is down for, not its whole
-  // length, so the screen never walks longer than the key is held: a tap is a tile at any frame's length. A tap let go before
-  // any frame walks one frame of TAP_S at the most: into the next tile, never past it)
-  dt = Math.min(dt, walking.letGo ? TAP_S : Math.max(0, now - walking.t0) / 1000);
+  // (none of a frame's time from before you set off: a key down at a long frame's end walked that whole frame, most of a
+  // tile before any frame had it down. A tap let go before any frame: its one frame's time is its walk)
+  if (!walking.letGo) dt = Math.min(dt, Math.max(0, now - walking.off) / 1000);
   if (dt <= 1e-5) return;                                    // (no time yet: no frame walks you, and a key let go now still gets its one)
   if (performance.now() < silkUntil) return;                 // pinned: the server holds you there (your `ready`), and so does your screen
   const [wx, wy] = DIRV[walking.dir], s = wx || wy, side = wx ? "y" : "x", along = wx ? "x" : "y", lead = leadOf(p, now);
-  let t = dt * (lead < -1 ? 1.25 : lead <= LEAD[0] ? 1 : Math.max(0, (LEAD[1] - lead) / (LEAD[1] - LEAD[0])));   // the time you walk in
+  let went = false, t = dt * (lead < -1 ? 1.25 : lead <= LEAD[0] ? 1 : Math.max(0, (LEAD[1] - lead) / (LEAD[1] - LEAD[0])));   // the time you walk in
   for (let i = 0; i < 12 && t > 1e-5; i++) {   // (a tile a turn: a half-second frame's sprint is 5, and the lane first)
     const off = walking.lane - p[side];
     if (Math.abs(off) > 1e-3) {
@@ -158,13 +157,17 @@ function walkOn(p, dt, now) {
     }
     p[side] = walking.lane; walking.at = null;
     const a0 = s > 0 ? Math.floor(p[along] + 1e-6) : Math.ceil(p[along] - 1e-6);      // the tile you're leaving, and the next
+    // (a walk's first tile is made before the next is entered, as the server steps it: the frame that brings you onto it ends
+    // there, and the one after, the key still down, goes on. A tap seen down by two frames is that one tile, however long a frame)
+    if (walking.tile === undefined) walking.tile = a0;
+    else if (walking.tile !== null && a0 !== walking.tile) { walking.tile = null; if (went) break; }
     const fx = wx ? a0 : walking.lane, fy = wx ? walking.lane : a0, nx = fx + wx, ny = fy + wy;
     if (autoJump() && Leap.due(p, walking)) { Leap.start(p, now, null, true); Leap.frame(p, t, now); return; }   // a step ahead: a jump through the air, at the walk's speed (leap.js), this frame's time in it
     if (Leap.dropDue(p, walking, t)) { Leap.start(p, now, null, false, 0); Leap.frame(p, t, now); return; }   // over a ledge: falling at the walk's speed (leap.js)
     if (!walkable(nx, ny, fx, fy)) { p[along] -= s * Math.min((p[along] - a0) * s, 10 * t); p.tx = fx; p.ty = fy; break; }   // a wall: you stay
     const v = Climb.pace(fx, fy, myZ(fx, fy), nx, ny) || speedAt(fx, fy, p);      // (up or down a ladder: rung by rung, climbing.js)
     const go = Math.min((a0 + s - p[along]) * s, v * t, autoJump() ? Math.max(0, Leap.room(p, walking)) + v / 60 + 1e-6 : Infinity);   // (no further past where the auto-jump is due than a 60th of a second's walk, as at 60 fps: leap.js room)
-    p[along] += s * go; t -= go / v; p.tx = nx; p.ty = ny; p.moved = now;
+    p[along] += s * go; t -= go / v; p.tx = nx; p.ty = ny; p.moved = now; went = true;
   }
   walking.walked = true;
   if (walking.letGo) { walking.letGo = false; syncWalk(); }   // (let go before this frame: now, at the tile it is entering)

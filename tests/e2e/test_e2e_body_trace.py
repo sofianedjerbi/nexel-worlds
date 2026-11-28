@@ -31,7 +31,7 @@ PLAY = """(steps) => { const p = ents.get('agent' + myId), x0 = Math.round(p.x),
   const key = (type, k) => { if (k === 'Shift') shift = type === 'keydown'; dispatchEvent(new KeyboardEvent(type, {key: k, code: CODE[k] || 'Key' + k.toUpperCase(), shiftKey: shift, bubbles: true, cancelable: true})); };
   const r = (v) => Math.round(v * 1000) / 1000;
   for (const [n, down, up] of steps) { for (const k of up || []) key('keyup', k); for (const k of down || []) key('keydown', k);
-    if (!f && walking) walking.t0 = lastT;   // (the first frame's 0.1 s walked whole, as the traces were made: a key down since its start)
+    if (!f && walking) walking.off = lastT;   // (the first frame's 0.1 s walked whole, as the traces were made: a key down since its start)
     for (let i = 0; i < n; i++) { T = T0 + ++f * 1000 / 60; frame(T); const b = BodyPlace.of(p); out.push([r(b.z), r(b.ground), b.mode, b.air ? 1 : 0, r(b.line), b.tx - x0, b.ty - y0, b.fx, b.fy]); } }
   return out; }"""
 
