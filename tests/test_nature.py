@@ -26,6 +26,25 @@ def test_fruit_tree_regrows_fruit(world):
         sim.step()
     assert sim.world.block(a.x + 1, a.y) == "fruit_tree"
 
+def test_a_felled_tree_grows_back_under_the_sky_never_under_a_floor(world):
+    """A tree felled clearing a site grew back inside the house built on it, under its upper floor (nexel-agent's live
+    trial 11): dug out, it took the floor with it. It grows back where the sky is over it, never under a floor or a roof."""
+    sim, a = world
+    from nexel_worlds.sim import sec
+    for dx in (1, -1):
+        sim.world.set(a.x + dx, a.y, block="tree")
+    a.add("wood_axe", 1)
+    for d in ("E", "W"):
+        assert run(sim, a, "dig", {"dir": d, "with": "wood_axe"})["ok"]
+    assert sim.world.block(a.x + 1, a.y) == sim.world.block(a.x - 1, a.y) == "stump"
+    sim.set_block(a.x + 1, a.y, sim.world.level(a.x + 1, a.y) + 3, "plank")      # (a floor laid over it since)
+    assert sim.world.roof(a.x + 1, a.y) > 0
+    for _ in range(sec(1200) + sec(4)):
+        sim.step()
+    assert sim.world.block(a.x - 1, a.y) == "tree"
+    assert sim.world.block(a.x + 1, a.y) == "stump", sim.world.block(a.x + 1, a.y)
+
+
 def test_picked_bush_stays_and_grows_berries_back(world):
     sim, a = world
     from nexel_worlds.sim import sec
