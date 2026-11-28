@@ -3,6 +3,8 @@ show the real blocks around the player"): covered by the land, its cells over yo
 it, those that would hide it from the eye; what stands on them is not drawn either; the land itself, where you can
 walk and what covers you, is as it is; out from under it, all of it is drawn again."""
 
+import json
+
 from test_e2e_hd_sun import hd
 from test_e2e_hd_window import PX, inside, room
 
@@ -55,4 +57,48 @@ def test_an_ore_over_your_room_is_not_seen_from_under_it(browser, server):
     assert ore()
     inside(g, x, y)
     assert g.js(CUT, [x + 1, y - 1]) is not None and not ore()
+    assert not g.errors
+
+
+# each frame, after it is drawn: what stands on the meadow over the room ([what, x, y], a hen by its id) -> [[what, the land's cut there or null, drawn]...]
+ON_CUT = """([things, hen]) => { const drawn = new Set(HdLook.stands().map(([x, y]) => x + ',' + y)), q = ents.get('chicken' + hen), out = [];
+  for (const [c, x, y] of things) out.push([c, HdLook.cut(x, y) ?? null, drawn.has(x + ',' + y)]);
+  if (q) out.push(['hen', HdLook.cut(Math.round(q.x), Math.round(q.y)) ?? null, HdLook.drawnAt(q) !== null]); else out.push(['hen', null, null]);
+  return out; }"""
+
+
+def test_what_stands_on_the_cut_land_goes_and_comes_back_with_it_on_the_same_frames(browser, server):
+    """#409, the owner: in a hole, "trees, rocks and hens on the cut-away land stay drawn floating over the x-ray". A tree,
+    a stone and a hen on the meadow (level 4) beside a room, where the cut opens round it: you go down into it and out again. On every frame its land is
+    cut under it (the cut's height under the meadow's 4), none of it is drawn; on every frame you are on the meadow and
+    it is not, all of it is. Each frame reads its own picture's cut (HdLook.cut: the land drawn) and what that picture
+    drew: the same at 16 ms a frame as at 300."""
+    g = hd(browser, server)
+    x, y = room(g)
+    g.stamp(-2, -2, ["T...M"], levels=["4" * 5])                                  # (a tree and a stone on the meadow just north of the room: the land the cut opens round it, at your head)
+    hen = g.rpc("dev_creatures", kind="chicken", dx=0, dy=-2, still=100000)["spawned"]
+    g.rest()
+    g.until(f"ents.has('chicken{hen}') && Math.round(ents.get('chicken{hen}').x) === {x} && Math.round(ents.get('chicken{hen}').y) === {y - 2}", 300)
+    things = [["T", x - 2, y - 2], ["M", x + 2, y - 2]]
+    g.rpc("dev_teleport", x=x, y=y + 4, z=4)                                      # (beside it on the meadow: all of it drawn)
+    g.arrive()
+    g.until(f"HdLook.cut({x}, {y}) === undefined && !HdLook.busy", 600)
+    g.rest()
+    first = g.js(ON_CUT, [things, hen])
+    assert all(r[1] is None and r[2] for r in first), "on the meadow, not all of it drawn: " + json.dumps(first)
+    g.js("([a]) => { window._oc = []; const f0 = window._f0 = frame; frame = function (now) { f0(now); if (HdLook.live) window._oc.push([HdLook.level[1], (" + ON_CUT + ")(a)]); }; return 1; }", [[things, hen]])
+    inside(g, x, y)                                                               # (down into the room: the land over it cut)
+    g.until(f"HdLook.cut({x - 2}, {y - 2}) !== undefined && HdLook.cut({x + 2}, {y - 2}) !== undefined", 300)
+    g.rest()
+    g.rpc("dev_teleport", x=x, y=y + 4, z=4)                                      # (out onto the meadow again)
+    g.arrive()
+    g.until(f"HdLook.cut({x - 2}, {y - 2}) === undefined && HdLook.cut({x + 2}, {y - 2}) === undefined && !HdLook.busy", 600)
+    g.rest()
+    rec = g.js("(() => { frame = window._f0; return window._oc; })()")
+    g.rpc("dev_creatures", clear=40)                                            # (its hen stood still: no later test's page is told of it)
+    cut = [f for f in rec if any(r[1] is not None and r[1] < 4 for r in f[1])]
+    assert cut, f"the land over the room never cut: {len(rec)} frames, last {json.dumps(rec[-1:])}"
+    on = lambda r: r[1] is not None and r[1] < 4                                   # (its land cut under it: the cut's height under the meadow's top)
+    bad = [f for f in rec if any((on(r) and r[2]) or (f[0] == 4 and not on(r) and not r[2]) for r in f[1])]   # (up on the meadow, what is not on cut land is drawn; under it, your space's window hides who is over you whatever the cut)
+    assert not bad, f"{len(bad)} of {len(rec)} frames with a thing drawn on cut land or not drawn on uncut land ([your level, [[what, cut, drawn]...]]): " + json.dumps(bad[:8])
     assert not g.errors
