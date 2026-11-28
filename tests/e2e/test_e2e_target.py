@@ -91,6 +91,7 @@ def test_playing_by_keys_the_drawn_cell_is_the_cell_that_changes(browser, server
     x, y = game.pos()
     game.hold_item("dirt")
     game.press("ArrowRight", 60)              # (playing by keys: the aim is the tile you face)
+    game.still()                              # (the step the key began is done before you are put back: the world ended it after, a tile on)
     game.rpc("dev_teleport", x=x, y=y)
     game.arrive()
     game.face(1, 0)

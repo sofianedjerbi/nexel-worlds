@@ -32,7 +32,6 @@ def go(g, key, done, jump=False):
     g.frames(5)
 
 
-@pytest.mark.realtime
 def test_up_and_down_a_ladder_in_the_open_nothing_of_the_light_or_the_window_changes(browser, server):
     """A cliff six high north of the meadow, a ladder against it. Up and down it, every frame, by day and at night:
     the window stays shut, nothing hides you, nothing is over you, your lantern is lit, and a meadow tile by the
@@ -88,7 +87,6 @@ def turns(r, i):
     return sum(1 for a, b in zip(d, d[1:]) if a * b < 0)
 
 
-@pytest.mark.realtime
 def test_into_a_dug_room_and_a_tunnel_mouth_the_window_opens_once_and_shuts_once(browser, server):
     """East: two steps down to a room dug under the meadow. North: a hill three high, a tunnel into it at the meadow's
     level. In and out of each, every frame: the record's roof flips once at the edge each way, and the window opens

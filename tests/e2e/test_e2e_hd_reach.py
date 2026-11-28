@@ -69,7 +69,6 @@ WALK = """([x0, y0, n]) => { window._walk = []; let i = 0; const t0 = window._t0
   return 1; }"""
 
 
-@pytest.mark.realtime                                       # (every frame of each step)
 def test_a_creature_walking_in_from_off_the_screen_is_drawn_before_its_feet_are_on_it(browser, server):
     g = Game(browser.new_page(viewport={"width": 1440, "height": 900}), server)
     g.join(new_name("rw"), 4)

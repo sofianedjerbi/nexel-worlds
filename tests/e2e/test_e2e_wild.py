@@ -122,7 +122,6 @@ def test_a_named_animal_carries_its_name(game):
     page.keyboard.press("Escape")
 
 
-@pytest.mark.realtime
 def test_a_tusker_that_is_hit_shows_it_is_angry(game):
     """Hit, a tusker is angry (sim/wild.py): it stamps, a red mark beats by its head (characters.js), and it comes for you."""
     game.rpc("dev_needs", hp=20, hunger=17)
@@ -135,7 +134,6 @@ def test_a_tusker_that_is_hit_shows_it_is_angry(game):
     assert game.server()["hp"] < 20                                              # ...and it came
 
 
-@pytest.mark.realtime
 def test_a_tusker_is_where_it_is_when_it_paws_charges_and_stands_dazed(game):
     """"boar is kinda buggy it glitches a few pixels somewhat teleporting near to its location when doing key moves":
     trotting into line and at the end of a charge the world moved it faster than it was drawn ambling, so it began to

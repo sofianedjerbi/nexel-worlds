@@ -8,11 +8,29 @@ by its own 2 px, the body by the land's 3: the bubble 1 px off the speaker's hea
 fractions of a px: its letters drawn another way every other step (two rasters of it, 2052 and 2006 soft px)."""
 
 import pytest
+
+import home
 from conftest import open_game
 from game import Game, new_name
 from waits import FRAMES
 
-pytestmark = pytest.mark.realtime                 # (every frame of a walk is looked at: on the tests' clock there are four times fewer)
+
+# the road both walk east on, from 4 rows north of you: the speaker on its second row (3 north of you), and the 8 rows south
+# of it that hide a body to its head (hd_level.js behind: what stands there over the eye's line) all meadow, level 0, nothing
+# built. Six rows were 4 short: what the land or a test before held past them stood over the line, "no bubble drawn", hid True
+ROAD = ["." * 120] * 10
+
+
+def on_flat(g):
+    """You on the tests' flat place (home.py: dry land at level 0 or 1 for 40 tiles, the same for every test), the meadow
+    laid out round it. Where you woke, the land past the meadow was a chance: a hill rows south of the speaker hid it
+    (HdLook.hidden: the window is yours, not theirs) and its bubble was not drawn, "no bubble drawn", hid True."""
+    x, y = home.PLACE
+    g.rpc("dev_teleport", x=x, y=y); g.arrive()
+    g.clear_area(6)
+    g.rpc("dev_teleport", x=x, y=y); g.arrive()
+
+pytestmark = pytest.mark.realtime                 # (the page's DPR follows what its own frames cost, on the machine's time (state.js DPR): stepped, a frame's cost is not the game's)
 
 DPRS = [1, 2, 1.25, 1.75]
 
@@ -45,8 +63,8 @@ def test_a_bubble_goes_with_its_speaker_px_for_px_and_its_letters_stay_as_they_a
     try:
         g = Game(page, server)
         g.join(new_name(), 3)                         # (zoom 3: the land's pixel and the bubble's (2) are not one in the other)
-        g.clear_area(6)
-        g.stamp(-6, -4, ["." * 120] * 6)             # (a road east for both: long enough for the frames asked below at 200 ms a frame, half of them drawing no words, ~50 tiles)
+        on_flat(g)
+        g.stamp(-6, -4, ROAD)                        # (a road east for both: long enough for the frames asked below at 200 ms a frame, half of them drawing no words, ~50 tiles)
         other = open_game(browser, server)
         x, y = g.pos()
         other.rpc("dev_teleport", x=x + 2, y=y - 3)   # (its bubble not over your name)
@@ -116,7 +134,8 @@ THAW = "(() => { window.__frozen = false; frame = window.__go; requestAnimationF
 BUBBLE_AT = "(name) => { const b = bubbles.find((b) => b.name === name && b.at); return b && [b.at[0], b.at[1], b.w, b.h]; }"
 NO_BUBBLE = """(name) => { const p = [...ents.values()].find((e) => e.e && e.e.name === name); return {bubbles: bubbles.map((b) => [b.name, b.at, b.up, b.h]),
   drawn: p && View.of(p), hid: p && HdLook.hidden(p.x + .5, p.y + .5, p.e.z !== undefined ? p.e.z : floorAt(Math.round(p.x), Math.round(p.y))), at: p && [p.x, p.y],
-  me: myPos() && [myPos().x, myPos().y], W: innerWidth, H: innerHeight, opt: opt("bubbles")}; }"""
+  me: myPos() && [myPos().x, myPos().y], W: innerWidth, H: innerHeight, opt: opt("bubbles"),
+  south: p && [1, 2, 3, 4, 5, 6, 7, 8].map((d) => { const x = Math.floor(p.x), y = Math.floor(p.y) + d; const c = Voxels.host.column(x, y); return [x, y, c && c.length ? c[c.length - 1] : null, (HdThings.at(x, y) || []).length]; })}; }"""   # (what stands in the 8 rows south of it: the land's top, the built boxes)
 # how many px of each picture differ from the first's by more than 24 in a channel (the pictures read by the page itself)
 DIFFS = """async (b64s) => { const px = [];
   for (const b of b64s) { const im = await createImageBitmap(await (await fetch('data:image/png;base64,' + b)).blob()), c = document.createElement('canvas');
@@ -136,8 +155,8 @@ def test_a_bubble_looks_the_same_on_every_step_of_a_walk(browser, server, dpr):
     try:
         g = Game(page, server)
         g.join(new_name(), 3)
-        g.clear_area(6)
-        g.stamp(-6, -4, ["." * 60] * 6)
+        on_flat(g)
+        g.stamp(-6, -4, ROAD)
         other = open_game(browser, server)
         x, y = g.pos()
         other.rpc("dev_teleport", x=x + 2, y=y - 3)
@@ -155,7 +174,7 @@ def test_a_bubble_looks_the_same_on_every_step_of_a_walk(browser, server, dpr):
                 g.js(FREEZE)
                 g.until("window.__frozen")                                        # (the last frame on the screen drew the words)
                 at = g.js(BUBBLE_AT, other.name)
-                assert at, ("no bubble drawn", g.js(NO_BUBBLE, other.name))
+                assert at, "no bubble drawn: " + str(g.js(NO_BUBBLE, other.name))   # (a string: pytest cut the dict to ...)
                 X, Y, W, H = (round(v * dpr) / dpr for v in at)                    # (on whole px of the screen)
                 shots.append(base64.b64encode(g.page.screenshot(clip={"x": X, "y": Y, "width": W, "height": H})).decode())
                 places.append(at[:2])

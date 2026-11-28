@@ -64,7 +64,7 @@ GLIDE = """() => new Promise((ok) => { follow = null; const out = [], of = windo
     out.push([land, miss]); if (s > 6 && out.length > 65) { done = true; window.frame = of; ok(out); } }; })"""   # (the page's own frame kept once (__frame0), and a glide that is done only passes on: a second glide hung, its frame put away by the first one's, which a frame already asked for still ran)
 
 
-@pytest.mark.realtime
+@pytest.mark.realtime                                       # (it times the machine: what a frame of land coming at a sprint costs)
 def test_land_coming_in_at_a_sprint_takes_little_of_a_frame(browser, server):
     """(six seconds AND 66 frames: a runner drawing a frame every 100 ms had 60 in six seconds, the bound: #47)
     Watching, the camera glides ten tiles a second into new land for six seconds: all the land is there when it

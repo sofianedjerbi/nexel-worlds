@@ -21,7 +21,6 @@ def test_a_bridges_last_planks_step_down_to_the_bank(game):
     assert game.js(f"Models.at({x}, {y})") and not game.errors          # (the deck: boxes in the land)
 
 
-@pytest.mark.realtime
 def test_models_cost_little_of_a_frame(game):
     """With a bridge in view, a frame's own work stays small."""
     pond(game)

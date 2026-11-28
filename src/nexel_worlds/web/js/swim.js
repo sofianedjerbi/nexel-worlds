@@ -74,7 +74,7 @@ function drawSwimmer(p, e, sheet, x, y, z, now, sx, sy) {
   const dash = SWIM_SPRINT && moving && (e.id === myId && e.kind === "agent" ? sprinting() : !!e.run);     // a sprint in the water
   const stroke = Math.floor((now + e.id * 97) / (dash ? SWIM.dashStroke : moving ? SWIM.stroke : SWIM.tread));
   const bob = (moving ? stroke % 2 : Math.round(Math.sin(now / 450 + e.id) * .5 + .5)) * z;      // one pixel, with each stroke
-  p.running = dash;
+  p.running = dash; p.stroking = moving;                     // (what this frame drew: strokes, or treading water)
   const st = BodyPlace.state(p);
   if (!st.swam) {                                             // going in: a splash
     st.swam = true; st.swamAt = now; p.wake = p.wake || [];                   // (the marks of the last swim, if any are left, stay)

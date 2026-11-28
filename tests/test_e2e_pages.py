@@ -15,6 +15,9 @@ class Page:
     def is_closed(self):
         return self.shut
 
+    def add_init_script(self, script):                   # (every test page has its scripts: clock.py SEED)
+        pass
+
     def screenshot(self, timeout=None):
         self.log.append("shot")
         return b"png"

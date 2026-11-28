@@ -96,7 +96,6 @@ def test_a_name_under_someone_s_bubble_is_not_written_a_few_letters_past_its_edg
 
 
 @needs_sounds
-@pytest.mark.realtime
 def test_what_is_typed_in_capitals_is_shouted(game):
     """A shout needed "!" before it. Now a line in capitals is one (three letters or more: "OK" is talk), and it is a
     yell: each syllable held longer and falling, through a breaking curve and an echo (babble.js SHOUT).

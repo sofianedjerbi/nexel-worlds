@@ -29,7 +29,6 @@ def stair(g):
     return x, y, z
 
 
-@pytest.mark.realtime
 def test_walking_a_stair_and_dropping_into_the_room_at_its_foot_the_window_stays_and_no_frame_flashes(browser, server):
     g = hd(browser, server)
     g.rpc("dev_time", phase=.3)

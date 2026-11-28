@@ -29,7 +29,6 @@ def test_the_camera_centres_on_you_as_drawn(game):
     assert d[2] > 0 and abs(d[0] - d[1]) < 1e-6
 
 
-@pytest.mark.realtime
 def test_running_into_new_ground_never_stalls_a_frame(game):
     """New land is made in steps within a budget (voxels.js work): no frame waits on a whole block (sprinting froze the
     game for 70-130 ms). (How long a step is: test_e2e_land.py.)

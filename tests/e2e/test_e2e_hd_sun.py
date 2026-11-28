@@ -140,6 +140,9 @@ def test_a_shadow_keeps_its_px_while_the_land_is_made_again(browser, server):
         # (rocks, away from you, along a row 25 tiles long: the land's version changes, in more than one of its chunks. It was
         # one rock: that one chunk was sometimes made again within a single frame's share, and then nothing was "made over
         # frames" for this test to watch: "builds 8 -> 9, frames it was being made: 0")
+        g.js("HdLook.hold = 64")                              # (the land made 64 steps a frame, a tile a step: its share of a frame was 2.5 ms of
+        # performance.now (hd.js), which a stepped frame never sees go by, so it was all made in one; a few chunks of 1024 tiles
+        # take some 50 frames, at 16 ms as at 200)
         g.stamp(-12, -6, ["M" + "." * 11 + "M" + "." * 11 + "M"])
         g.wait("window.__sh.length >= 150", 15000)
         got = g.js("window.__sh")

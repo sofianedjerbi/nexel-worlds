@@ -46,7 +46,7 @@ dev = [
 asyncio_default_fixture_loop_scope = "function"
 # the end-to-end suite drives real Chrome against a fresh server and takes minutes: run it with `pytest -m e2e`
 markers = ["e2e: plays the game in Chrome against a fresh server", "quick: one short e2e test a file, a minute in all (tests/e2e/README.md)",
-           "realtime: an e2e test that measures the machine's own time: not on the tests' fast clock (tests/e2e/clock.py)",
+           "realtime: an e2e test on the machine's own time (it times the machine, or has a clock that is not the page's): not stepped, its world not in lockstep (tests/e2e/clock.py)",
            "stepped: an e2e test of how a move looks frame by frame: its pages' time goes 1/60 s a frame, whatever the machine (tests/e2e/clock.py STEP)",
            "animated: an e2e test of an animation itself (a glide, a follow, a fade): its pages do not ask for less motion (tests/e2e/pages.py motion)"]
 addopts = "-m 'not e2e' -n 6"

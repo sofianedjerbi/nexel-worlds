@@ -9,7 +9,6 @@ from test_e2e_hd_sun import hd
 
 from nexel_worlds.world import Store, World
 
-pytestmark = [pytest.mark.e2e, pytest.mark.realtime]
 
 # the px of a cell's south face on the screen (device px): [x0, y0, w, h], a px in from its edges
 FACE = """([x, y, z]) => { const a = HdLook.screenOf(x + .1, y + 1, z - .1), b = HdLook.screenOf(x + .9, y + 1, z - .9), k = devicePixelRatio;

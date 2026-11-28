@@ -58,7 +58,7 @@ class Game(Waits):
         """(curve: the settings' Curved world: None, as the game has it for a player (on); False: the flat picture,
         for a test that cannot be about the curved one; True: the curved one)"""
         self.load(zoom, curve)
-        self.page.wait_for_function("typeof ready !== 'undefined'")
+        self.page.wait_for_function("typeof ready !== 'undefined'"); self.wait("!document.getElementById('boot')", 30000)   # (the wait gone, in the page's time: the click's 30 s are the wall's)
         self.page.click("#name")
         self.page.keyboard.type(name)
         self.page.keyboard.press("Enter")
@@ -89,7 +89,7 @@ class Game(Waits):
         test = os.environ.get("PYTEST_CURRENT_TEST", "").split(" ")[0]
         if test not in HOURED:
             HOURED.add(test)
-            self.rpc("dev_time", phase=.3)
+            self.rpc("dev_time", phase=.3); clock.drive(self)   # noqa: E702 - (drives its ticks; a page that joins again, the old one's socket shut, has the world back on dev_pace)
         # (awake: the land there and drawn; and the picture all there, not still coming in over the first screen's: that
         # takes 0.7 s, and a test that looked at the canvas's animations meanwhile counted it with its own)
         self.js("(() => { for (const a of cv.getAnimations()) a.finish(); return 1; })()")

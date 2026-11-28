@@ -27,6 +27,7 @@ def test_tp_is_refused_to_a_player_and_done_for_an_admin_and_the_crown_shows(gam
     assert game.js(ROWS)[0] == "summon"
     page.keyboard.press("Tab")
     assert game.js("$('say').value") == "/summon " and "cow" in game.js(ROWS)    # (its words: the creatures)
+    game.wait(f"agents.some((a) => a.name === {game.name!r})", 3000)   # (the players' list, asked every 1.5 s of the page's time (state.js): the page was there before you joined)
     page.fill("#say", "/give ")
     page.keyboard.type(game.name[:4])
     assert game.name in game.js(ROWS)                                     # (a player's name)

@@ -46,7 +46,6 @@ def test_the_land_is_the_size_the_zoom_says_and_fills_a_screen_held_upright(brow
         ctx.close()
 
 
-@pytest.mark.realtime
 def test_a_tap_goes_to_the_tile_under_the_finger(browser, server):
     ctx, g = phone(browser, server)
     try:
@@ -105,7 +104,6 @@ COST = """() => new Promise((done) => { const P = WebGL2RenderingContext.prototy
     if (C.n >= 60) { frame = f1; [P.drawArrays, D.drawImage, D.fillRect, D.clearRect] = keep; done(C); } }; })"""
 
 
-@pytest.mark.realtime                              # (it counts frames: the words are painted again four times a second whatever, and on the tests' clock that was every other frame, 31 in 60)
 def test_a_frame_costs_a_phone_little_one_small_picture_nothing_the_screens_size_few_draws_few_chunks(browser, server):
     """"Very laggy on phone": the classic frame was still painted under this look (its sky through a shader at the screen's size,
     1.3 million px; its pictures sent to the GPU every frame), and the look's own picture was laid on the game's canvas at that

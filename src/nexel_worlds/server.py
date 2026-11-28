@@ -23,13 +23,13 @@ from .limits import LIMITS, RateLimiter
 from .rules import rules_table
 from .sim import DAY_TICKS, TICK_HZ, TOOL_SPECS, ActionError, Simulation
 from .tiles import RECIPES
+from .ticking import Ticking
 from .views import Views
 from .web_static import serve_http, set_bundle, web_stamp
 
 log = logging.getLogger("nexel_worlds")
 PROTOCOL = 1
 RULES_TABLE = rules_table()
-FLUSH_EVERY = 10 * TICK_HZ  # ticks (10 s)
 
 
 def rss_mb() -> float:
@@ -37,7 +37,7 @@ def rss_mb() -> float:
     return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1e6
 
 
-class GameServer(Views):
+class GameServer(Views, Ticking):
     def __init__(self, world_dir: Path, seed: int | None = None, dev: bool = False, accounts: str = "", admins=()):
         self.dev = dev  # enables dev_give (QA only; never on a public server)
         world_dir.mkdir(parents=True, exist_ok=True)
@@ -54,47 +54,12 @@ class GameServer(Views):
         self.sim.screens = lambda: [r for r in self.spectators.values() if r]   # (nothing comes or goes on a screen: spawning.py)
         self.tick_ms = collections.deque(maxlen=250)
         self.tick_parts = collections.deque(maxlen=250)      # (each tick's parts: its step's ms, whether it flushed the world to disk)
+        self.init_clock()              # (the world's ticks on the wall's clock, till a test's page drives them: ticking.py)
         self.started = time.time()
         self.stopping = asyncio.Event()
         self.admin = Admins(self, world_dir, admins)      # (an operator, out of the world: the server's /commands, admin.py)
 
     # ---------------------------------------------------------------- tick
-    async def tick_loop(self):
-        loop = asyncio.get_running_loop()
-        period = 1.0 / TICK_HZ
-        nxt = loop.time()
-        while not self.stopping.is_set():
-            t0 = time.perf_counter()
-            chunks0 = len(self.sim.world.chunks)
-            try:
-                self.sim.step()
-            except Exception:                            # (a bug: written down, and the world goes on: never a clock stopped in silence)
-                log.exception("tick %d broke", self.sim.tick)
-            self.push_ticks()
-            t1 = time.perf_counter()
-            if self.sim.tick % FLUSH_EVERY == 0:
-                self.sim.flush()
-                self.sim.maintain()
-            dt = (time.perf_counter() - t0) * 1000
-            self.tick_ms.append(dt)
-            self.tick_parts.append((self.sim.tick, round(dt, 1), round((t1 - t0) * 1000, 1), self.sim.tick % FLUSH_EVERY == 0))
-            if dt > 50:
-                log.warning("slow tick %d: %.0f ms (step %.0f ms, chunks %d -> %d)", self.sim.tick, dt,
-                            (t1 - t0) * 1000, chunks0, len(self.sim.world.chunks))
-            nxt += period / getattr(self.sim, "clock_rate", 1)      # (pace: the browser tests' clock, devtools.py dev_pace: only with --dev)
-            # In the browser (no threads) land is made in the time to spare, 8 ms at a time, the loop turning three times
-            # between two (heard, answered, sent): what the tick said leaves first and the page is answered meanwhile
-            # (made in one go, both waited 65 ms behind the land, one tick in six; more on a phone).
-            while nxt - loop.time() > 0.03 and not self.sim.world.work(0):
-                for _ in range(3):
-                    await asyncio.sleep(0)
-                self.sim.world.work(time.perf_counter() + min(0.008, nxt - loop.time() - 0.03))
-            delay = nxt - loop.time()
-            if delay < -1.0:  # fell far behind (e.g. laptop sleep): don't try to catch up
-                nxt = loop.time()
-                delay = 0
-            await asyncio.sleep(max(0.0, delay))
-
     def metrics(self) -> dict:
         ms = sorted(self.tick_ms) or [0.0]
         return {
@@ -239,10 +204,16 @@ class GameServer(Views):
                     self.sim.submit(agent, tool, args, on_done=done)
                 elif op == "hold":                                 # what is in your hand (the bar's selected slot): the others see it in your paw (views.py)
                     agent.held = str(msg["item"])[:40] if msg.get("item") else None; reply(mid, held=agent.held)  # noqa: E702
+                elif op in ("dev_lockstep", "dev_step") and self.dev and not account:   # (the browser tests' one clock: ticking.py)
+                    self.dev_clock(ws, op, msg, lambda r, mid=mid: reply(mid, **r))
                 elif op.startswith("dev_") and self.dev and not account:  # QA tools, only with --dev, never for who came by ticket
+                    t0 = self.sim.tick
                     reply(mid, **dev_op(self.sim, agent, op, msg))
+                    self.jumped(t0)
                 elif op in ("cmd", "cmds") and limits.allow("act"):     # the chat line's /commands (admin.py)
+                    t0 = self.sim.tick
                     reply(mid, **(self.admin.run(agent, str(msg.get("line", ""))) if op == "cmd" else self.admin.cmds(agent)))
+                    self.jumped(t0)
                 elif op == "tools":
                     reply(mid, tools=TOOL_SPECS)
                 elif op == "recipes":
@@ -251,6 +222,8 @@ class GameServer(Views):
                 else:
                     reply(mid, False, error="unknown_op", detail="ops: hello, observe, act, hold, tools, recipes, metrics, ping")
         finally:
+            if self.driver is ws:                                 # (a driver gone: the world back on the wall's clock, never left frozen)
+                self.lockstep(ws, {"on": False})
             if agent is not None and self.conns.get(agent.id) is ws:
                 del self.conns[agent.id]
                 self.notify.pop(agent.id, None)

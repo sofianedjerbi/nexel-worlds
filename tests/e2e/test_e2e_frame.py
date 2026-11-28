@@ -35,7 +35,6 @@ def test_what_is_kept_from_frame_to_frame_is_what_would_be_worked_out_now(game):
     game.clear_area(14)
 
 
-@pytest.mark.realtime
 def test_standing_still_makes_little_memory(game):
     """With trees behind a hill in view the page made a megabyte of memory a frame for the collector to take back
     (60 MB a second: an array and a pair made for every tile asked about, the same edges and hints worked out again

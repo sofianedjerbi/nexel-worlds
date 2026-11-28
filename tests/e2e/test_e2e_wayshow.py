@@ -58,7 +58,7 @@ def tunnel(g, north):
     g.wait("WayShow.cur && !WayShow.busy && document.getElementById('waycap') && document.getElementById('waycap').style.display === 'block'", 8000)
 
 
-@pytest.mark.realtime
+@pytest.mark.realtime   # (its slow frames are made on purpose, a busy wait on the machine's own time (REC): stepped, the page's time stands still in a frame and the wait never ends)
 @pytest.mark.parametrize("north", [False, True])
 @pytest.mark.parametrize("screen", ["desktop", "phone"])
 def test_sprinting_along_the_way_its_key_moves_with_you_never_a_jump(browser, server, screen, north):

@@ -95,7 +95,6 @@ def test_a_roof_is_laid_a_block_at_a_time_and_seen_through_from_under_it(game):
     assert game.server()["z"] == 0 and game.js(f"solidAt({x + 4}, {y - 2}, 3) && !solidAt({x + 4}, {y - 2}, 2)")      # a block: it can be stood on
 
 
-@pytest.mark.realtime
 def test_what_the_audit_of_build_mode_found_is_mended(game):
     """Played through and looked at, build mode had these faults: leaving it threw the plans away while its key said
     "Done"; nothing said B existed; a door needed the wall taken down first; Q went through food and tools; the X

@@ -14,7 +14,6 @@ DRAWN = """(() => { window.__d = 0; window.__a = 0; window.__n = 0; const d0 = d
   onRegion = function (d) { if (d.w === B && !blocks.has(bkey(d.x / B, d.y / B))) __n++; return r0.apply(this, arguments); }; return 1; })()"""
 
 
-@pytest.mark.realtime
 def test_land_comes_in_whole_and_its_paints_are_never_wiped(browser, server):
     g = hd(browser, server)
     x, y = g.pos()
@@ -34,7 +33,6 @@ def test_land_comes_in_whole_and_its_paints_are_never_wiped(browser, server):
 FAR = "(() => { const f = HdLook.far; if (!f) return true; for (let by = Math.floor(f[1] / B); by <= Math.floor(f[3] / B); by++) for (let bx = Math.floor(f[0] / B); bx <= Math.floor(f[2] / B); bx++) if (!blocks.has(bkey(bx, by))) return false; return true; })()"
 
 
-@pytest.mark.realtime
 def test_walking_back_the_far_land_is_not_made_again(browser, server):
     """(Counted once the far land asked for has come (FAR): its blocks come four a tenth of a second (state.js, since
     9c681e2), and one that came while you walked back made its patches again, rightly, they were drawn from nothing:
@@ -64,7 +62,6 @@ def test_walking_back_the_far_land_is_not_made_again(browser, server):
 
 
 
-@pytest.mark.realtime
 def test_made_at_other_tiles_on_the_way_back_the_far_land_is_kept(browser, server):
     """(#240) The land is made at some of the tiles you walk, not all (which, the frames say): here 8 tiles apart going
     east, between them coming back (each move over 6 tiles: a shorter one your body walks, the land made on the way).
@@ -86,6 +83,8 @@ def test_made_at_other_tiles_on_the_way_back_the_far_land_is_kept(browser, serve
     assert all(n > 0 for n in there) and sum(back) < sum(there) / 4, {"fresh": way, "there": there, "back": back, "work": g.js("HdLook.work")}   # (each step east: far land new; back: next to none)
 
 
+@pytest.mark.realtime   # (the sheet's steps go while the page is idle, 8 ms of performance.now at a time (wear.js pump): a budget of
+#  the machine's time; stepped, the page's time stands still between frames and one turn makes the whole sheet)
 def test_a_persons_sheet_is_made_between_frames(browser, server):
     g = hd(browser, server)
     r = g.js("""(async () => { let idle = 0; const ric = window.requestIdleCallback; window.requestIdleCallback = (f, o) => ric((d) => { idle++; f(d); }, o);

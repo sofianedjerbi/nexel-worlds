@@ -25,7 +25,6 @@ def ridge(g, cx, cy, z0, r=8, rx=30, step=4):
         g.rpc("dev_col", tiles=t, col=[h])
 
 
-@pytest.mark.realtime
 def test_walking_past_a_tall_mountain_the_sky_does_not_move(browser, server):
     g = Game(browser.new_page(viewport={"width": 1440, "height": 900}), server)
     g.join(new_name("sky"), 3)
@@ -72,7 +71,6 @@ CALM = """() => { window.__sk = []; window.__on = true; const f = () => { const 
   __sk.push([l, l - Math.floor(Math.max(l, 8) * s.at[1]), s.edge / zoom, HdLook.cam.pitch, myPos().y]); if (__on) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""
 
 
-@pytest.mark.realtime
 def test_sprinting_over_a_hill_of_steps_the_sky_stays_put(browser, server):
     """"the skybox moves wildly when the player travels": up a hill of steps 6 levels high and down again, at a sprint,
     the whole sky (its bands, the sun, the clouds) came down 9 art px a level climbed and up again: 55 px in 3 s (the
@@ -117,7 +115,6 @@ PITCH = """() => { window.__pt = []; window.__on = true; const f = () => { const
   if (__on) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""
 
 
-@pytest.mark.realtime
 @pytest.mark.parametrize("way", ["N", "S", "E", "W"])
 def test_sprinting_down_a_stepped_hill_the_eye_does_not_nod(game, way):
     """"sprinting north down the spawn hill the pitch nods 36 -> 43 -> 36 on each step": down a hill of steps two tiles

@@ -105,13 +105,13 @@ def test_swimming_sounds_like_swimming_not_like_walking(game):
     heard = set(game.js("Object.keys(sounds.lastAt)"))
     assert "swim" in heard and not heard & {"step", "wade", "water"}, sorted(heard)
     game.still()                                               # (the stroke that carries you onto the tile you were entering)
+    game.until("!ents.get('agent' + myId).stroking")           # (and a frame drawn treading water: strokes go on 300 ms after the last move, swim.js)
     game.js("sounds.lastAt = {}")
     game.sleep(1200)                                           # treading water: nothing (a window in which nothing sounds: so at any frame's length)
     assert not set(game.js("Object.keys(sounds.lastAt)")) & {"swim", "step", "wade", "water"}
     assert not game.errors
 
 
-@pytest.mark.realtime
 def test_a_sprint_in_the_water_is_twice_as_fast_and_leaves_a_longer_wake(game):
     """Shift in the water did nothing (nobody sprinted there). Now it is a sprint: twice a swim, and the water halves
     both (2.5 tiles a second swimming, 5 at a sprint: "speed in water should be decreased, half of ground speed"), with
@@ -156,7 +156,6 @@ WAKE = """(() => { const p = ents.get('agent' + myId), w = wakePicture(p, perfor
   return {bands, reach: Math.max(...p.wake.map((m) => (p.x - m.x) * 16)), room: w.fx, alpha: [...alpha]}; })()"""
 
 
-@pytest.mark.realtime
 def test_a_sprints_wake_thins_out_to_nothing_at_its_end_and_is_not_cut(game):
     """"When sprinting in water: particles are abruptly cut at the end". The HD look drew the wake in the swimmer's own
     picture, four tiles wide: cut in a straight line a tile and a half behind them; and with no blending there, a
@@ -193,7 +192,6 @@ def test_a_sprints_wake_thins_out_to_nothing_at_its_end_and_is_not_cut(game):
     assert not game.errors
 
 
-@pytest.mark.realtime
 def test_letting_go_of_the_key_in_the_water_you_swim_on_into_place_not_walk(game):
     """Let go of the key while swimming, you go on to where the world has you at the swim's pace (2.5 tiles a second),
     as under the key: the glide into place went at the pace on land, twice as fast ("the swimming animation goes faster

@@ -190,6 +190,7 @@ def test_on_a_phone_a_held_with_the_stick_is_a_row_and_held_still_places_once(br
         x, y = g.pos()
         g.give(dirt=12); g.js("selectItem('dirt')")
         g.face(1, 0)
+        g.wait("getComputedStyle($('tBuild')).display !== 'none'", 4000)   # (the button is up once the HUD drew it, touch.js: tapped before, the tap fell on nothing)
         g.page.touchscreen.tap(*g.js(MID, "#tBuild")); g.wait("Build.on", 3000)
         a = tuple(g.js(MID, "#tA"))
         send("touchStart", {2: a})

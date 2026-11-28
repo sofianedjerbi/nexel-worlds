@@ -21,7 +21,6 @@ def cliff(g):
     return x, y
 
 
-@pytest.mark.realtime
 def test_the_edge_over_a_drop_that_hurts_has_no_dark_rim_as_a_step_has_none(browser, server):
     """It had a dark rim 2 px wide all along it, to tell a cliff from a step: "ugly dark borders on cliffs and above
     holes". The edge is drawn as a step's, the cap's own outline; the faces under it show the drop."""
@@ -39,7 +38,6 @@ def test_the_edge_over_a_drop_that_hurts_has_no_dark_rim_as_a_step_has_none(brow
     assert step > mid * .7 and east > mid * .7 and north > mid * .7, (mid, step, east, north)   # the cliff's edge as the step's: the cap's own outline, no more (the rim was 187 of 484)
 
 
-@pytest.mark.realtime
 def test_off_a_cliff_the_eye_stays_while_you_fall_and_comes_down_with_no_jump(browser, server):
     g = hd(browser, server)
     x, y = cliff(g)
@@ -66,7 +64,7 @@ SLOW = """(ms) => { const on = window.__slow; window.__slow = ms; if (!on && ms)
 EYE = """(() => { window.__r = []; window.__on = true; const f = () => { __r.push(HdLook.level[1]); if (__on) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; })()"""
 
 
-@pytest.mark.realtime
+@pytest.mark.realtime                                       # (frames of chosen lengths, on purpose: the machine's time)
 def test_with_frames_of_any_length_the_eye_comes_to_you_and_never_past_and_the_window_is_right(browser, server):
     """(the eye's spring was stepped a frame at a time: with frames over 83 ms it swung wider at each one, to 40 levels
     off, then jumped. Its exact answer now, hd.js)"""

@@ -26,7 +26,13 @@ PACE = max(1.0, float(os.environ.get("E2E_PACE", "4")))
 FRAME_BUDGET = 70
 AHEAD = os.environ.get("E2E_AHEAD", "1") != "0"     # the next test's page loads while this one plays (pages.py)
 now = 1.0           # the pace of the test that is running (conftest.py: the `pace` fixture)
+# LOCKSTEP (#276): every test is stepped (STEP) and its world ticks when its page asks (server.py dev_step), unless it
+# is `realtime`: it measures the machine's own time, or has a clock that is not the page's. E2E_LOCKSTEP=0: only the
+# tests marked `stepped` are, their world on its own clock, and the others run on the fast clock (PACE)
+LOCKSTEP = os.environ.get("E2E_LOCKSTEP", "1") != "0"
 step = False        # the test that is running is `stepped`: its pages' time goes 1/60 s a frame, whatever the machine (STEP)
+seed = coming_seed = 0   # the chances of the test that is running, and of the one after it (SEED; conftest.py: from their ids)
+pages = 0           # the pages of the running test given their chances so far: each page its own sequence (SEED)
 coming = None       # the pace of the test after it, if it plays on the `game` fixture's page; None: it does not, or there is none (conftest.py)
 
 # (a sleep is never cut under SHORT ms of the machine's time, or its own length: what it waited for may be an answer
@@ -63,7 +69,7 @@ SHIM = """(() => { const K = %s; if (K === 1 || window.__pace) return; window.__
 # A wait on the page (game.sleep, a key held) is ms of T. A busy wait on performance.now() would never end: such a test
 # (a slow frame made on purpose: test_e2e_tap_slow.py) stays `realtime`.
 STEP = """(() => { if (window.__step) return; window.__step = 1;
-  const P = performance, pn = P.now.bind(P), dn = Date.now.bind(Date), raf = window.requestAnimationFrame.bind(window), st = window.setTimeout.bind(window);
+  const P = performance, pn = P.now.bind(P), dn = Date.now.bind(Date), raf = window.requestAnimationFrame.bind(window), st = window.setTimeout.bind(window); window.__wallTimeout = st;
   const F = 1000 / 60, T0 = pn(), D0 = dn(); let T = T0, n = 0, id = 0, w0 = T0, v0 = T0;
   P.real = pn; P.now = () => T; Date.now = () => Math.round(D0 + T - T0);
   const frames = new Map(), timers = new Map(), later = (e) => st(() => { throw e; });
@@ -72,14 +78,41 @@ STEP = """(() => { if (window.__step) return; window.__step = 1;
   window.setTimeout = (f, ms, ...a) => { timers.set(++id, {at: T + (+ms || 0), f, a}); return id; };
   window.setInterval = (f, ms, ...a) => { const e = Math.max(1, +ms || 0); timers.set(++id, {at: T + e, f, a, every: e}); return id; };
   window.clearTimeout = window.clearInterval = (k) => { timers.delete(k); };
-  const tick = () => { T += F; n++;
+  // LOCKSTEP (#276): the page that drives the world (window.__lockstep, game.py join: the test's first) runs a frame only
+  // once the world is at the tick of that frame's time (dev_step, server.py), its answer and the tick itself come: page
+  // and world one time, however slow the machine. An answer not come in 2 s of the wall's time is asked again (to is
+  // absolute: nothing made twice), and said every fifth time
+  let drive = null;
+  // A tick is only ever waited for once the world has made it on the page's ask, so that it was sent: the world already
+  // at or past it (locked at the tick a dev_time jumped to, or sent on by dev_skip) sent nothing, and a page waiting on
+  // clock.tick for it waited for ever. It asks for the one after where the world is, counted from there
+  const ask = () => { const to = drive.asked; drive.sent = pn(); rpc("dev_step", {to}).then((r) => { if (!drive || drive.asked !== to || !r || !(r.tick >= to)) return;
+    if (r.tick > to) { Object.assign(drive, {tick0: r.tick, T0: T, asked: r.tick + 1, ok: false, tries: 0}); ask(); } else drive.ok = true; }); };
+  window.__lockstep = (tick0, hz) => { drive = {tick0, hz, T0: T, asked: tick0 + 1, ok: false, sent: 0, tries: 0}; ask(); window.__lockstepState = () => ({...drive, T, n, frames: frames.size, timers: timers.size}); return 1; };
+  // A world ahead of what was asked was sent on by a dev op (dev_time, dev_skip: a day is 12000 ticks): counted from
+  // there, or the page would wait out the jump in frames, the world making nothing meanwhile
+  const owed = (t) => { if (!drive) return false;
+    if (typeof clock === "object" && clock.tick > drive.asked) Object.assign(drive, {tick0: clock.tick, T0: t, asked: clock.tick, ok: true});
+    const want = drive.tick0 + Math.floor((t - drive.T0) * drive.hz / 1000);
+    if (want > drive.asked) { drive.asked = want; drive.ok = false; drive.tries = 0; ask(); }
+    if (drive.ok && typeof clock === "object" && clock.tick >= drive.asked) return false;
+    if (pn() - drive.sent > 2000) { if (++drive.tries % 5 === 0) console.error(`lockstep: no tick ${drive.asked} from the world in ${drive.tries * 2} s (it is at ${clock && clock.tick})`); ask(); }
+    return true; };
+  const tick = () => { if (owed(T + F)) { raf(tick); return; } T += F; n++;
     for (const [k, t] of [...timers].sort((a, b) => a[1].at - b[1].at)) if (t.at <= T && timers.has(k)) {
       if (t.every) t.at += t.every; else timers.delete(k); try { if (typeof t.f === "function") t.f(...t.a); } catch (e) { later(e); } }
     const fs = [...frames.values()]; frames.clear(); for (const f of fs) try { f(T); } catch (e) { later(e); }
-    if (n % 30 === 0) { const r = (T - v0) / Math.max(1, pn() - w0); w0 = pn(); v0 = T;
+    if (n % 30 === 0 && !drive) { const r = (T - v0) / Math.max(1, pn() - w0); w0 = pn(); v0 = T;
       if (typeof rpc === "function") rpc("dev_pace", {pace: Math.max(.05, Math.min(1, r))}); }
     raf(tick); };
   raf(tick); })()"""
+
+
+# SEEDED (#276): a page's Math.random is a sequence of its test's own (mulberry32 from the test's id), the same at every
+# run whatever ran before: what the game draws by chance (a burst of dust, the splash's line, a sound's pick) as well
+SEED = """(() => { if (window.__seed !== undefined) return; let a = window.__seed = %d >>> 0;
+  Math.random = () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; })()"""
 
 
 def stepped_wait(page, ms: float):
@@ -118,6 +151,10 @@ def paced(page, pace=None):
     """A page whose clocks run at the pace of the test that made it (or at `pace`: the next test's, pages.py)."""
     mine = pace is None                          # (this test's own page; a page asked for ahead is the next test's: pages.py)
     pace = pace or now
+    global pages
+    if mine:                                     # (each page of a test its own sequence: two pages drew the same ids and tokens)
+        pages += 1
+    page.add_init_script(SEED % (((seed if mine else coming_seed) + (pages - 1 if mine else 0) * 0x9E3779B9) & 0xFFFFFFFF))
     if step and mine and pace == 1:
         page.add_init_script(STEP)
         page.wait_for_timeout = lambda ms: stepped_wait(page, ms)
@@ -138,11 +175,29 @@ def paced(page, pace=None):
     return page
 
 
-def set_world(url: str, pace: float):
-    """The world at `url` (http://host:port) makes `pace` times its ticks from now on."""
+def drive(game):
+    """The test's first page (game.py join) drives its world's ticks, in a stepped test (LOCKSTEP; STEP: __lockstep)."""
+    if step and LOCKSTEP:
+        from nexel_worlds.sim import TICK_HZ
+        r = game.rpc("dev_lockstep", on=True)
+        game.js(f"__lockstep({int(r['tick'])}, {TICK_HZ})")
+
+
+def tell_world(url: str, *ops: dict):
+    """The world at `url` (http://host:port) told the dev ops `ops`, in order, by a player of the tests' own."""
     from websockets.sync.client import connect
     with connect(url.replace("http", "ws", 1) + "/agent") as ws:
-        for i, m in enumerate(({"op": "hello", "name": f"clock{os.getpid() % 100000}", "token": "clock", "persona": "clock"}, {"op": "dev_pace", "pace": pace})):
+        for i, m in enumerate(({"op": "hello", "name": f"clock{os.getpid() % 100000}", "token": "clock", "persona": "clock"}, *ops)):
             ws.send(json.dumps({"id": i, **m}))
             r = json.loads(ws.recv(timeout=10))
             assert r.get("ok"), r
+
+
+def let_go(url: str):
+    """The world at `url` back on the wall's clock, whoever drove its ticks (LOCKSTEP)."""
+    tell_world(url, {"op": "dev_lockstep", "on": False, "force": True})
+
+
+def set_world(url: str, pace: float):
+    """The world at `url` makes `pace` times its ticks from now on."""
+    tell_world(url, {"op": "dev_pace", "pace": pace})

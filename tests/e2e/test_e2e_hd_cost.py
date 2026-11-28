@@ -15,7 +15,6 @@ BUSY = """() => new Promise((ok) => { const out = [], f0 = window.frame, p = myP
     if (out.length >= 150) { done = true; window.frame = f0; ok([out, most]); } }; })"""
 
 
-@pytest.mark.realtime
 @pytest.mark.parametrize("w, h, zoom", [(1440, 900, 3), (844, 390, 2)])
 def test_a_frame_with_things_in_the_air_costs_the_script_little(browser, server, w, h, zoom):
     from conftest import Game, new_name

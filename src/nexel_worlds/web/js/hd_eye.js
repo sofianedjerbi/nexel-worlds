@@ -45,7 +45,7 @@ const HdEye = (H) => {
   function lines(tx, ty, L, at, w, h, dt) {   // (the horizon is the surface's, however deep you are)
     horizon(tx, ty, L); const ease = (v, t) => !v || Math.abs(t - v) < .5 ? t : v + (t - v) * (1 - Math.exp(-dt / .25)), lw = lowAhead(tx, ty), te = Math.max(8, eyeLine(at, w, h, lw, edgeC) + 2);
     const tilts = tilt > 0 && tilt < 1, goes = tilts || (lastAt !== null && at[2] !== lastAt); lastAt = at[2];   // (the edge where this frame puts it while the eye tilts or its level moves (a step, a hop, a climb): eased a second behind the eye up a hill, a strip of the backdrop's flat far-land green was between it and the land, #359. The sky's line keeps its easing: a px a frame at most, hd_sky)
-    const t = Math.max(8, eyeLine(at, w, h, 1e9, eyeC) + 2); hl = tilts ? t : ease(hl, t); he = goes ? te : ease(he, te); api.line = [Math.min(at[2] - .5, lw), te - 2, t - 2];   // (line: tests: the far land's level, the edge's px and the sky's line's, as this frame puts them)
+    const t = Math.max(8, eyeLine(at, w, h, 1e9, eyeC) + 2); hl = tilts ? t : ease(hl, t); he = goes ? te : ease(he, te); api.skyStill = hl === t && he === te; api.line = [Math.min(at[2] - .5, lw), te - 2, t - 2];   // (line: tests: the far land's level, the edge's px and the sky's line's, as this frame puts them. skyStill: the line and the land's edge where they ease to, this frame: waits.py rest)
   }
   return {pitch, level, lines, snap() { hl = 0; }, get camL() { return camL; }, get tilt() { return tilt; }, get above() { return !!stage; }, get hy() { return hy; }};
 };

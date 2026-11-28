@@ -34,7 +34,7 @@ def test_off_it_is_never_made(game):
     assert game.js("document.getElementById('f3')") is None and not game.js("F3.on")
 
 
-@pytest.mark.realtime
+@pytest.mark.realtime                                       # (it times the machine: what the HD look's section costs)
 def test_perf_in_the_address_opens_it_with_the_hd_looks_section_and_it_costs_little(browser, server):
     page = browser.new_page(viewport={"width": 1200, "height": 800})
     g = Game(page, server)

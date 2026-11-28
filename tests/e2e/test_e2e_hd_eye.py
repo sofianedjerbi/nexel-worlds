@@ -28,7 +28,6 @@ def turns(v):
     return sum(1 for a, b in zip(d, d[1:]) if a * b < 0)
 
 
-@pytest.mark.realtime
 def test_across_a_dip_the_eye_keeps_its_pitch_and_under_a_hill_it_tilts_once(browser, server):
     g = hd(browser, server)
     g.hour(.3, still=True)
