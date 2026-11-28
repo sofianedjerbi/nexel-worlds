@@ -30,7 +30,7 @@ const Held = (() => {
     // (a sword, a spear: one pose, at the hip; it sways with the walk's (the run's) frame: hold_art.js LOW)
     const step = sy >= ANIM.walk * 48 && sy < (ANIM.run + 4) * 48 ? sx / 48 : -1;
     const tool = name && sheet && HoldArt.art(toolArt(name), DIR_ROW(p), t ? aim : "rest", sheet, t, step);
-    if (tool) return ctx.drawImage(tool, cellX, cellY + dy * z, 48 * z, 48 * z);
+    if (tool) return ctx.drawImage(...ToolArt.inTier(tool, 0, 0, name), 48, 48, cellX, cellY + dy * z, 48 * z, 48 * z);   // (in its tier's metal: tool_art.js)
     ctx.drawImage(c, cellX + ax * z, cellY + (ay + dy) * z, c.width * z, c.height * z); }
   let sent;
   // yours, to the server when it changes (and again whenever the server has another: a new connection)

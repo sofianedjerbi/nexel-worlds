@@ -113,5 +113,29 @@ const ToolArt = (() => {
     c.complete = true; c.src = img.src;                    // (what the code asks of the image it replaces)
     return c;
   }
-  return {extend, soon, KINDS, redraw};
+  // A TOOL OF A TIER takes its metal's colours, in the paw and in its swing (#393, the owner's yes): the four greys of a
+  // tool's metal (its head's two, a blade's edge and face) become the tier's; iron keeps them (they are iron's). The same
+  // four on every tool and every swing, held (hold_art.js), cut (swing_art.js) or chopped (the sheet's rows): one rule.
+  const GREY = ["129,129,129", "183,183,183", "158,170,182", "226,232,236"];
+  const METAL = {wood: ["7a5236", "b88a5c", "a0714a", "c99a6e"], stone: ["5d6260", "8a8f8c", "6e7470", "a3a8a0"],
+    copper: ["93502c", "d9844f", "c06a3a", "f2b27e"], titanium: ["6f8db3", "a9c6e6", "7f9fc6", "e6f2ff"]};
+  const rgb = (h) => [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+  // the tier of a tool held: its name's, the plain axe and pickaxe stone's; none for what has no tier (a spear, a hoe)
+  const tierOf = (item) => { const m = /^(wood|stone|copper|iron|titanium)_(?:axe|pickaxe|sword)$/.exec(item || ""); return m ? m[1] : item === "axe" || item === "pickaxe" ? "stone" : null; };
+  const tinted = new WeakMap();
+  // the 48 x 48 cell of `img` at (sx, sy) as `item` shows it: [img, sx, sy] to draw from, the same when its tier is iron's
+  // or it has none. Made once a cell and tier, on a canvas of its own (the sheet itself is never read back: it stays on the GPU)
+  function inTier(img, sx, sy, item) {
+    const t = tierOf(item); if (!img || !METAL[t]) return [img, sx, sy];
+    let m = tinted.get(img); if (!m) tinted.set(img, m = new Map());
+    const key = sx + "," + sy + "," + t;
+    if (!m.has(key)) {
+      const c = document.createElement("canvas"); c.width = c.height = CELL; const g = c.getContext("2d", {willReadFrequently: true});
+      g.drawImage(img, sx, sy, CELL, CELL, 0, 0, CELL, CELL); const f = g.getImageData(0, 0, CELL, CELL), d = f.data, to = METAL[t].map(rgb);
+      for (let i = 0; i < d.length; i += 4) { const k = d[i + 3] ? GREY.indexOf(d[i] + "," + d[i + 1] + "," + d[i + 2]) : -1; if (k >= 0) d.set(to[k], i); }
+      g.putImageData(f, 0, 0); m.set(key, c);
+    }
+    return [m.get(key), 0, 0];
+  }
+  return {extend, soon, KINDS, redraw, tierOf, inTier};
 })();

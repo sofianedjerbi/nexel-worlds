@@ -193,10 +193,10 @@ function drawBody(p, sx, sy, S, t, now) {
     const cellX = x - 16 * z - p.fx * (kb - lunge), cellY = y - 18 * z - bob - p.fy * (kb - lunge), fi = syy / 48 * 8 + frame; p.fi = fi;   // (fi: the frame drawn, tests)
     wearFx("back", e, sheetImg, fi, cellX, cellY, z, now, moving, [-p.fx, -p.fy]);      // a charm's effect (wear_items.js)
     // the weapon of a cut or a thrust: in front of the body, behind it when they face away
-    const arm = () => blow && ctx.drawImage(SwingArt.sheetFor(blow[0], sheetImg), blow[1] * 48, DIR_ROW(p) * 48, 48, 48, cellX, cellY, 48 * z, 48 * z);
+    const arm = () => blow && ctx.drawImage(...ToolArt.inTier(SwingArt.sheetFor(blow[0], sheetImg), blow[1] * 48, DIR_ROW(p) * 48, action.with), 48, 48, cellX, cellY, 48 * z, 48 * z);   // (in its tier's metal: tool_art.js)
     const inPaw = (ANIM[anim] <= ANIM.run || anim === "jump" || anim === "aim") && !blow && tool !== "eat" && tool !== "sleep" && !(cl && cl.on) ? mine ? selected : e.held : null, hand = Held.art(inPaw);   // what is in the paw (held.js)
     if (DIR_ROW(p) === 1) { arm(); if (hand) Held.draw(hand, p, cellX, cellY, z, sheetImg, sxx, syy, inPaw); }
-    ctx.drawImage(sheetImg, sxx, syy, 48, 48, cellX, cellY, 48 * z, 48 * z);   // feet at frame y 32
+    ctx.drawImage(...(blow || ANIM[anim] <= ANIM.run || !action || !action.with ? [sheetImg, sxx, syy] : ToolArt.inTier(sheetImg, sxx, syy, action.with)), 48, 48, cellX, cellY, 48 * z, 48 * z);   // feet at frame y 32 (a chop's tool in its tier's metal)
     wearFx("front", e, sheetImg, fi, cellX, cellY, z, now, moving, [-p.fx, -p.fy]);
     if (DIR_ROW(p) !== 1) { arm(); if (hand) Held.draw(hand, p, cellX, cellY, z, sheetImg, sxx, syy, inPaw); }
     if (tool === "eat" && action.item && p.fy >= 0) {   // the food, half size and crisp, held up to the mouth
