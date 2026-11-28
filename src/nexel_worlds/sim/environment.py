@@ -87,7 +87,8 @@ class Environment:
                 elif kind == "fruit" and self.world.block(*pos) == "tree":    # picked before bare trees existed
                     self.set_tile(*pos, block="fruit_tree", cause="grew")
                 elif kind == "regrow" and self.world.block(*pos) in ("none", "stump") and self.entity_at(*pos) is None \
-                        and self.world.ground(*pos) in ("grass", "dirt"):
+                        and self.world.ground(*pos) in ("grass", "dirt") and not self.world.roof(*pos):   # (the sky over
+                    # it: a tree felled clearing a site never grows back inside the house built on it, under its floor)
                     self.set_tile(*pos, block="tree", cause="grew")
         if self.tick % sec(20) == 0:
             for key in sorted(self.world.chunks):
