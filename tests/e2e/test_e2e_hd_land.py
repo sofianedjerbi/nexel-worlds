@@ -84,10 +84,15 @@ def test_under_a_roof_an_xray_window_shows_your_floor_and_every_px_outside_it_is
     room = [[x + i, y + j] for j in range(-2, 3) for i in range(-3, 4)]
     g.rpc("dev_col", tiles=room, col=[z - 14, z - 11, z])           # a room 7 x 5 under 11 levels of land
     g.sleep(800)
+    # (the window is there within a quarter of a second of the land hiding you: 15 frames at 60 a second, the land made 200 steps a
+    #  frame (HdLook.hold: by the step, not by the ms a machine gives it), from a land at rest. It was `HdLook.lag < 600`, ms of the
+    #  wall clock: 636 and 778 on runners whose frames are 100 to 200 ms, the land made 5 ms a frame. In frames: 14, whatever their length)
+    g.rest(); g.js("HdLook.hold = 200; window.__b0 = HdLook.builds")
     g.rpc("dev_teleport", x=x, y=y, z=z - 14)
-    g.wait(WIN % 35, timeout=4000)
+    g.wait(WIN % 35, timeout=20000)
+    lag = g.js("[HdLook.lagF, HdLook.builds - __b0, HdLook.lag]"); g.js("HdLook.hold = null")
     g.rest()
-    assert g.js("HdLook.lag") < 600, g.js("HdLook.lag")              # (the window is there within a quarter of a second or so of the land hiding you)
+    assert lag[0] <= 15, str({"frames, lands made, ms": lag})
     assert g.js(f"[HdLook.winAt({x}, {y}), HdLook.winAt({x + 3}, {y + 2}), HdLook.winAt({x + 14}, {y - 2}), HdLook.winAt({x}, {y - 3})]") == [[z - 14, z - 11]] * 2 + [None] * 2   # (the window: your room's tiles, floor to ceiling; nothing beside it, nothing north of it)
     c = g.js(AT_, [x + 2.5, y + 1.5, z - 14])
     assert c[2] <= c[0] + 3 and sum(c) > 300, c                       # (your floor is seen: its own colours, bright; never cold. It was warm, red 40 over blue)
