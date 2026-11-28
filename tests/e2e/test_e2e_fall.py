@@ -16,7 +16,9 @@ def test_a_fall_takes_the_time_of_a_fall_and_lands_in_dust(game):
     game.stamp(-1, -1, ["..."] * 3, levels=["888"] * 3); game.rest()       # a tower eight layers high under you
     game.rpc("dev_needs", hp=20, hunger=17)                    # (whole, and not healing by itself: 18 and more)
     game.js("""(() => { window.__f = []; const o = Leap.frame;
-      Leap.frame = (p, dt, now) => { o(p, dt, now); const L = Leap.state; __f.push([now, L ? 1 : 0, L ? L.z : null, parts.length, wind ? 1 : 0, HdLook.level[2]]); };
+      Leap.frame = (p, dt, now) => { if (__f.length) __f[__f.length - 1][5] = HdLook.level[2]; o(p, dt, now); const L = Leap.state; __f.push([now, L ? 1 : 0, L ? L.z : null, parts.length, wind ? 1 : 0, HdLook.level[2]]); };
+      // (the eye's level of a frame: read once that frame is drawn, as the next begins. Read as the body moved, it was the frame before's:
+      //  behind by one frame's fall, 2.6 levels in a runner's frame of 150 ms, whatever the eye did)
       window.__hurt = []; const h = fallHurts; fallHurts = (p, now, mine) => { if (BodyPlace.state(p).hurt) __hurt.push(now); h(p, now, mine); }; return 1; })()""")
     g = game.js("JUMP.g")
     T = (2 * 8 / g) ** .5 * 1000                                                                 # ms in the air from eight layers, by the jump's weight
