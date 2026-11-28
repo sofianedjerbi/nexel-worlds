@@ -31,6 +31,8 @@ LINES = {
                  "The strawman never moves. It moved for {name}."],
     "skeleton": ["{name} heard the rattle and lingered to listen.", "A skeleton swiped {name}. Its eyes, the last light.",
                  "{name} met a skeleton at night. Soon, two."],
+    "redknee": ["{name} saw it rear up and watched.", "{name} is wrapped in silk, for later.",
+                "A redknee pounced. {name} was the landing."],
     "grumblestump": ["{name} sat on a stump. The stump stood up.", "{name} tried to chop a grumblestump. It chopped back.",
                      "The grumblestump grumbled at {name}. Then acted."],
     "snapbloom": ["{name} stopped to smell a flower. It stopped {name}.", "{name} picked a flower. The flower picked back.",
