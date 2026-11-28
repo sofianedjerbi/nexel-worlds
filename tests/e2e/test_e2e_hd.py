@@ -74,8 +74,12 @@ def test_two_walls_side_by_side_touch_and_a_bridge_is_drawn(browser, server):
         seen = [g.js(AT, p) for p in join]
         assert not any(green(c) for c in seen), seen
         top = g.js(f"Voxels.host.waterTop({x - 3}, {y + 3})")
-        deck, water = g.js(AT, [x - 2.5, y + 3.5, top]), g.js(AT, [x - 3.5, y + 2.5, top])
-        assert water[2] > water[0] + 12 and deck[0] > deck[2] + 20, (deck, water)          # (water over its bed: teal, blue 19 to 30 over red by which variant of the bed's wall is under it, voxpaint.js front: 20 was its edge, one place in four; the deck's planks: red far over blue)
+        deck = g.js(AT, [x - 2.5, y + 3.5, top])
+        # (the water: its tint, the median of 16 px over its tile, each channel: its picture's waves and glints move with
+        #  the clock, and a px under a crest is lighter, 151, 182, 161, whatever its tint: the median is the tint, #412)
+        reads = [g.js(AT, [x - 4 + (i + .5) / 4, y + 2 + (j + .5) / 4, top]) for j in range(4) for i in range(4)]
+        water = [sorted(r[c] for r in reads)[len(reads) // 2] for c in range(3)]
+        assert water[2] > water[0] + 12 and deck[0] > deck[2] + 20, str((deck, water, reads))          # (water over its bed: teal, blue 19 to 30 over red by which variant of the bed's wall is under it, voxpaint.js front: 20 was its edge, one place in four; the deck's planks: red far over blue)
     finally:
         g.page.close()
 
